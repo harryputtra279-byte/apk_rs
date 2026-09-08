@@ -161,17 +161,23 @@ function seedData(){
   ];
   return {
     poli, users, medicines, patients, visits, prescriptions, transactions, bookings,
-    meta:{ rmCounter:3, queueCounters:{ ['JAN-'+bookingTanggal]: 2 } }
+    meta:{ rmCounter:3, queueCounters:{ ['JAN-'+bookingTanggal]: 2 }, schemaVersion: DB_SCHEMA_VERSION }
   };
 }
 
 /* ---------------- persistence ---------------- */
+const DB_SCHEMA_VERSION = 2;
 const Store = {
   data:null,
   load(){
     const raw = localStorage.getItem('simrs_db_v1');
-    if(raw){ try{ this.data = JSON.parse(raw); }catch(e){ this.data = seedData(); } }
-    else { this.data = seedData(); }
+    let loaded = null;
+    if(raw){ try{ loaded = JSON.parse(raw); }catch(e){ loaded = null; } }
+    if(loaded && loaded.meta && loaded.meta.schemaVersion === DB_SCHEMA_VERSION){
+      this.data = loaded;
+    } else {
+      this.data = seedData();
+    }
     this.save();
   },
   save(){ localStorage.setItem('simrs_db_v1', JSON.stringify(this.data)); }
