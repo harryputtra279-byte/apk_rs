@@ -2,8 +2,11 @@
 // Strategi: cache-first untuk app shell, supaya aplikasi tetap bisa dibuka offline.
 // Data pasien/kunjungan/transaksi tersimpan di localStorage milik browser (per perangkat),
 // bukan lewat service worker ini.
-
-const CACHE_NAME = 'simrs-terpadu-v1';
+//
+// PENTING: SW_VERSION harus dinaikkan setiap kali app.js/style.css/qrcode.lib.js berubah,
+// supaya browser tahu ada versi baru dan mengambil file segar (bukan memakai cache lama selamanya).
+const SW_VERSION = 'v2';
+const CACHE_NAME = 'simrs-terpadu-' + SW_VERSION;
 const APP_SHELL = [
   './',
   './index.html',
@@ -40,7 +43,7 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      const networkFetch = fetch(event.request)
+      const fetchAndUpdate = fetch(event.request)
         .then((response) => {
           if (response && response.status === 200) {
             const clone = response.clone();
@@ -49,7 +52,10 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => cached || caches.match('./index.html'));
-      return cached || networkFetch;
+      // Jaga service worker tetap hidup sampai pembaruan cache di latar belakang selesai,
+      // supaya kunjungan BERIKUTNYA mendapat file yang sudah segar (bukan macet di cache lama).
+      event.waitUntil(fetchAndUpdate.catch(() => {}));
+      return cached || fetchAndUpdate;
     })
   );
 });
