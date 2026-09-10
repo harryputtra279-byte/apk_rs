@@ -31,6 +31,34 @@ body{
     linear-gradient(160deg, #EAF3F1 0%, #F2F1EC 55%, #F5EFE6 100%);
   background-attachment:fixed;background-size:cover;
 }
+/* ---------- bubble kaca mengambang (dekoratif, lapisan paling belakang) ---------- */
+.bg-bubbles{position:fixed;inset:0;overflow:hidden;z-index:-1;pointer-events:none}
+.bubble{position:absolute;border-radius:50%;filter:blur(1px);will-change:transform}
+.bubble-1{width:380px;height:380px;left:-100px;top:-90px;
+  background:radial-gradient(circle at 32% 30%, rgba(14,92,86,.5), rgba(14,92,86,0) 72%);
+  animation:floatBubble 22s ease-in-out infinite}
+.bubble-2{width:280px;height:280px;right:-70px;top:8%;
+  background:radial-gradient(circle at 32% 30%, rgba(184,114,42,.42), rgba(184,114,42,0) 72%);
+  animation:floatBubble 27s ease-in-out infinite;animation-delay:-4s}
+.bubble-3{width:320px;height:320px;left:6%;bottom:-120px;
+  background:radial-gradient(circle at 32% 30%, rgba(58,90,120,.4), rgba(58,90,120,0) 72%);
+  animation:floatBubble 20s ease-in-out infinite;animation-delay:-11s}
+.bubble-4{width:220px;height:220px;right:12%;bottom:6%;
+  background:radial-gradient(circle at 32% 30%, rgba(76,122,87,.38), rgba(76,122,87,0) 72%);
+  animation:floatBubble 25s ease-in-out infinite;animation-delay:-16s}
+.bubble-5{width:190px;height:190px;left:48%;top:36%;
+  background:radial-gradient(circle at 32% 30%, rgba(107,76,107,.32), rgba(107,76,107,0) 72%);
+  animation:floatBubble 30s ease-in-out infinite;animation-delay:-7s}
+@keyframes floatBubble{
+  0%,100%{transform:translate(0,0) scale(1)}
+  33%{transform:translate(22px,-26px) scale(1.06)}
+  66%{transform:translate(-16px,18px) scale(.96)}
+}
+@media (prefers-reduced-motion: reduce){ .bubble{animation:none} }
+@media (max-width:600px){
+  .bubble-1{width:260px;height:260px} .bubble-2{width:190px;height:190px}
+  .bubble-3{width:220px;height:220px} .bubble-4{width:150px;height:150px} .bubble-5{width:130px;height:130px}
+}
 .hidden{display:none !important}
 h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.02em}
 h1{font-size:20px} h2{font-size:16.5px;font-weight:700} h3{font-size:14px;font-weight:700}
