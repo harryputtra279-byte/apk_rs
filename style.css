@@ -257,6 +257,20 @@ tr:last-child td{border-bottom:none}
 .queue-list-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 13px;border-radius:var(--radius-lg);margin-bottom:9px;cursor:pointer;box-shadow:var(--shadow-float)}
 .queue-list-item:hover{border-color:rgba(14,92,86,.4)}
 .queue-list-item.active{border-color:var(--accent);background:var(--clinical-tint)}
+.queue-list-item.urgent{border-color:var(--brick);background:var(--brick-tint)}
+.queue-list-item .flag-btn{background:none;border:none;cursor:pointer;font-size:15px;padding:4px;flex:none;opacity:.55}
+.queue-list-item .flag-btn.on{opacity:1}
+
+/* ---------- Beranda: kartu aksi cepat ---------- */
+.hello-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+.hello-bar h1{font-size:19px}
+.action-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(136px,1fr));gap:12px;margin-bottom:18px}
+.action-card{display:flex;flex-direction:column;align-items:center;gap:8px;padding:20px 12px;border-radius:var(--radius-lg);
+  cursor:pointer;text-align:center;box-shadow:var(--shadow-float);border:1px solid var(--glass-border);background:var(--glass-bg);
+  -webkit-backdrop-filter:blur(var(--glass-blur));backdrop-filter:blur(var(--glass-blur))}
+.action-card:active{transform:scale(.96)}
+.action-card .ic{font-size:27px}
+.action-card .lbl{font-size:13px;font-weight:800;color:var(--ink);line-height:1.25}
 .queue-list-item .no{font-family:var(--font-mono);font-weight:700;font-size:15px}
 .queue-list-item .nm{font-size:12.5px;color:var(--ink-soft)}
 .resep-row{display:grid;grid-template-columns:1fr 70px 1fr auto;gap:8px;margin-bottom:8px;align-items:center}

@@ -5,7 +5,7 @@
 //
 // PENTING: SW_VERSION harus dinaikkan setiap kali app.js/style.css/qrcode.lib.js berubah,
 // supaya browser tahu ada versi baru dan mengambil file segar (bukan memakai cache lama selamanya).
-const SW_VERSION = 'v3';
+const SW_VERSION = 'v4';
 const CACHE_NAME = 'simrs-terpadu-' + SW_VERSION;
 const APP_SHELL = [
   './',
