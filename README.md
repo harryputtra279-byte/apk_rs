@@ -1,5 +1,7 @@
 # SIMRS Terpadu — RSUD R.T. Notopuro
 
+**Versi portfolio: v12** — fokus revisi pada pengalaman pasien, Live Queue Monitor, tiket yang dapat dibuka kembali, kontrol antrean berkelanjutan, serta pemisahan hak pembatalan berdasarkan penjamin.
+
 Aplikasi manajemen rumah sakit (PWA) yang mencakup alur lengkap **Pendaftaran → Poli → Laboratorium → Farmasi → Kasir → Obat Diambil**, dengan rekam medis yang terlihat lintas poli. Dibangun murni dengan HTML/CSS/JavaScript (tanpa framework atau dependency eksternal) agar ringan, cepat, dan bisa dipasang (install) sebagai aplikasi serta dipakai offline.
 
 ## Cara menjalankan
@@ -29,8 +31,26 @@ lalu buka `http://localhost:8080`.
 | Laboratorium | `lab` | `lab123` |
 | Farmasi | `farmasi` | `farmasi123` |
 | Kasir | `kasir` | `kasir123` |
+| Pasien 1 — Andi Pratama | `pasien.demo1` | `pasien123` | Umum · Reguler · Live Queue demo |
+| Pasien 2 — Sari Wulandari | `pasien.demo2` | `pasien123` | Umum · Eksekutif · status Dipanggil demo |
+| Pasien 3 — Budi Setiawan | `pasien.demo3` | `pasien123` | JKN/BPJS · Reguler · pembatalan dikunci |
+| Pasien 4 — Rina Maharani | `pasien.demo4` | `pasien123` | Asuransi · Eksekutif · riwayat kontrol demo |
+| Pasien 5 — Dimas Saputra | `pasien.demo5` | `pasien123` | JKN/BPJS · Reguler · antrean menunggu |
 
 Atau gunakan tombol akun demo di halaman login untuk login sekali klik.
+
+
+## Fitur pasien v12
+
+- Menu pasien dipisahkan menjadi **Dashboard**, **Rawat Jalan**, **Booking Saya**, dan **Riwayat Kontrol**.
+- **Booking Saya** tidak digabung dengan pendaftaran Rawat Jalan. Setiap tiket dapat dibuka kembali untuk menampilkan QR/barcode tanpa screenshot.
+- Tiket pasien memiliki **Download Tiket** dan **Cetak / Simpan PDF**.
+- Dashboard pasien memiliki **Live Queue Monitor**: nomor pasien, nomor yang sedang dilayani/dipanggil, jumlah pasien yang sudah dilayani sebelum nomor pasien, jumlah yang masih menunggu sebelum giliran, dan estimasi tunggu.
+- Saat nomor pasien dipanggil, dashboard berubah ke indikator **hijau / Silakan Masuk**. Notifikasi tetap menggunakan ambang **3 pasien sebelum giliran**.
+- Pembatalan mandiri hanya tersedia untuk **Umum** dan **Asuransi** yang diperbolehkan. **JKN/BPJS tidak dapat dibatalkan dari aplikasi pasien**; perubahan harus melalui petugas rumah sakit. Setelah check-in, pasien juga tidak dapat membatalkan booking dari aplikasi.
+- **Riwayat Kontrol** hanya menampilkan ringkasan tanggal, poli, dan status selesai untuk menjaga privasi; detail rekam medis tidak dibuka dari menu pasien ini.
+- Di sisi Rawat Jalan tersedia kontrol **Selesaikan & Panggil Berikutnya** dengan konfirmasi. Dokter dapat menyelesaikan dari form pemeriksaan, sedangkan perawat/asisten dapat melanjutkan antrean setelah data pemeriksaan disimpan dan dinyatakan siap. Pasien berikutnya otomatis menjadi **Dipanggil** dan mendapat notifikasi.
+- Monitor poli dan dashboard pasien menggunakan status antrean yang sama pada prototype. Versi produksi multi-perangkat tetap membutuhkan backend/database dan mekanisme real-time.
 
 ## Alur & integrasi antar modul
 

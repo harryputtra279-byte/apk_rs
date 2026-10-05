@@ -375,4 +375,30 @@ body.kiosk-on .content{max-width:1100px;margin:0 auto;padding-top:32px}
 .ticket-actions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:16px}
 @media(max-width:520px){.ticket-actions .btn{width:100%}}
 
-.demo-section{margin-top:12px}.demo-section-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);margin:0 0 7px}.demo-section-note{font-size:11px;color:var(--ink-soft);line-height:1.45;margin-top:7px}.patient-demo-section{padding:12px;border:1px solid var(--glass-border-soft);border-radius:14px;background:rgba(255,255,255,.3)}
+
+/* ---------- v12: patient live queue + continuous queue control ---------- */
+.login-demo-section{margin-top:12px;padding:12px;border:1px solid var(--glass-border-soft);border-radius:16px;background:rgba(255,255,255,.28)}
+.login-demo-title{font-size:12.5px;font-weight:800;color:var(--ink);margin-bottom:4px}
+.login-demo-hint{font-size:11.5px;color:var(--ink-soft);margin-bottom:8px}
+.patient-demo-section{border-color:rgba(14,92,86,.25);background:rgba(14,92,86,.06)}
+.patient-live-queue{overflow:hidden}
+.patient-live-queue.patient-live-green{border-color:rgba(76,122,87,.42);box-shadow:0 10px 34px rgba(76,122,87,.12)}
+.patient-live-queue.patient-live-warn{border-color:rgba(184,114,42,.38)}
+.patient-live-queue.patient-live-blue{border-color:rgba(58,90,120,.30)}
+.patient-live-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:16px}
+.patient-live-card{padding:13px;border-radius:15px;background:rgba(255,255,255,.58);border:1px solid var(--glass-border-soft);min-height:94px}
+.patient-live-card.primary{border-color:rgba(14,92,86,.32);background:rgba(14,92,86,.08)}
+.patient-live-card span{display:block;font-size:11px;color:var(--ink-soft);font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.patient-live-card strong{display:block;font-size:25px;font-weight:900;margin-top:4px}
+.patient-live-card small{display:block;font-size:11px;color:var(--ink-soft);margin-top:3px}
+.patient-live-status{margin:0 16px 16px;padding:13px 15px;border-radius:15px;background:rgba(255,255,255,.62);border:1px solid var(--glass-border-soft);display:flex;flex-direction:column;gap:3px}
+.patient-live-status strong{font-size:14px}
+.patient-live-status span{font-size:12px;color:var(--ink-soft)}
+.patient-ticket-row-wrap{display:block;padding:0;overflow:hidden}
+.patient-ticket-row-wrap .patient-ticket-row{width:100%;border:0;border-radius:0;background:transparent;box-shadow:none;text-align:left;padding:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer}
+.ticket-row-actions{padding:0 14px 12px;display:flex;justify-content:flex-end;border-top:1px solid var(--ink-hair);padding-top:9px}
+.queue-control-panel{margin-bottom:14px;border-color:rgba(14,92,86,.25)}
+.queue-control-actions{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap}
+.queue-control-actions .ops-alert{flex:1;min-width:220px;margin:0}
+@media(max-width:700px){.patient-live-grid{grid-template-columns:1fr 1fr}.patient-live-card strong{font-size:21px}.queue-control-actions{align-items:stretch}.queue-control-actions .btn{width:100%}}
+@media(max-width:430px){.patient-live-grid{grid-template-columns:1fr}.patient-live-status{margin-left:10px;margin-right:10px}.patient-live-grid{padding:10px}}
