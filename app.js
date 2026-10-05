@@ -2020,32 +2020,17 @@ function refreshQueueControlPanel(){
 }
 function queueCandidates(poliId){
   return visitsToday().filter(function(v){
-    if(!samePoli(v.poliId,poliId)||v.unit!=='rawat-jalan') return false;
-    if(v.status==='menunggu_dokter'||v.status==='menunggu_poli') return true;
-    // Screening boleh dipersiapkan lebih awal. Pasien belum dipindah ke
-    // status dipanggil sampai screening benar-benar selesai.
-    return v.status==='screening' && !v.preCalledAt;
+    return samePoli(v.poliId,poliId) && v.unit==='rawat-jalan' && v.status==='menunggu_dokter';
   }).sort(function(a,b){
-    const stage=function(v){return v.status==='menunggu_dokter'?0:(v.status==='dipanggil'?0:1);};
-    return stage(a)-stage(b)||(b.prioritas?1:0)-(a.prioritas?1:0)||(queueNumberValue(a.noAntrian)||999999)-(queueNumberValue(b.noAntrian)||999999);
+    return (b.prioritas?1:0)-(a.prioritas?1:0)||(queueNumberValue(a.noAntrian)||999999)-(queueNumberValue(b.noAntrian)||999999);
   });
 }
 function callNextPatient(poliId){
-  const u=Session.currentUser; if(!u||!['dokter','perawat','rawat_jalan','admin'].includes(u.role)){showToast('Akun ini tidak memiliki hak mengatur antrean poli.','danger');return;}
+  const u=Session.currentUser; if(!u||!['dokter','admin'].includes(u.role)){showToast('Panggilan antrean dokter hanya dapat dilakukan oleh akun dokter atau admin.','danger');return;}
   const active=visitsToday().find(v=>samePoli(v.poliId,poliId)&&v.status==='diperiksa');
   if(active){showToast('Masih ada pasien yang sedang diperiksa ('+active.noAntrian+'). Selesaikan pasien tersebut terlebih dahulu.','warning');return;}
-  const next=queueCandidates(poliId)[0]; if(!next){showToast('Belum ada pasien yang siap dipanggil di poli ini.','warning');return;}
+  const next=queueCandidates(poliId)[0]; if(!next){showToast('Belum ada pasien yang siap dipanggil di poli ini. Selesaikan screening terlebih dahulu.','warning');return;}
   next.dokterId=(u.role==='dokter'?u.id:next.dokterId);
-  if(next.status==='screening'){
-    // Pre-call: dokter diberi tahu lebih awal, tetapi pasien belum mendapat
-    // status SILAKAN MASUK sampai screening selesai.
-    next.preCalledAt=nowISO(); next.preCalledBy=u.id; next.updatedAt=nowISO();
-    Store.save();
-    pushNotification('queue','🔔 Bersiap — screening sedang berlangsung',next.noAntrian+' — screening sedang diselesaikan. Anda akan dipanggil setelah screening selesai.',next.patientId);
-    logAudit('persiapan_panggilan_saat_screening',next.noAntrian+' — '+getPatient(next.patientId).nama);
-    refreshPoliQueue(); refreshQueueControlPanel(); if(window.__rjRerender)window.__rjRerender(); showToast(next.noAntrian+' sudah dipersiapkan. Setelah screening selesai, pasien otomatis dipanggil.','success');
-    return;
-  }
   next.status='dipanggil'; next.queueCalledAt=nowISO(); next.queueCallCount=(next.queueCallCount||0)+1; next.updatedAt=nowISO();
   Store.save(); pushNotification('queue','🟢 SILAKAN MASUK',next.noAntrian+' — silakan menuju '+getPoli(next.poliId).nama,next.patientId); logAudit('panggil_berikutnya',next.noAntrian+' — '+getPatient(next.patientId).nama);
   refreshPoliQueue(); refreshQueueControlPanel(); if(window.__rjRerender)window.__rjRerender(); showToast(next.noAntrian+' dipanggil.','success');
@@ -2058,7 +2043,7 @@ function pausePatient(visitId){
   const v=getVisit(visitId); if(!v)return; v.status='menunggu_dokter'; v.queuePausedAt=nowISO(); v.updatedAt=nowISO(); Store.save(); logAudit('tunda_antrean',v.noAntrian+' — '+getPatient(v.patientId).nama); refreshPoliQueue(); refreshQueueControlPanel(); showToast(v.noAntrian+' ditunda dan kembali ke antrean.','success');
 }
 function renderQueueControlPanel(poliId){
-  const u=Session.currentUser; if(!u||!['dokter','perawat','rawat_jalan','admin'].includes(u.role))return '';
+  const u=Session.currentUser; if(!u||!['dokter','admin'].includes(u.role))return '';
   const active=visitsToday().filter(v=>samePoli(v.poliId,poliId)&&v.status==='diperiksa').sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt))[0]||null;
   const called=visitsToday().filter(v=>samePoli(v.poliId,poliId)&&v.status==='dipanggil').sort((a,b)=>new Date(b.queueCalledAt||b.updatedAt||b.createdAt)-new Date(a.queueCalledAt||a.updatedAt||a.createdAt))[0]||null;
   const next=queueCandidates(poliId)[0]||null;
@@ -2077,19 +2062,17 @@ function bindQueueControlPanel(){
 }
 
 function openScreening(visitId){
-  const v=getVisit(visitId), p=getPatient(v.patientId); if(!v||!p)return;
+  const v=getVisit(visitId); if(!v)return; const p=getPatient(v.patientId); if(!p)return;
   openModal('<div class="modal-head"><h2>🩺 Screening Awal — '+esc(p.nama)+'</h2><button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button></div><div class="modal-body"><p class="hint">Data screening akan diteruskan ke dokter agar pasien tidak perlu diukur ulang.</p><div class="field-row"><div class="field"><label>Tekanan Darah</label><input id="scr-td" placeholder="120/80"></div><div class="field"><label>Nadi</label><input id="scr-nadi" type="number" placeholder="80"></div></div><div class="field-row"><div class="field"><label>Suhu °C</label><input id="scr-suhu" type="number" step="0.1" placeholder="36.7"></div><div class="field"><label>SpO₂ %</label><input id="scr-spo2" type="number" placeholder="98"></div></div><div class="field-row"><div class="field"><label>Berat Badan kg</label><input id="scr-bb" type="number" step="0.1"></div><div class="field"><label>Tinggi Badan cm</label><input id="scr-tb" type="number" step="0.1"></div></div><div class="field"><label>Keluhan Utama / Screening</label><textarea id="scr-keluhan">'+esc(v.keluhan||'')+'</textarea></div><div class="field"><label>Alergi</label><input id="scr-alergi" value="'+esc(p.alergi||'')+'" placeholder="Tidak diketahui / sebutkan bila ada"></div><button class="btn btn-primary btn-block" id="btn-save-screening">Simpan Screening & Kirim ke Dokter</button></div>');
   document.getElementById('btn-save-screening').addEventListener('click',function(){
     v.screening={td:document.getElementById('scr-td').value.trim(),nadi:document.getElementById('scr-nadi').value,suhu:document.getElementById('scr-suhu').value,spo2:document.getElementById('scr-spo2').value,bb:document.getElementById('scr-bb').value,tb:document.getElementById('scr-tb').value,keluhan:document.getElementById('scr-keluhan').value.trim(),alergi:document.getElementById('scr-alergi').value.trim(),by:Session.currentUser.nama,at:nowISO()};
     v.vital=v.screening; v.workflow=v.workflow||{}; v.workflow.screeningAt=nowISO();
-    const wasPreCalled=!!v.preCalledAt;
-    v.status=wasPreCalled?'dipanggil':'menunggu_dokter';
-    if(wasPreCalled){ v.queueCalledAt=nowISO(); v.queueCallCount=(v.queueCallCount||0)+1; v.preCalledCompletedAt=nowISO(); }
+    v.status='menunggu_dokter';
     v.updatedAt=nowISO();
-    if(v.communication===undefined)v.communication=[]; v.communication.push({type:'screening',message:wasPreCalled?'Screening selesai — pasien otomatis dipanggil ke dokter.':'Screening selesai dan data diteruskan ke dokter.',createdAt:nowISO(),by:Session.currentUser.nama});
+    if(v.communication===undefined)v.communication=[]; v.communication.push({type:'screening',message:'Screening selesai dan data diteruskan ke dokter.',createdAt:nowISO(),by:Session.currentUser.nama});
     Store.save(); logAudit('screening_selesai',v.noAntrian+' — '+getPatient(v.patientId).nama);
-    pushNotification('queue',wasPreCalled?'🟢 SILAKAN MASUK':'Pasien siap diperiksa',wasPreCalled?v.noAntrian+' — silakan menuju '+getPoli(v.poliId).nama:v.noAntrian+' — '+getPatient(v.patientId).nama,v.patientId);
-    closeModal(); refreshPoliQueue(); refreshQueueControlPanel(); if(window.__rjRerender)window.__rjRerender(); showToast(wasPreCalled?'Screening selesai — pasien otomatis dipanggil ke dokter':'Screening selesai — pasien masuk antrean dokter','success');
+    pushNotification('queue','Pasien siap diperiksa',v.noAntrian+' — screening selesai dan pasien menunggu panggilan dokter.',v.patientId);
+    closeModal(); refreshPoliQueue(); refreshQueueControlPanel(); if(window.__rjRerender)window.__rjRerender(); showToast('Screening selesai — pasien masuk antrean dokter','success');
   });
 }
 
@@ -2186,7 +2169,7 @@ function refreshPoliQueue(){
   area.innerHTML=list.map(v=>{
     const p=getPatient(v.patientId), age=v.workflow&&v.workflow.screeningAt?Math.max(0,Math.round((Date.now()-new Date(v.workflow.screeningAt).getTime())/60000)):Math.max(0,Math.round((Date.now()-new Date(v.createdAt).getTime())/60000));
     let action='';
-    if(u.role==='rawat_jalan' && ['menunggu_screening','screening'].includes(v.status)) action='<button class="btn btn-primary btn-sm" data-screening="'+v.id+'">🩺 Screening</button>';
+    if(['rawat_jalan','perawat'].includes(u.role) && ['menunggu_screening','screening'].includes(v.status)) action='<button class="btn btn-primary btn-sm" data-screening="'+v.id+'">🩺 Screening</button>';
     else if(u.role==='dokter' && ['menunggu_dokter','dipanggil','menunggu_review','menunggu_poli','screening'].includes(v.status)) action=v.status==='screening'?'<span class="badge badge-amber">⏳ Screening berjalan</span>':'<button class="btn btn-primary btn-sm" data-openvisit="'+v.id+'">'+(v.status==='dipanggil'?'🟢 Mulai Pemeriksaan':'Buka')+'</button>';
     else if(u.role==='admin' && ['menunggu_screening','screening'].includes(v.status)) action='<button class="btn btn-primary btn-sm" data-screening="'+v.id+'">Screening</button>';
     return '<div class="rj-queue-item '+(v.prioritas?'urgent':'')+'"><div><div class="rj-q-top"><span class="rj-q-no">'+esc(v.noAntrian)+'</span>'+badgeStatus(v.status)+'</div><strong>'+esc(p.nama)+'</strong><div class="hint">RM '+esc(p.id)+' · '+age+' menit dalam tahap aktif'+(v.prioritas?' · 🚩 prioritas':'')+'</div></div><div class="rj-q-actions">'+action+'<button class="btn btn-ghost btn-sm" data-history="'+v.patientId+'">Riwayat</button></div></div>';
