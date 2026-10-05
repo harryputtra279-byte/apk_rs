@@ -479,12 +479,12 @@ const Session = {
 };
 
 /* ---------------- getters ---------------- */
-function getPoli(id){ return Store.data.poli.find(p=>p.id===id); }
 // Normalisasi ID poli agar akun demo lama (UMU/JAN/...) tetap terhubung
 // dengan katalog resmi (RJ-UMU/SP-JAN/...). Semua modul antrean memakai helper ini.
 const POLI_ALIAS = {UMU:'RJ-UMU',GIG:'SP-GIG',ANA:'SP-ANA',KDG:'SP-KDG',MAT:'SP-MAT',THT:'SP-THT',JAN:'SP-JAN',KUL:'SP-KUL',PDL:'SP-PDL',SYA:'SP-SAR',PAR:'SP-PAR'};
 function canonicalPoliId(id){ return POLI_ALIAS[id] || id; }
 function samePoli(a,b){ return canonicalPoliId(a)===canonicalPoliId(b); }
+function getPoli(id){ return Store.data.poli.find(p=>p.id===canonicalPoliId(id)); }
 
 function getMedicine(id){ return Store.data.medicines.find(m=>m.id===id); }
 function getPatient(id){ return Store.data.patients.find(p=>p.id===id); }
@@ -620,7 +620,7 @@ function isRouteAllowed(route, role){
   return true;
 }
 function defaultRouteForRole(role){
-  return ({admin:'dashboard', loket:'beranda', rawat_jalan:'poli', dokter:'poli', dokter_igd:'igd', dokter_ranap:'ranap', farmasi:'farmasi-rawat-jalan', kasir:'kasir-rawat-jalan', lab:'beranda', perawat:'ranap', perawat_igd:'igd', perawat_ranap:'ranap', pasien:'pasien-dashboard'})[role] || 'cek-antrian';
+  return ({admin:'dashboard', loket:'beranda', rawat_jalan:'poli', dokter:'poli', dokter_igd:'igd', dokter_ranap:'ranap', farmasi:'farmasi-rawat-jalan', kasir:'kasir-rawat-jalan', lab:'beranda', perawat:'poli', perawat_igd:'igd', perawat_ranap:'ranap', pasien:'pasien-dashboard'})[role] || 'cek-antrian';
 }
 function navigate(hash){ location.hash = '#/' + hash; }
 function currentRoute(){ return location.hash.replace(/^#\/?/, '').split('?')[0]; }
@@ -1325,22 +1325,33 @@ function berandaLab(){
     '</div>';
 }
 function berandaPerawat(){
+  const u = Session.currentUser || {};
+  // Asisten/perawat Rawat Jalan memiliki workspace screening sendiri.
+  if(u.unit==='rawat-jalan' && u.poliId){
+    const poliId=canonicalPoliId(u.poliId);
+    const visits=visitsToday().filter(v=>samePoli(v.poliId,poliId));
+    const screening=visits.filter(v=>['menunggu_screening','screening'].includes(v.status));
+    const siapDokter=visits.filter(v=>v.status==='menunggu_dokter');
+    return '<h3 style="color:var(--ink-soft);margin-bottom:10px">🩺 Asisten Poli — '+esc(getPoli(poliId)?.nama||'Rawat Jalan')+'</h3>'+
+      '<div class="grid grid-3">'+
+        statCard('Menunggu Screening', screening.length, 'perlu ditangani')+
+        statCard('Menunggu Dokter', siapDokter.length, 'screening selesai')+
+        statCard('Selesai Hari Ini', visits.filter(v=>v.status==='selesai').length, 'kunjungan')+
+      '</div>'+
+      '<div class="action-grid">'+
+        '<div class="action-card" data-nav="poli"><span class="ic">🩺</span><span class="lbl">Screening & Antrian Poli</span></div>'+
+        '<div class="action-card" data-nav="cek-antrian"><span class="ic">📺</span><span class="lbl">Cek Antrian</span></div>'+
+        '<div class="action-card" data-action="global-search"><span class="ic">🔍</span><span class="lbl">Cari Pasien</span></div>'+
+      '</div>'+
+      '<div class="panel"><div class="panel-head"><h2>Pasien yang Perlu Ditangani</h2></div><div class="panel-body">'+
+        (screening.length ? screening.map(v=>{const p=getPatient(v.patientId);return '<div class="rj-queue-item"><div><div class="rj-q-top"><span class="rj-q-no">'+esc(v.noAntrian)+'</span>'+badgeStatus(v.status)+'</div><strong>'+esc(p?.nama||'-')+'</strong></div><button class="btn btn-primary btn-sm" data-nav="poli">Buka Screening</button></div>';}).join('') : '<div class="empty">Tidak ada pasien yang menunggu screening.</div>')+
+      '</div></div>';
+  }
   const aktif = Store.data.admissions.filter(a=>a.status==='dirawat');
-  const perluPerhatian = aktif.filter(a=>{
-    const v = a.vitalLog[a.vitalLog.length-1];
-    return v && v.news2>=5;
-  }).length;
+  const perluPerhatian = aktif.filter(a=>{ const v=a.vitalLog[a.vitalLog.length-1]; return v && v.news2>=5; }).length;
   const bedKosong = Store.data.beds.filter(b=>b.status==='kosong').length;
-  return '<div class="grid grid-3">'+
-      statCard('Pasien Dirawat', aktif.length, 'seluruh bangsal')+
-      statCard('Perlu Perhatian', perluPerhatian, 'skor NEWS2 ≥5')+
-      statCard('Bed Kosong', bedKosong, 'dari '+Store.data.beds.length+' total')+
-    '</div>'+
-    '<div class="action-grid">'+
-      '<div class="action-card" data-nav="ranap"><span class="ic">🏨</span><span class="lbl">Rawat Inap</span></div>'+
-      '<div class="action-card" data-action="global-search"><span class="ic">🔍</span><span class="lbl">Cari Pasien</span></div>'+
-      '<div class="action-card" data-nav="cek-antrian"><span class="ic">📺</span><span class="lbl">Cek Antrian</span></div>'+
-    '</div>';
+  return '<div class="grid grid-3">'+statCard('Pasien Dirawat',aktif.length,'seluruh bangsal')+statCard('Perlu Perhatian',perluPerhatian,'skor NEWS2 ≥5')+statCard('Bed Kosong',bedKosong,'dari '+Store.data.beds.length+' total')+'</div>'+
+    '<div class="action-grid"><div class="action-card" data-nav="ranap"><span class="ic">🏨</span><span class="lbl">Rawat Inap</span></div><div class="action-card" data-action="global-search"><span class="ic">🔍</span><span class="lbl">Cari Pasien</span></div><div class="action-card" data-nav="cek-antrian"><span class="ic">📺</span><span class="lbl">Cek Antrian</span></div></div>';
 }
 
 /* =================================================================
