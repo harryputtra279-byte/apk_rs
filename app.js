@@ -10,6 +10,60 @@ const POLI_COLOR = {UMU:'clinical', GIG:'slate', ANA:'sage', KDG:'plum', MAT:'am
 
 function poliColor(id){ return POLI_COLOR[id] || 'clinical'; }
 
+
+/* ================================================================
+   KATALOG LAYANAN RSUD R.T. NOTOPURO — sumber nama layanan publik
+   Dashboard memakai ID yang stabil; detail lantai/ruang tidak diasumsikan.
+   ================================================================ */
+const OFFICIAL_POLI_CATALOG = [
+  ['SP-GCU','Klinik General Check Up','Poliklinik Spesialis'],['SP-BPL','Klinik Bedah Plastik','Poliklinik Spesialis'],['SP-BUM','Klinik Bedah Umum','Poliklinik Spesialis'],['SP-BUR','Klinik Bedah Urologi','Poliklinik Spesialis'],['SP-BSR','Klinik Bedah Saraf','Poliklinik Spesialis'],['SP-BOR','Klinik Bedah Orthopedi','Poliklinik Spesialis'],['SP-BDI','Klinik Bedah Digestif','Poliklinik Spesialis'],['SP-PDL','Klinik Penyakit Dalam','Poliklinik Spesialis'],['SP-GER','Klinik Geriatri','Poliklinik Spesialis'],['SP-END','Klinik Endoskopi','Poliklinik Spesialis'],['SP-JAN','Klinik Jantung','Poliklinik Spesialis'],['SP-SAR','Klinik Saraf','Poliklinik Spesialis'],['SP-PAR','Klinik Paru','Poliklinik Spesialis'],['SP-HKB','Klinik Hamil/KB','Poliklinik Spesialis'],['SP-KDG','Klinik Kandungan','Poliklinik Spesialis'],['SP-AND','Klinik Andrologi','Poliklinik Spesialis'],['SP-PSI','Klinik Psikologi','Poliklinik Spesialis'],['SP-PSK','Klinik Psikiatri','Poliklinik Spesialis'],['SP-REH','Klinik Rehabilitasi Medik','Poliklinik Spesialis'],['SP-ANA','Klinik Anak','Poliklinik Spesialis'],['SP-TBK','Klinik Tumbuh Kembang','Poliklinik Spesialis'],['SP-GIG','Klinik Gigi dan Mulut','Poliklinik Spesialis'],['SP-THT','Klinik THT','Poliklinik Spesialis'],['SP-MAT','Klinik Mata','Poliklinik Spesialis'],['SP-KUL','Klinik Kulit dan Kelamin','Poliklinik Spesialis'],['SP-MRV','Klinik Mawar Merah/VCT','Poliklinik Spesialis'],['SP-GIZ','Klinik Gizi','Poliklinik Spesialis'],['SP-HOM','Pelayanan Homecare','Poliklinik Spesialis'],
+  ['EX-EST','Klinik Estetika','Poliklinik Eksekutif'],['EX-KUL','Klinik Kulit dan Kelamin','Poliklinik Eksekutif'],['EX-BUM','Klinik Bedah Umum','Poliklinik Eksekutif'],['EX-BUR','Klinik Bedah Urologi','Poliklinik Eksekutif'],['EX-BSR','Klinik Bedah Saraf','Poliklinik Eksekutif'],['EX-BOR','Klinik Bedah Orthopedi','Poliklinik Eksekutif'],['EX-BDI','Klinik Bedah Digestif','Poliklinik Eksekutif'],['EX-BTKV','Klinik Bedah TKV','Poliklinik Eksekutif'],['EX-BONK','Klinik Bedah Onkologi','Poliklinik Eksekutif'],['EX-PDL','Klinik Penyakit Dalam','Poliklinik Eksekutif'],['EX-AKU','Klinik Akupuntur','Poliklinik Eksekutif'],['EX-JAN','Klinik Jantung','Poliklinik Eksekutif'],['EX-SAR','Klinik Saraf','Poliklinik Eksekutif'],['EX-PAR','Klinik Paru','Poliklinik Eksekutif'],['EX-HKB','Klinik Hamil/KB','Poliklinik Eksekutif'],['EX-KDG','Klinik Kandungan','Poliklinik Eksekutif'],['EX-AND','Klinik Andrologi','Poliklinik Eksekutif'],['EX-PSI','Klinik Psikologi','Poliklinik Eksekutif'],['EX-PSK','Klinik Psikiatri','Poliklinik Eksekutif'],['EX-REH','Klinik Rehabilitasi Medik','Poliklinik Eksekutif'],['EX-ANA','Klinik Anak','Poliklinik Eksekutif'],['EX-TBK','Klinik Tumbuh Kembang','Poliklinik Eksekutif'],['EX-GIG','Klinik Gigi dan Mulut','Poliklinik Eksekutif'],['EX-THT','Klinik THT','Poliklinik Eksekutif'],['EX-MAT','Klinik Mata','Poliklinik Eksekutif'],['EX-KUL2','Klinik Kulit dan Kelamin','Poliklinik Eksekutif'],['EX-GIZ','Klinik Gizi','Poliklinik Eksekutif'],['EX-RAD','Klinik Radioterapi','Poliklinik Eksekutif']
+];
+
+const NOTOPURO_FACILITY_STRUCTURE = [
+  {id:'GED-RAWAT-JALAN',type:'gedung',nama:'Pelayanan Rawat Jalan',parentId:null,source:'website'},
+  {id:'UNIT-POLI-SPESIALIS',type:'unit',nama:'Poliklinik Spesialis',parentId:'GED-RAWAT-JALAN',source:'website'},
+  {id:'UNIT-POLI-EKSEKUTIF',type:'unit',nama:'Poliklinik Eksekutif',parentId:'GED-RAWAT-JALAN',source:'website'},
+  {id:'GED-IGD',type:'unit',nama:'Instalasi Gawat Darurat (IGD)',parentId:null,source:'website'},
+  {id:'IGD-ZONA-MERAH',type:'zona',nama:'Zona Merah',parentId:'GED-IGD',source:'website'},
+  {id:'IGD-ZONA-KUNING',type:'zona',nama:'Zona Kuning',parentId:'GED-IGD',source:'website'},
+  {id:'GED-RAWAT-INAP',type:'gedung',nama:'Pelayanan Rawat Inap',parentId:null,source:'website'},
+  {id:'RI-TULIP',type:'unit',nama:'Rawat Inap Tulip',parentId:'GED-RAWAT-INAP',source:'website'},
+  {id:'RI-TERATAI',type:'unit',nama:'Rawat Inap Teratai',parentId:'GED-RAWAT-INAP',source:'website'},
+  {id:'RI-MAWAR-KUNING',type:'unit',nama:'Rawat Inap Mawar Kuning',parentId:'GED-RAWAT-INAP',source:'website'},
+  {id:'RI-MAWAR-MP',type:'unit',nama:'Rawat Inap Mawar Merah Putih',parentId:'GED-RAWAT-INAP',source:'website'},
+  {id:'RI-GDH',type:'unit',nama:'Rawat Inap Graha Delta Husada',parentId:'GED-RAWAT-INAP',source:'website'},
+  {id:'RI-INTENSIF',type:'unit',nama:'Rawat Intensif Terpadu',parentId:'GED-RAWAT-INAP',source:'website'},
+  {id:'RI-ICU',type:'unit',nama:'ICU',parentId:'RI-INTENSIF',source:'website'},
+  {id:'RI-ICCU',type:'unit',nama:'ICCU',parentId:'RI-INTENSIF',source:'website'},
+  {id:'RI-PICU',type:'unit',nama:'PICU',parentId:'RI-INTENSIF',source:'website'},
+  {id:'RI-NICU',type:'unit',nama:'NICU',parentId:'RI-INTENSIF',source:'website'},
+  {id:'RI-HCU',type:'unit',nama:'HCU',parentId:'RI-INTENSIF',source:'website'},
+  {id:'RI-BERSALIN',type:'unit',nama:'Ruang Bersalin',parentId:'GED-RAWAT-INAP',source:'website'},
+  {id:'FAR-RAJAL',type:'unit',nama:'Farmasi Rawat Jalan',parentId:null,source:'simrs'},
+  {id:'FAR-RANAP',type:'unit',nama:'Farmasi Rawat Inap',parentId:null,source:'simrs'},
+  {id:'LAB-PK',type:'unit',nama:'Laboratorium Patologi Klinik',parentId:null,source:'website'},
+  {id:'LAB-PA',type:'unit',nama:'Laboratorium Patologi Anatomi',parentId:null,source:'website'},
+  {id:'LAB-MIKRO',type:'unit',nama:'Laboratorium Mikrobiologi Klinik dan Biomolekuler',parentId:null,source:'website'},
+  {id:'RAD',type:'unit',nama:'Radiologi',parentId:null,source:'website'},
+  {id:'IPKT',type:'unit',nama:'Instalasi Pelayanan Kanker Terpadu (IPKT)',parentId:null,source:'website'},
+  {id:'HD',type:'unit',nama:'Hemodialisis',parentId:null,source:'website'},
+  {id:'KARDIO',type:'unit',nama:'Diagnostik dan Intervensi Kardiovaskuler',parentId:null,source:'website'},
+  {id:'CSSD',type:'unit',nama:'Sterilisasi Sentral',parentId:null,source:'website'}
+];
+
+function ensureOfficialCatalog(data){
+  if(!Array.isArray(data.poli)) data.poli=[];
+  OFFICIAL_POLI_CATALOG.forEach(function(x){
+    if(!data.poli.some(function(p){return p.id===x[0];})) data.poli.push({id:x[0],nama:x[1],biaya:0,layanan:x[2],official:true});
+  });
+  if(!Array.isArray(data.facilities)) data.facilities=[];
+  NOTOPURO_FACILITY_STRUCTURE.forEach(function(x){
+    if(!data.facilities.some(function(f){return f.id===x.id;})) data.facilities.push(Object.assign({},x));
+  });
+  return data;
+}
+
 function uid(prefix){
   return prefix + '-' + Date.now().toString(36).slice(-5) + Math.random().toString(36).slice(2,6);
 }
@@ -210,12 +264,10 @@ function seedData(){
       createdAt:daysAgoISO(2), updatedAt:daysAgoISO(1)}
   ];
 
-  return {
+  const seed = {
     poli, users, medicines, patients, visits, prescriptions, transactions, bookings, poliMessages, auditLog,
     wards, beds, admissions,
     doctorSchedules: [],
-    consentRecords: [],
-    integrityRecords: [],
     notifications: [],
     facilities: [
       {id:'GED-RAWAT-JALAN', type:'gedung', nama:'Gedung Rawat Jalan', parentId:null},
@@ -224,12 +276,13 @@ function seedData(){
       {id:'GED-DIAGNOSTIK', type:'gedung', nama:'Gedung Diagnostik Terpadu', parentId:null}
     ],
     meta:{ rmCounter:3, queueCounters:{ ['JAN-'+bookingTanggal]: 2 }, schemaVersion: DB_SCHEMA_VERSION,
-      settings:{avgWaitMinutes:8, doctorQuotaDefault:30, alertQueueThreshold:10, lowStockThreshold:LOW_STOCK_THRESHOLD} }
+      settings:{avgWaitMinutes:8, doctorQuotaDefault:30, alertQueueThreshold:10, lowStockThreshold:LOW_STOCK_THRESHOLD, pharmacyOutpatientSlaMinutes:30, pharmacyInpatientSlaMinutes:60} }
   };
+  return ensureOfficialCatalog(seed);
 }
 
 /* ---------------- persistence ---------------- */
-const DB_SCHEMA_VERSION = 5;
+const DB_SCHEMA_VERSION = 6;
 
 function migrateData(data){
   if(!data || typeof data!=='object') return seedData();
@@ -258,18 +311,13 @@ function migrateData(data){
     alertQueueThreshold: 10,
     lowStockThreshold: LOW_STOCK_THRESHOLD
   }, data.meta.settings||{});
+  if(!Array.isArray(data.prescriptions)) data.prescriptions=[];
+  data.prescriptions.forEach(function(r){ if(r.updatedAt===undefined) r.updatedAt=r.createdAt||nowISO(); if(r.siapAt===undefined) r.siapAt=null; if(r.diambilAt===undefined) r.diambilAt=null; if(r.jenisLayanan===undefined) r.jenisLayanan=r.admissionId?'rawat_inap':'rawat_jalan'; });
   if(!Array.isArray(data.doctorSchedules)) data.doctorSchedules = [];
-  if(!Array.isArray(data.consentRecords)) data.consentRecords = [];
-  if(!Array.isArray(data.integrityRecords)) data.integrityRecords = [];
   if(!Array.isArray(data.notifications)) data.notifications = [];
-  if(!Array.isArray(data.facilities)){
-    data.facilities = [
-      {id:'GED-RAWAT-JALAN', type:'gedung', nama:'Gedung Rawat Jalan', parentId:null},
-      {id:'GED-RAWAT-INAP', type:'gedung', nama:'Gedung Rawat Inap', parentId:null},
-      {id:'GED-IGD', type:'gedung', nama:'Gedung IGD', parentId:null},
-      {id:'GED-DIAGNOSTIK', type:'gedung', nama:'Gedung Diagnostik Terpadu', parentId:null}
-    ];
-  }
+  if(!Array.isArray(data.facilities)) data.facilities = [];
+  ensureOfficialCatalog(data);
+  data.meta.settings = Object.assign({pharmacyOutpatientSlaMinutes:30, pharmacyInpatientSlaMinutes:60}, data.meta.settings||{});
   return data;
 }
 
@@ -340,6 +388,29 @@ function queueMetrics(poliId){
   const estimate = waiting.length * avg;
   return {visits:visits, waiting:waiting, current:current, completed:completed, estimate:estimate};
 }
+function clinicTodayMetrics(poliId){
+  const bookings=getTodayBookings(poliId);
+  const visits=getTodayVisits(poliId);
+  const q=queueMetrics(poliId);
+  return {registered:visits.length + bookings.filter(function(b){return !b.visitId && ['terjadwal','checked_in'].includes(b.status);}).length, bookings:bookings.length, waiting:q.waiting.length, examined:visits.filter(function(v){return v.status==='diperiksa';}).length, completed:visits.filter(function(v){return v.status==='selesai';}).length, queue:q};
+}
+function pharmacyWaitMinutes(resep){
+  if(!resep || !resep.createdAt) return null;
+  const end=resep.diambilAt || resep.siapAt || (resep.status==='disiapkan' ? resep.updatedAt : null);
+  if(!end) return Math.max(0, Math.round((Date.now()-new Date(resep.createdAt).getTime())/60000));
+  return Math.max(0, Math.round((new Date(end).getTime()-new Date(resep.createdAt).getTime())/60000));
+}
+function pharmacyMetrics(kind, poliId){
+  const isInpatient=kind==='rawat_inap';
+  const settings=Store.data.meta.settings||{};
+  const sla=isInpatient?(settings.pharmacyInpatientSlaMinutes||60):(settings.pharmacyOutpatientSlaMinutes||30);
+  let list=[];
+  if(isInpatient){ list=Store.data.prescriptions.filter(function(r){return r.admissionId && r.status==='menunggu';}); }
+  else { list=Store.data.prescriptions.filter(function(r){ const v=getVisit(r.visitId); return v && (!poliId || v.poliId===poliId) && v.tanggal===todayStr() && !r.admissionId; }); }
+  const waits=list.map(pharmacyWaitMinutes).filter(function(x){return x!==null;});
+  const maxWait=waits.length?Math.max.apply(null,waits):0;
+  return {pending:list.length,maxWait:maxWait,sla:sla,overSla:list.filter(function(r){const w=pharmacyWaitMinutes(r); return w!==null && w>sla;}).length};
+}
 function alternativeDoctors(poliId){
   const current = getDoctorForPoli(poliId);
   if(!current) return [];
@@ -357,17 +428,6 @@ function pushNotification(type, title, body, target){
   if(!Array.isArray(Store.data.notifications)) Store.data.notifications=[];
   Store.data.notifications.unshift({id:uid('NTF'), type:type||'info', title:title||'', body:body||'', target:target||null, read:false, createdAt:nowISO()});
   if(Store.data.notifications.length>100) Store.data.notifications.length=100;
-}
-function recordIntegrity(type, entityId, payload){
-  /* Demo: hash ringan untuk portfolio. Produksi harus memakai SHA-256/Web Crypto di server. */
-  const raw = type+'|'+entityId+'|'+JSON.stringify(payload||{})+'|'+nowISO();
-  let h=2166136261;
-  for(let i=0;i<raw.length;i++){ h^=raw.charCodeAt(i); h += (h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24); }
-  const hash = ('00000000'+(h>>>0).toString(16)).slice(-8);
-  if(!Array.isArray(Store.data.integrityRecords)) Store.data.integrityRecords=[];
-  Store.data.integrityRecords.unshift({id:uid('HASH'),type:type,entityId:entityId,hash:hash,createdAt:nowISO()});
-  if(Store.data.integrityRecords.length>500) Store.data.integrityRecords.length=500;
-  return hash;
 }
 
 /* =================================================================
@@ -695,112 +755,45 @@ function barRow(label, count, max, color){
 }
 function renderDashboard(){
   setPageTitle('Dashboard Operasional');
-  const today = todayStr();
-  const visits = visitsToday();
-  const bookingHariIni = Store.data.bookings.filter(function(b){ return b.tanggalKontrol===today; });
-  const totalPendapatan = Store.data.transactions.filter(function(t){ return todayStr(new Date(t.createdAt))===today; }).reduce(function(s,t){ return s+t.total; },0);
-  const selesai = visits.filter(function(v){ return v.status==='selesai'; }).length;
-  const checkedIn = bookingHariIni.filter(function(b){ return b.status==='checked_in'; }).length;
-  const waiting = visits.filter(function(v){ return v.status==='menunggu_poli'; }).length;
-  const diperiksa = visits.filter(function(v){ return v.status==='diperiksa'; }).length;
-  const obatMenipis = Store.data.medicines.filter(function(m){ return m.stok < ((Store.data.meta.settings||{}).lowStockThreshold || LOW_STOCK_THRESHOLD); });
-  const admissionsAktif = Store.data.admissions.filter(function(a){ return a.status==='dirawat'; });
-  const totalBeds = Store.data.beds.length;
-  const bedsOccupied = Store.data.beds.filter(function(b){ return b.status==='terisi'; }).length;
-  const bedsAvailable = Store.data.beds.filter(function(b){ return b.status==='kosong'; }).length;
-  const alerts = [];
-  const queueThreshold = ((Store.data.meta.settings||{}).alertQueueThreshold)||10;
-  Store.data.poli.forEach(function(p){
-    const q=queueMetrics(p.id), av=getDoctorAvailability(p.id);
-    if(q.waiting.length>=queueThreshold) alerts.push({cls:'warning',icon:'🟡',title:p.nama,body:'Antrean menunggu '+q.waiting.length+' pasien'});
-    if(av.status==='cancel') alerts.push({cls:'danger',icon:'🔴',title:p.nama,body:'Dokter tidak praktik — '+(alternativeDoctors(p.id).length?'tersedia '+alternativeDoctors(p.id).length+' dokter alternatif pada spesialisasi yang sama.':'belum ada dokter alternatif; sediakan reschedule sesuai kebijakan.')});
-    if(av.status==='delay') alerts.push({cls:'warning',icon:'⏱',title:p.nama,body:'Dokter terlambat — info praktik: '+av.message});
-  });
-  if(obatMenipis.length) alerts.push({cls:'warning',icon:'💊',title:'Farmasi',body:obatMenipis.length+' obat berada di bawah batas stok'});
-  if(bedsAvailable===0 && totalBeds>0) alerts.push({cls:'danger',icon:'🛏️',title:'Rawat Inap',body:'Tidak ada tempat tidur kosong'});
-  const perPoli = Store.data.poli.map(function(p){ return {poli:p, q:queueMetrics(p.id), av:getDoctorAvailability(p.id)}; });
-
-  const kpi = function(icon,label,value,sub,cls){
-    return '<div class="ops-kpi '+(cls||'')+'"><div class="ops-kpi-icon">'+icon+'</div><div><div class="ops-kpi-label">'+label+'</div><div class="ops-kpi-value">'+value+'</div><div class="ops-kpi-sub">'+sub+'</div></div></div>';
+  const today=todayStr(), visits=visitsToday();
+  const bookingHariIni=Store.data.bookings.filter(function(b){return b.tanggalKontrol===today;});
+  const waiting=visits.filter(function(v){return v.status==='menunggu_poli';}).length;
+  const diperiksa=visits.filter(function(v){return v.status==='diperiksa';}).length;
+  const selesai=visits.filter(function(v){return v.status==='selesai';}).length;
+  const checkedIn=bookingHariIni.filter(function(b){return b.status==='checked_in';}).length;
+  const obatMenipis=Store.data.medicines.filter(function(m){return m.stok<((Store.data.meta.settings||{}).lowStockThreshold||LOW_STOCK_THRESHOLD);});
+  const beds=Store.data.beds||[], bedsAvailable=beds.filter(function(b){return b.status==='kosong';}).length, bedsOccupied=beds.filter(function(b){return b.status==='terisi';}).length;
+  const totalPendapatan=Store.data.transactions.filter(function(t){return todayStr(new Date(t.createdAt))===today;}).reduce(function(a,t){return a+t.total;},0);
+  const outPh=pharmacyMetrics('rawat_jalan'), inPh=pharmacyMetrics('rawat_inap');
+  const settings=Store.data.meta.settings||{};
+  const kpi=function(icon,label,value,sub,cls){return '<div class="ops-kpi '+(cls||'')+'"><div class="ops-kpi-icon">'+icon+'</div><div><div class="ops-kpi-label">'+label+'</div><div class="ops-kpi-value">'+value+'</div><div class="ops-kpi-sub">'+sub+'</div></div></div>';};
+  const status=function(p){const av=getDoctorAvailability(p.id); return av.status==='available'?'<span class="ops-status ok">● Tersedia</span>':av.status==='delay'?'<span class="ops-status warn">● Terlambat</span>':av.status==='cancel'?'<span class="ops-status bad">● Tidak Praktik</span>':'<span class="ops-status">● Belum ditugaskan</span>';};
+  const catalog=Store.data.poli.filter(function(p){return p.official;});
+  const renderClinicTable=function(group){
+    return catalog.filter(function(p){return p.layanan===group;}).map(function(p){
+      const m=clinicTodayMetrics(p.id), ph=pharmacyMetrics('rawat_jalan',p.id), q=m.queue;
+      return '<tr><td><strong>'+esc(p.nama)+'</strong><div class="hint">'+esc(group)+'</div></td><td class="mono">'+m.registered+'</td><td class="mono">'+m.bookings+'</td><td class="mono">'+m.waiting+'</td><td class="mono">'+m.examined+'</td><td class="mono">'+m.completed+'</td><td><span class="pharmacy-sla '+(ph.maxWait>ph.sla?'over':'')+'">'+(ph.maxWait?ph.maxWait+' mnt':'—')+'</span><div class="hint">SLA '+ph.sla+' mnt · '+ph.pending+' resep</div></td><td>'+status(p)+'</td></tr>';
+    }).join('');
   };
-  const statusDot = function(av){
-    return av.status==='available' ? '<span class="ops-status ok">● Tersedia</span>' :
-      av.status==='delay' ? '<span class="ops-status warn">● Terlambat</span>' :
-      av.status==='cancel' ? '<span class="ops-status bad">● Tidak Praktik</span>' :
-      '<span class="ops-status">● Belum Ada Dokter</span>';
-  };
-
-  document.getElementById('main-content').innerHTML =
-    '<div class="ops-hero">'+
-      '<div><div class="ops-eyebrow">SIMRS COMMAND CENTER</div><h2>Monitoring Operasional</h2><p>'+formatTanggalIndo(today)+' · Pantauan pelayanan rumah sakit secara ringkas.</p></div>'+
-      '<div class="ops-hero-actions"><button class="btn btn-outline btn-sm" id="btn-dashboard-refresh">↻ Perbarui</button><button class="btn btn-primary btn-sm" data-nav="cek-antrian">📺 Papan Antrian</button></div>'+
-    '</div>'+
+  document.getElementById('main-content').innerHTML=
+    '<div class="ops-hero"><div><div class="ops-eyebrow">SIMRS COMMAND CENTER · RSUD R.T. NOTOPURO</div><h2>Monitoring Operasional Harian</h2><p>'+formatTanggalIndo(today)+' · Rawat jalan, IGD, rawat inap, penunjang, dan farmasi.</p></div><div class="ops-hero-actions"><button class="btn btn-outline btn-sm" id="btn-dashboard-refresh">↻ Perbarui</button><button class="btn btn-primary btn-sm" data-nav="cek-antrian">📺 Papan Antrian</button></div></div>'+
     '<div class="ops-kpi-grid">'+
-      kpi('👥','Pasien Terdaftar',visits.length,'kunjungan hari ini')+
-      kpi('🎫','Antrean Menunggu',waiting,'pasien aktif',waiting>=queueThreshold?'hot':'')+
+      kpi('👥','Pasien Terdaftar',visits.length,'kunjungan tercatat hari ini')+
+      kpi('🎫','Antrean Menunggu',waiting,'semua poli',waiting>=((settings.alertQueueThreshold)||10)?'hot':'')+
       kpi('🩺','Sedang Diperiksa',diperiksa,'pelayanan berlangsung')+
-      kpi('✓','Selesai',selesai,'dari '+visits.length+' kunjungan')+
+      kpi('✓','Selesai',selesai,'kunjungan selesai')+
       kpi('🗓️','Booking Hari Ini',bookingHariIni.length,checkedIn+' sudah check-in')+
-      kpi('🛏️','Bed Tersedia',bedsAvailable,totalBeds+' total · '+bedsOccupied+' terisi')+
-      kpi('💰','Pendapatan Hari Ini',formatRupiah(totalPendapatan),Store.data.transactions.filter(function(t){return todayStr(new Date(t.createdAt))===today;}).length+' transaksi')+
-      kpi('💊','Stok Menipis',obatMenipis.length,obatMenipis.length?'perlu perhatian':'stok aman',obatMenipis.length?'hot':'')+
+      kpi('💊','Farmasi Rawat Jalan',outPh.pending,'resep menunggu · max '+outPh.maxWait+' mnt',outPh.maxWait>outPh.sla?'hot':'')+
+      kpi('🏥','Farmasi Rawat Inap',inPh.pending,'instruksi menunggu · max '+inPh.maxWait+' mnt',inPh.maxWait>inPh.sla?'hot':'')+
+      kpi('🛏️','Bed Tersedia',bedsAvailable,beds.length+' total · '+bedsOccupied+' terisi')+
     '</div>'+
-    '<div class="ops-grid-main">'+
-      '<section class="panel ops-panel"><div class="panel-head"><div><h2>🎫 Antrean Aktif</h2><div class="hint">Nomor berjalan, pasien menunggu, dan estimasi waktu.</div></div><button class="btn btn-ghost btn-sm" data-nav="cek-antrian">Lihat semua →</button></div><div class="panel-body ops-queue-grid">'+
-      perPoli.map(function(x){
-        const q=x.q, current=q.current;
-        return '<div class="ops-queue-card">'+
-          '<div class="ops-queue-head"><div><strong>'+esc(x.poli.nama)+'</strong><div class="hint">'+statusDot(x.av)+'</div></div><span class="ops-queue-code">'+(current?current.noAntrian:'—')+'</span></div>'+
-          '<div class="ops-queue-row"><span>Menunggu</span><strong>'+q.waiting.length+'</strong></div>'+
-          '<div class="ops-queue-row"><span>Perkiraan tunggu</span><strong>'+ (q.waiting.length ? '±'+q.estimate+' mnt' : '—') +'</strong></div>'+
-          '<div class="ops-queue-progress"><span style="width:'+Math.min(100, q.waiting.length*8)+'%"></span></div>'+
-          '<div class="ops-queue-foot"><span>'+q.completed+' selesai</span><span>Kuota '+getTodayBookings(x.poli.id).length+'/'+quotaForPoli(x.poli.id)+'</span></div>'+
-        '</div>';
-      }).join('')+
-      '</div></section>'+
-      '<section class="panel ops-panel"><div class="panel-head"><div><h2>⚠️ Perlu Perhatian</h2><div class="hint">Alert operasional yang membutuhkan tindakan.</div></div></div><div class="panel-body">'+
-        (alerts.length===0 ? '<div class="ops-empty">✓ Tidak ada alert kritis saat ini.</div>' :
-          alerts.slice(0,8).map(function(a){ return '<div class="ops-alert '+a.cls+'"><span class="ops-alert-icon">'+a.icon+'</span><div><strong>'+esc(a.title)+'</strong><div>'+esc(a.body)+'</div></div></div>'; }).join(''))+
-      '</div></section>'+
-    '</div>'+
-    '<div class="ops-grid-main">'+
-      '<section class="panel ops-panel"><div class="panel-head"><div><h2>🩺 Status Dokter & Poli</h2><div class="hint">Ketersediaan dan kapasitas pelayanan hari ini.</div></div></div><div class="panel-body"><div class="ops-doctor-table">'+
-      perPoli.map(function(x){
-        const q=x.q, bookings=getTodayBookings(x.poli.id), quota=quotaForPoli(x.poli.id);
-        return '<div class="ops-doctor-row"><div><strong>'+esc(x.poli.nama)+'</strong><div class="hint">'+esc(x.av.doctor ? x.av.doctor.nama : 'Belum ditugaskan')+'</div></div><div>'+statusDot(x.av)+'</div><div class="ops-capacity"><span>'+bookings.length+'/'+quota+'</span><div class="ops-capacity-bar"><i style="width:'+Math.min(100,(bookings.length/quota)*100)+'%"></i></div></div><div class="ops-wait">'+q.waiting.length+' menunggu</div></div>';
-      }).join('')+
-      '</div></div></section>'+
-      '<section class="panel ops-panel"><div class="panel-head"><div><h2>🛏️ Bed Management</h2><div class="hint">Ringkasan ketersediaan tempat tidur.</div></div><button class="btn btn-ghost btn-sm" data-nav="ranap">Kelola →</button></div><div class="panel-body">'+
-      '<div class="bed-summary"><div><span class="bed-number available">'+bedsAvailable+'</span><span>Tersedia</span></div><div><span class="bed-number occupied">'+bedsOccupied+'</span><span>Terisi</span></div><div><span class="bed-number total">'+totalBeds+'</span><span>Total</span></div></div>'+
-      Store.data.wards.map(function(w){ const bs=Store.data.beds.filter(function(b){return b.wardId===w.id;}), av=bs.filter(function(b){return b.status==='kosong';}).length; return '<div class="ops-ward-row"><span>'+esc(w.nama)+'</span><strong>'+av+'/'+bs.length+'</strong></div>'; }).join('')+
-      '</div></section>'+
-    '</div>'+
-    '<div class="ops-grid-main">'+
-      '<section class="panel ops-panel"><div class="panel-head"><div><h2>📈 Alur Pelayanan Hari Ini</h2><div class="hint">Distribusi status pasien.</div></div></div><div class="panel-body"><div class="flow-status-grid">'+
-        [['BOOKING',bookingHariIni.length,'slate'],['CHECK-IN',checkedIn,'sage'],['MENUNGGU',waiting,'amber'],['DIPERIKSA',diperiksa,'clinical'],['SELESAI',selesai,'slate']].map(function(x){ return '<div class="flow-status '+x[2]+'"><span>'+x[0]+'</span><strong>'+x[1]+'</strong></div>'; }).join('')+
-      '</div></div></section>'+
-      '<section class="panel ops-panel"><div class="panel-head"><div><h2>💊 Stok Kritis</h2><div class="hint">Obat di bawah batas minimum.</div></div><button class="btn btn-ghost btn-sm" data-nav="farmasi">Farmasi →</button></div><div class="panel-body">'+
-        (obatMenipis.length ? obatMenipis.slice(0,6).map(function(m){ return '<div class="ops-stock-row"><span>'+esc(m.nama)+'</span><strong>'+m.stok+' '+esc(m.satuan)+'</strong></div>'; }).join('') : '<div class="ops-empty">✓ Semua stok berada di atas batas minimum.</div>')+
-      '</div></section>'+
-    '</div>'+
-    '<div class="panel ops-panel"><div class="panel-head"><div><h2>🧾 Aktivitas Terbaru</h2><div class="hint">Audit trail terbaru untuk monitoring operasional.</div></div><button class="btn btn-ghost btn-sm" data-nav="master-data">Audit Log →</button></div><div class="panel-body">'+
-      ((Store.data.auditLog||[]).slice(0,8).map(function(l){ return '<div class="ops-audit-row"><span class="mono">'+formatJam(l.createdAt)+'</span><strong>'+esc(l.aksi)+'</strong><span>'+esc(l.detail)+'</span></div>'; }).join('') || '<div class="ops-empty">Belum ada aktivitas.</div>')+
-    '</div></div>';
-  bindBerandaActionEvents();
-  const refresh=document.getElementById('btn-dashboard-refresh');
-  if(refresh) refresh.addEventListener('click', function(){ renderDashboard(); showToast('Dashboard diperbarui','success'); });
+    '<div class="ops-grid-main"><section class="panel ops-panel"><div class="panel-head"><div><h2>🩺 Rekap Semua Poli</h2><div class="hint">Setiap poli ditampilkan: terdaftar, booking, antrean, diperiksa, selesai, dan waktu farmasi.</div></div></div><div class="panel-body"><div class="table-wrap ops-clinic-table"><table><thead><tr><th>Poli</th><th>Daftar</th><th>Booking</th><th>Menunggu</th><th>Diperiksa</th><th>Selesai</th><th>Farmasi</th><th>Status</th></tr></thead><tbody>'+renderClinicTable('Poliklinik Spesialis')+'</tbody></table></div></div></section></div>'+
+    '<div class="ops-grid-main"><section class="panel ops-panel"><div class="panel-head"><div><h2>⭐ Poliklinik Eksekutif</h2><div class="hint">Monitoring terpisah dari Poliklinik Spesialis.</div></div></div><div class="panel-body"><div class="table-wrap ops-clinic-table"><table><thead><tr><th>Poli</th><th>Daftar</th><th>Booking</th><th>Menunggu</th><th>Diperiksa</th><th>Selesai</th><th>Farmasi</th><th>Status</th></tr></thead><tbody>'+renderClinicTable('Poliklinik Eksekutif')+'</tbody></table></div></div></section></div>'+
+    '<div class="ops-grid-main"><section class="panel ops-panel"><div class="panel-head"><div><h2>💊 Farmasi</h2><div class="hint">Rawat jalan memakai konsep waktu tunggu pengambilan obat; rawat inap memakai waktu pemenuhan instruksi obat untuk unit perawatan.</div></div><button class="btn btn-ghost btn-sm" data-nav="farmasi">Buka Farmasi →</button></div><div class="panel-body"><div class="pharmacy-monitor-grid"><div class="pharmacy-monitor"><span>Rawat Jalan</span><strong>'+outPh.pending+'</strong><small>menunggu · max '+outPh.maxWait+' / SLA '+outPh.sla+' mnt</small></div><div class="pharmacy-monitor"><span>Rawat Inap</span><strong>'+inPh.pending+'</strong><small>instruksi · max '+inPh.maxWait+' / SLA '+inPh.sla+' mnt</small></div><div class="pharmacy-monitor '+(outPh.overSla?'danger':'')+'"><span>Lewat SLA RJ</span><strong>'+outPh.overSla+'</strong><small>resep melewati batas</small></div><div class="pharmacy-monitor '+(inPh.overSla?'danger':'')+'"><span>Lewat SLA RI</span><strong>'+inPh.overSla+'</strong><small>instruksi melewati batas</small></div></div><div class="hint" style="margin-top:10px">SLA di atas adalah parameter prototype yang dapat diubah pada pengaturan; bukan klaim standar resmi RSUD.</div></div></section><section class="panel ops-panel"><div class="panel-head"><div><h2>🚑 IGD & Rawat Inap</h2><div class="hint">Struktur layanan berdasarkan informasi publik RSUD.</div></div><button class="btn btn-ghost btn-sm" data-nav="ranap">Rawat Inap →</button></div><div class="panel-body"><div class="service-tree"><div><strong>IGD</strong><span>Zona Merah · Zona Kuning · Ambulans Gawat Darurat</span></div><div><strong>Rawat Inap</strong><span>Tulip · Teratai · Mawar Kuning · Mawar Merah Putih · Graha Delta Husada</span></div><div><strong>Rawat Intensif</strong><span>ICU · ICCU · PICU · NICU · HCU</span></div><div><strong>Ruang Bersalin</strong><span>Pelayanan rawat inap maternal</span></div></div></div></section></div>'+
+    '<div class="ops-grid-main"><section class="panel ops-panel"><div class="panel-head"><div><h2>📈 Alur Hari Ini</h2><div class="hint">BOOKING → CHECK-IN → MENUNGGU → DIPERIKSA → SELESAI.</div></div></div><div class="panel-body"><div class="flow-status-grid">'+[['BOOKING',bookingHariIni.length,'slate'],['CHECK-IN',checkedIn,'sage'],['MENUNGGU',waiting,'amber'],['DIPERIKSA',diperiksa,'clinical'],['SELESAI',selesai,'slate']].map(function(x){return '<div class="flow-status '+x[2]+'"><span>'+x[0]+'</span><strong>'+x[1]+'</strong></div>';}).join('')+'</div></div></section><section class="panel ops-panel"><div class="panel-head"><div><h2>💊 Stok Kritis</h2><div class="hint">Obat di bawah batas minimum.</div></div></div><div class="panel-body">'+(obatMenipis.length?obatMenipis.slice(0,8).map(function(m){return '<div class="ops-stock-row"><span>'+esc(m.nama)+'</span><strong>'+m.stok+' '+esc(m.satuan)+'</strong></div>';}).join(''):'<div class="ops-empty">✓ Stok aman.</div>')+'</div></section></div>';
+  const btn=document.getElementById('btn-dashboard-refresh'); if(btn) btn.addEventListener('click',renderDashboard);
 }
 
-/* =================================================================
-   MODULE: BERANDA (ringkasan personal per peran + aksi cepat)
-   ================================================================= */
-function greetingWaktu(){
-  const h = new Date().getHours();
-  if(h<11) return 'Selamat pagi';
-  if(h<15) return 'Selamat siang';
-  if(h<18) return 'Selamat sore';
-  return 'Selamat malam';
-}
 function renderBeranda(){
   const u = Session.currentUser;
   setPageTitle('Beranda');
@@ -1256,7 +1249,6 @@ function submitBooking(jenisBayar){
     reminded:false, remindedAt:null, createdAt: nowISO(), updatedAt: nowISO(), cancelReason:'', rescheduledFrom:null
   };
   Store.data.bookings.push(booking);
-  recordIntegrity('booking',booking.id,{patientId:booking.patientId,poliId:booking.poliId,tanggalKontrol:booking.tanggalKontrol,noAntrian:booking.noAntrian,status:booking.status});
   pushNotification('booking','Booking baru',booking.noAntrian+' — '+getPatient(booking.patientId).nama,booking.patientId);
   Store.save();
   logAudit('booking_'+jenisBayar.toLowerCase(), noAntrian+' — '+esc(getPatient(bookingSearchPatientId).nama)+' ('+formatTanggalIndo(tanggalKontrol)+')');
@@ -1298,7 +1290,6 @@ function cancelBooking(bookingId){
   document.getElementById('btn-confirm-cancel').addEventListener('click',function(){
     const reason=(document.getElementById('cancel-booking-reason').value||'Tidak disebutkan').trim();
     b.status='dibatalkan'; b.cancelReason=reason; b.updatedAt=nowISO();
-    recordIntegrity('booking',b.id,{status:b.status,reason:reason});
     Store.save(); logAudit('booking_dibatalkan',b.noAntrian+' — '+reason); pushNotification('booking','Booking dibatalkan',b.noAntrian+' — '+getPatient(b.patientId).nama,b.patientId);
     closeModal(); refreshBookingListAfterAction(); showToast('Booking dibatalkan','success');
   });
@@ -1316,7 +1307,6 @@ function rescheduleBooking(bookingId){
     if(!tanggal){ showToast('Pilih tanggal baru','danger'); return; }
     const oldQueue=b.noAntrian, oldDate=b.tanggalKontrol;
     b.poliId=poliId; b.tanggalKontrol=tanggal; b.noAntrian=generateNoAntrian(poliId,tanggal); b.status='terjadwal'; b.rescheduledFrom=oldQueue; b.updatedAt=nowISO();
-    recordIntegrity('booking',b.id,{from:oldDate,to:tanggal,oldQueue:oldQueue,newQueue:b.noAntrian});
     Store.save(); logAudit('booking_reschedule',oldQueue+' → '+b.noAntrian+' ('+formatTanggalIndo(tanggal)+')'); pushNotification('booking','Jadwal diperbarui',b.noAntrian+' — '+getPatient(b.patientId).nama,b.patientId);
     closeModal(); refreshBookingListAfterAction(); showToast('Booking berhasil dijadwalkan ulang','success');
   });
@@ -1324,7 +1314,7 @@ function rescheduleBooking(bookingId){
 function markBookingNoShow(bookingId){
   const b=getBooking(bookingId);
   if(!b || b.status!=='terjadwal' || b.tanggalKontrol!==todayStr()){ showToast('Hanya booking hari ini yang dapat ditandai tidak hadir','danger'); return; }
-  b.status='tidak_hadir'; b.updatedAt=nowISO(); Store.save(); logAudit('booking_tidak_hadir',b.noAntrian+' — '+getPatient(b.patientId).nama); recordIntegrity('booking',b.id,{status:b.status});
+  b.status='tidak_hadir'; b.updatedAt=nowISO(); Store.save(); logAudit('booking_tidak_hadir',b.noAntrian+' — '+getPatient(b.patientId).nama);
   showToast('Booking ditandai tidak hadir','warning');
 }
 
@@ -1368,7 +1358,6 @@ function doCheckIn(bookingId){
   booking.status = 'checked_in';
   booking.visitId = visit.id;
   booking.updatedAt = nowISO();
-  recordIntegrity('booking',booking.id,{status:booking.status,visitId:visit.id});
   pushNotification('queue','Check-in berhasil',booking.noAntrian+' — '+getPatient(booking.patientId).nama,booking.patientId);
   Store.save();
   logAudit('checkin', booking.noAntrian+' — '+esc(getPatient(booking.patientId).nama));
@@ -1784,7 +1773,7 @@ function selesaiPeriksa(visitId){
     logAudit('rujuk_lab', visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama)+' → '+jenis);
     showToast('Pasien dirujuk ke laboratorium', 'success');
   } else if(poliState.resepItems.length>0){
-    const resep = {id:uid('RSP'), visitId:visit.id, items:[...poliState.resepItems], status:'menunggu', createdAt:nowISO()};
+    const resep = {id:uid('RSP'), visitId:visit.id, items:[...poliState.resepItems], status:'menunggu', jenisLayanan:'rawat_jalan', createdAt:nowISO(), updatedAt:nowISO(), siapAt:null, diambilAt:null};
     Store.data.prescriptions.push(resep);
     visit.resepId = resep.id;
     visit.billing.obat = resep.items.reduce((s,it)=>s+it.jumlah*it.hargaSatuan,0);
@@ -1908,6 +1897,7 @@ function siapkanObat(resepId, visitId){
     totalObat += jumlahSiap * it.hargaSatuan;
   });
   resep.status = 'disiapkan';
+  resep.siapAt = nowISO(); resep.updatedAt = resep.siapAt;
   visit.billing.obat = totalObat;
   visit.status = 'menunggu_bayar';
   visit.updatedAt = nowISO();
@@ -1951,7 +1941,7 @@ function siapkanObatRanap(resepId){
     it.jumlahDisiapkan = jumlahSiap;
     total += jumlahSiap*it.hargaSatuan;
   });
-  resep.status = 'disiapkan';
+  resep.status = 'disiapkan'; resep.jenisLayanan='rawat_inap'; resep.siapAt=nowISO(); resep.updatedAt=resep.siapAt;
   a.billing.biayaObat = (a.billing.biayaObat||0) + total;
   a.updatedAt = nowISO();
   Store.save();
@@ -1973,6 +1963,7 @@ function renderFarmasiSiapTab(){
 function serahkanObat(visitId){
   const visit = getVisit(visitId);
   visit.status = 'selesai'; visit.updatedAt = nowISO();
+  const resep=getResepByVisit(visitId); if(resep){ resep.diambilAt=visit.updatedAt; resep.updatedAt=visit.updatedAt; }
   Store.save();
   logAudit('obat_diserahkan', visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama));
   showToast('Obat telah diserahkan ke pasien. Kunjungan selesai.', 'success');

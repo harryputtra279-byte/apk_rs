@@ -108,22 +108,40 @@ Versi pengembangan ini mempertahankan identitas UI glassmorphism dan menambahkan
 - Alert antrean panjang, dokter tidak praktik, stok kritis, dan bed penuh.
 - Bed Management dengan status kosong/terisi dan ringkasan per bangsal.
 - Ringkasan alur BOOKING → CHECK-IN → MENUNGGU → DIPERIKSA → SELESAI.
-- Pencatatan integrity record/hash ringan sebagai fondasi menuju arsitektur Web3; data medis tidak disimpan di blockchain.
 
 > **Catatan keamanan:** project ini adalah prototype/portfolio. Data pasien demo harus berupa data fiktif. Penyimpanan `localStorage`, password demo, dan logic client-side bukan pengganti backend produksi, database server, enkripsi, manajemen secret, dan kontrol akses sisi server.
 
-## 🔐 Arah Arsitektur Web3
+## 🏥 Struktur Layanan RSUD R.T. Notopuro
 
-Project dirancang agar nantinya dapat dikembangkan menjadi arsitektur hybrid:
+Versi ini memprioritaskan pemodelan layanan berdasarkan informasi publik resmi RSUD R.T. Notopuro. Struktur aplikasi menggunakan hierarki:
 
-`SIMRS → Patient Identity → Appointment → Encounter → Medical Record → Consent → Integrity/Audit → Blockchain`
+`Rumah Sakit → Kelompok Layanan → Instalasi/Unit → Sub-layanan/Zona → Ruang/Kamar/Bed`
 
-Data kesehatan sensitif tetap direncanakan berada pada storage privat/off-chain yang terenkripsi. Blockchain digunakan sebagai lapisan identitas/credential, consent, integritas, dan audit trail; bukan tempat menyimpan NIK, diagnosis, hasil laboratorium, atau dokumen rekam medis mentah.
+Katalog rawat jalan dipisahkan menjadi **Poliklinik Spesialis** dan **Poliklinik Eksekutif**, mengikuti daftar klinik yang dipublikasikan RSUD. Struktur IGD memuat Zona Merah dan Zona Kuning. Rawat inap dimodelkan dengan unit Tulip, Teratai, Mawar Kuning, Mawar Merah Putih, Graha Delta Husada, Rawat Intensif Terpadu, ICU, ICCU, PICU, NICU, HCU, dan Ruang Bersalin.
 
-## 🏥 Struktur Fasilitas
+Untuk farmasi, aplikasi sengaja memisahkan:
+- **Farmasi Rawat Jalan** — memantau resep dari poli dan waktu tunggu sampai obat diserahkan kepada pasien.
+- **Farmasi Rawat Inap** — memantau instruksi obat untuk pasien yang dirawat dan waktu pemenuhan oleh farmasi; bukan dianggap sebagai pasien rawat inap mengambil obat sendiri.
 
-Prototype menyediakan struktur generik:
+Nama layanan di atas diambil dari halaman pelayanan publik RSUD. Detail lantai, nomor kamar, dan denah fisik tidak dibuat-buat apabila belum tersedia pada sumber resmi.
 
-`Gedung → Lantai → Unit/Instalasi → Ruang → Kamar → Bed`
+## 📊 Dashboard Operasional Harian
 
-Struktur spesifik RSUD R.T. Notopuro akan dimasukkan setelah data fasilitas resmi diverifikasi, sehingga aplikasi tidak mengarang denah atau nama ruang.
+Dashboard menampilkan:
+- jumlah pasien terdaftar hari ini;
+- jumlah booking dan check-in;
+- jumlah antrean menunggu;
+- jumlah pasien sedang diperiksa;
+- jumlah pasien selesai;
+- monitoring setiap Poliklinik Spesialis dan setiap Poliklinik Eksekutif;
+- jumlah resep Farmasi Rawat Jalan dan Farmasi Rawat Inap;
+- waktu tunggu farmasi maksimum dan jumlah resep yang melewati SLA prototype;
+- status dokter/poli;
+- ringkasan IGD dan Rawat Inap;
+- ketersediaan bed dan stok obat kritis.
+
+**Catatan:** SLA farmasi pada prototype adalah parameter yang dapat dikonfigurasi untuk simulasi dan bukan klaim bahwa angka tersebut merupakan standar resmi RSUD R.T. Notopuro.
+
+## 🔐 Keamanan
+
+Project ini tetap merupakan prototype/portfolio. Data pasien harus fiktif. `localStorage`, password demo, dan autentikasi client-side tidak boleh dianggap sebagai kontrol keamanan produksi. Implementasi produksi membutuhkan backend, database server, sesi/token aman, audit server-side, enkripsi, backup, dan kontrol akses yang sesuai.
