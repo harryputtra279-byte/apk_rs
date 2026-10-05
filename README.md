@@ -85,3 +85,45 @@ Ketiganya harus berada di folder yang sama saat dibuka/di-hosting (index.html me
 Tampilan mengikuti bahasa desain **"Glass UI"** yang mulai dipakai Samsung di One UI 8.5/9 terbaru (terinspirasi Liquid Glass): panel kaca buram (blur + translucent), sudut sangat membulat, elemen mengambang, navigasi bawah berbentuk pil di layar HP, dan lembar menu (bottom sheet) untuk menu tambahan & akun — sambil tetap mempertahankan warna teal klinis khas aplikasi ini.
 
 Beri tahu saya modul atau fitur apa yang ingin ditambah/disesuaikan — misalnya menambah poli lain, modul radiologi terpisah, rawat inap, atau menyambungkan ke backend sungguhan.
+
+
+## ✨ Peningkatan SIMRS — Operational Command Center
+
+Versi pengembangan ini mempertahankan identitas UI glassmorphism dan menambahkan lapisan monitoring operasional:
+
+- Dashboard Operational Command Center dengan KPI pasien, antrean, dokter, bed, pendapatan, dan stok.
+- Antrean aktif per poli: nomor sedang dilayani, jumlah menunggu, estimasi waktu tunggu, dan progres.
+- Status booking terstruktur: BOOKED, CHECK-IN, DIBATALKAN, TIDAK HADIR, DIJADWALKAN ULANG, dan KADALUARSA.
+- Estimasi waktu tunggu berdasarkan konfigurasi rata-rata waktu pelayanan.
+- Pusat notifikasi internal untuk booking/check-in dan aktivitas operasional.
+- Reschedule booking dan pembatalan dengan alasan.
+- Penandaan pasien/booking tidak hadir.
+- Kuota booking per poli/tanggal.
+- Monitoring ketersediaan dokter: tersedia, terlambat, tidak praktik.
+- Rancangan alternatif dokter dengan spesialisasi yang sama.
+- Pencarian pasien lintas NIK, nomor rekam medis, dan nama.
+- Master data diperluas dengan struktur fasilitas.
+- Matriks Role-Based Access Control (RBAC).
+- Audit log aktivitas pengguna.
+- Alert antrean panjang, dokter tidak praktik, stok kritis, dan bed penuh.
+- Bed Management dengan status kosong/terisi dan ringkasan per bangsal.
+- Ringkasan alur BOOKING → CHECK-IN → MENUNGGU → DIPERIKSA → SELESAI.
+- Pencatatan integrity record/hash ringan sebagai fondasi menuju arsitektur Web3; data medis tidak disimpan di blockchain.
+
+> **Catatan keamanan:** project ini adalah prototype/portfolio. Data pasien demo harus berupa data fiktif. Penyimpanan `localStorage`, password demo, dan logic client-side bukan pengganti backend produksi, database server, enkripsi, manajemen secret, dan kontrol akses sisi server.
+
+## 🔐 Arah Arsitektur Web3
+
+Project dirancang agar nantinya dapat dikembangkan menjadi arsitektur hybrid:
+
+`SIMRS → Patient Identity → Appointment → Encounter → Medical Record → Consent → Integrity/Audit → Blockchain`
+
+Data kesehatan sensitif tetap direncanakan berada pada storage privat/off-chain yang terenkripsi. Blockchain digunakan sebagai lapisan identitas/credential, consent, integritas, dan audit trail; bukan tempat menyimpan NIK, diagnosis, hasil laboratorium, atau dokumen rekam medis mentah.
+
+## 🏥 Struktur Fasilitas
+
+Prototype menyediakan struktur generik:
+
+`Gedung → Lantai → Unit/Instalasi → Ruang → Kamar → Bed`
+
+Struktur spesifik RSUD R.T. Notopuro akan dimasukkan setelah data fasilitas resmi diverifikasi, sehingga aplikasi tidak mengarang denah atau nama ruang.

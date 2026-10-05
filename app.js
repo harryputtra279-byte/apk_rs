@@ -63,6 +63,9 @@ const STATUS_MAP = {
   selesai:         {label:'Selesai',               cls:'badge-slate'},
   terjadwal:       {label:'Terjadwal',              cls:'badge-slate'},
   checked_in:      {label:'Sudah Check-in',         cls:'badge-sage'},
+  dibatalkan:      {label:'Dibatalkan',              cls:'badge-brick'},
+  tidak_hadir:     {label:'Tidak Hadir',             cls:'badge-brick'},
+  rescheduled:     {label:'Dijadwalkan Ulang',       cls:'badge-amber'},
   kadaluarsa:      {label:'Lewat Jadwal',           cls:'badge-brick'},
   dirawat:         {label:'Dirawat',                cls:'badge-clinical'},
   pulang:          {label:'Pulang',                 cls:'badge-sage'},
@@ -210,22 +213,76 @@ function seedData(){
   return {
     poli, users, medicines, patients, visits, prescriptions, transactions, bookings, poliMessages, auditLog,
     wards, beds, admissions,
-    meta:{ rmCounter:3, queueCounters:{ ['JAN-'+bookingTanggal]: 2 }, schemaVersion: DB_SCHEMA_VERSION }
+    doctorSchedules: [],
+    consentRecords: [],
+    integrityRecords: [],
+    notifications: [],
+    facilities: [
+      {id:'GED-RAWAT-JALAN', type:'gedung', nama:'Gedung Rawat Jalan', parentId:null},
+      {id:'GED-RAWAT-INAP', type:'gedung', nama:'Gedung Rawat Inap', parentId:null},
+      {id:'GED-IGD', type:'gedung', nama:'Gedung IGD', parentId:null},
+      {id:'GED-DIAGNOSTIK', type:'gedung', nama:'Gedung Diagnostik Terpadu', parentId:null}
+    ],
+    meta:{ rmCounter:3, queueCounters:{ ['JAN-'+bookingTanggal]: 2 }, schemaVersion: DB_SCHEMA_VERSION,
+      settings:{avgWaitMinutes:8, doctorQuotaDefault:30, alertQueueThreshold:10, lowStockThreshold:LOW_STOCK_THRESHOLD} }
   };
 }
 
 /* ---------------- persistence ---------------- */
-const DB_SCHEMA_VERSION = 4;
+const DB_SCHEMA_VERSION = 5;
+
+function migrateData(data){
+  if(!data || typeof data!=='object') return seedData();
+  if(!data.meta) data.meta = {};
+  if(!data.meta.queueCounters) data.meta.queueCounters = {};
+  if(!Array.isArray(data.auditLog)) data.auditLog = [];
+  if(!Array.isArray(data.bookings)) data.bookings = [];
+  if(!Array.isArray(data.poliMessages)) data.poliMessages = [];
+  if(!Array.isArray(data.wards)) data.wards = [];
+  if(!Array.isArray(data.beds)) data.beds = [];
+  if(!Array.isArray(data.admissions)) data.admissions = [];
+  data.bookings.forEach(function(b){
+    if(!b.status) b.status='terjadwal';
+    if(b.reminded===undefined) b.reminded=false;
+    if(b.remindedAt===undefined) b.remindedAt=null;
+    if(b.visitId===undefined) b.visitId=null;
+    if(b.createdAt===undefined) b.createdAt=nowISO();
+    if(b.updatedAt===undefined) b.updatedAt=b.createdAt;
+    if(b.cancelReason===undefined) b.cancelReason='';
+    if(b.rescheduledFrom===undefined) b.rescheduledFrom=null;
+  });
+  data.meta.schemaVersion = DB_SCHEMA_VERSION;
+  data.meta.settings = Object.assign({
+    avgWaitMinutes: 8,
+    doctorQuotaDefault: 30,
+    alertQueueThreshold: 10,
+    lowStockThreshold: LOW_STOCK_THRESHOLD
+  }, data.meta.settings||{});
+  if(!Array.isArray(data.doctorSchedules)) data.doctorSchedules = [];
+  if(!Array.isArray(data.consentRecords)) data.consentRecords = [];
+  if(!Array.isArray(data.integrityRecords)) data.integrityRecords = [];
+  if(!Array.isArray(data.notifications)) data.notifications = [];
+  if(!Array.isArray(data.facilities)){
+    data.facilities = [
+      {id:'GED-RAWAT-JALAN', type:'gedung', nama:'Gedung Rawat Jalan', parentId:null},
+      {id:'GED-RAWAT-INAP', type:'gedung', nama:'Gedung Rawat Inap', parentId:null},
+      {id:'GED-IGD', type:'gedung', nama:'Gedung IGD', parentId:null},
+      {id:'GED-DIAGNOSTIK', type:'gedung', nama:'Gedung Diagnostik Terpadu', parentId:null}
+    ];
+  }
+  return data;
+}
+
 const Store = {
   data:null,
   load(){
     const raw = localStorage.getItem('simrs_db_v1');
     let loaded = null;
     if(raw){ try{ loaded = JSON.parse(raw); }catch(e){ loaded = null; } }
-    if(loaded && loaded.meta && loaded.meta.schemaVersion === DB_SCHEMA_VERSION){
-      this.data = loaded;
+    if(loaded && loaded.meta && loaded.meta.schemaVersion <= DB_SCHEMA_VERSION){
+      this.data = migrateData(loaded);
     } else {
-      this.data = seedData();
+      this.data = migrateData(seedData());
     }
     this.save();
   },
@@ -253,6 +310,64 @@ function getResepByVisit(visitId){ return Store.data.prescriptions.find(r=>r.vis
 function visitsToday(){ const t = todayStr(); return Store.data.visits.filter(v=>v.tanggal===t); }
 function patientVisits(patientId){
   return Store.data.visits.filter(v=>v.patientId===patientId).sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+/* ---------------- operational monitoring helpers ---------------- */
+function getTodayBookings(poliId){
+  return Store.data.bookings.filter(function(b){ return b.tanggalKontrol===todayStr() && (!poliId || b.poliId===poliId); });
+}
+function getTodayVisits(poliId){
+  return visitsToday().filter(function(v){ return !poliId || v.poliId===poliId; });
+}
+function getDoctorForPoli(poliId){
+  return Store.data.users.find(function(u){ return u.role==='dokter' && u.poliId===poliId; });
+}
+function getDoctorAvailability(poliId){
+  const doctor = getDoctorForPoli(poliId);
+  if(!doctor) return {status:'none', label:'Belum ada dokter', doctor:null};
+  const messages = Store.data.poliMessages.filter(function(m){ return m.poliId===poliId; });
+  const latest = messages.length ? messages[0] : null;
+  if(latest && latest.tipe==='cancel') return {status:'cancel', label:'Tidak Praktik', doctor:doctor, message:latest.pesan};
+  if(latest && latest.tipe==='delay') return {status:'delay', label:'Terlambat', doctor:doctor, message:latest.pesan};
+  return {status:'available', label:'Tersedia', doctor:doctor, message:latest ? latest.pesan : ''};
+}
+function queueMetrics(poliId){
+  const visits = getTodayVisits(poliId);
+  const waiting = visits.filter(function(v){ return v.status==='menunggu_poli'; }).sort(function(a,b){ return (b.prioritas?1:0)-(a.prioritas?1:0) || new Date(a.createdAt)-new Date(b.createdAt); });
+  const current = visits.filter(function(v){ return v.status==='diperiksa'; }).sort(function(a,b){ return new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt); })[0] || null;
+  const completed = visits.filter(function(v){ return v.status==='selesai'; }).length;
+  const avg = (Store.data.meta.settings && Store.data.meta.settings.avgWaitMinutes) || 8;
+  const estimate = waiting.length * avg;
+  return {visits:visits, waiting:waiting, current:current, completed:completed, estimate:estimate};
+}
+function alternativeDoctors(poliId){
+  const current = getDoctorForPoli(poliId);
+  if(!current) return [];
+  return Store.data.users.filter(function(u){ return u.role==='dokter' && u.id!==current.id && u.poliId===poliId; });
+}
+function quotaForPoli(poliId, dateStr){
+  const d = dateStr || todayStr();
+  const custom = Store.data.doctorSchedules.find(function(s){ return s.poliId===poliId && s.tanggal===d; });
+  return custom && custom.kuota ? custom.kuota : ((Store.data.meta.settings && Store.data.meta.settings.doctorQuotaDefault) || 30);
+}
+function bookingStatusLabel(status){
+  return ({terjadwal:'BOOKED',checked_in:'CHECK-IN',dibatalkan:'DIBATALKAN',tidak_hadir:'TIDAK HADIR',rescheduled:'DIJADWALKAN ULANG',kadaluarsa:'KADALUARSA'})[status] || status;
+}
+function pushNotification(type, title, body, target){
+  if(!Array.isArray(Store.data.notifications)) Store.data.notifications=[];
+  Store.data.notifications.unshift({id:uid('NTF'), type:type||'info', title:title||'', body:body||'', target:target||null, read:false, createdAt:nowISO()});
+  if(Store.data.notifications.length>100) Store.data.notifications.length=100;
+}
+function recordIntegrity(type, entityId, payload){
+  /* Demo: hash ringan untuk portfolio. Produksi harus memakai SHA-256/Web Crypto di server. */
+  const raw = type+'|'+entityId+'|'+JSON.stringify(payload||{})+'|'+nowISO();
+  let h=2166136261;
+  for(let i=0;i<raw.length;i++){ h^=raw.charCodeAt(i); h += (h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24); }
+  const hash = ('00000000'+(h>>>0).toString(16)).slice(-8);
+  if(!Array.isArray(Store.data.integrityRecords)) Store.data.integrityRecords=[];
+  Store.data.integrityRecords.unshift({id:uid('HASH'),type:type,entityId:entityId,hash:hash,createdAt:nowISO()});
+  if(Store.data.integrityRecords.length>500) Store.data.integrityRecords.length=500;
+  return hash;
 }
 
 /* =================================================================
@@ -329,6 +444,7 @@ function renderShell(route){
          '<div class="topbar-right">'+
            '<button class="btn btn-outline btn-sm hidden" id="btn-install">⭳ Pasang</button>'+
            '<button class="avatar-btn" id="btn-global-search" title="Cari pasien" style="background:var(--glass-bg);border:1px solid var(--glass-border);color:var(--ink);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)">🔍</button>'+
+           '<button class="avatar-btn ops-notif-btn" id="btn-notifications" title="Notifikasi">🔔<span id="notif-count" class="'+(((Store.data.notifications||[]).filter(function(n){return !n.read;}).length)?'':'hidden')+'">'+((Store.data.notifications||[]).filter(function(n){return !n.read;}).length)+'</span></button>'+
            '<button class="avatar-btn" id="btn-account" title="Akun">'+esc(initial)+'</button>'+
          '</div>'+
        '</div>'+
@@ -358,12 +474,29 @@ function bindShellEvents(overflow){
 
   const searchBtn = document.getElementById('btn-global-search');
   if(searchBtn) searchBtn.addEventListener('click', openGlobalSearch);
+  const notifBtn = document.getElementById('btn-notifications');
+  if(notifBtn) notifBtn.addEventListener('click', openNotifications);
 
   const installBtn = document.getElementById('btn-install');
   if(installPromptEvent && installBtn) installBtn.classList.remove('hidden');
   if(installBtn) installBtn.addEventListener('click', doInstallPrompt);
 }
 
+function openNotifications(){
+  const list=(Store.data.notifications||[]).slice(0,30);
+  document.getElementById('modal-root').innerHTML='<div class="sheet-overlay" id="modal-overlay"><div class="bottom-sheet"><div class="sheet-handle"></div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;padding:0 6px 10px"><h2>🔔 Notifikasi</h2><button class="btn btn-ghost btn-sm" id="btn-mark-notif-read">Tandai semua dibaca</button></div>'+
+    (list.length?list.map(function(n){return '<div class="notification-item '+(n.read?'':'unread')+'"><div class="notification-icon">'+(n.type==='queue'?'🎫':n.type==='booking'?'📅':'ℹ️')+'</div><div><strong>'+esc(n.title)+'</strong><div>'+esc(n.body)+'</div><span>'+formatTanggalWaktu(n.createdAt)+'</span></div></div>';}).join(''):'<div class="empty">Belum ada notifikasi.</div>')+
+    '</div></div>';
+  document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target.id==='modal-overlay')closeModal();});
+  const b=document.getElementById('btn-mark-notif-read');
+  if(b) b.addEventListener('click',function(){
+    (Store.data.notifications||[]).forEach(function(n){n.read=true;});
+    Store.save(); closeModal(); renderShell(currentRoute());
+  });
+  (Store.data.notifications||[]).forEach(function(n){n.read=true;});
+  Store.save();
+}
 function openMoreSheet(overflow){
   const listHtml = overflow.map(n=>
     '<button class="sheet-item" data-nav="'+n.hash+'"><span class="ic">'+n.ic+'</span>'+n.label+'</button>'
@@ -561,47 +694,101 @@ function barRow(label, count, max, color){
     '<div style="height:8px;background:var(--ink-hair);border-radius:99px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--'+color+')"></div></div></div>';
 }
 function renderDashboard(){
-  setPageTitle('Dashboard');
+  setPageTitle('Dashboard Operasional');
   const today = todayStr();
   const visits = visitsToday();
-  const totalPendapatan = Store.data.transactions.filter(t=>todayStr(new Date(t.createdAt))===today).reduce((s,t)=>s+t.total,0);
-  const obatMenipis = Store.data.medicines.filter(m=>m.stok < LOW_STOCK_THRESHOLD);
-  const selesai = visits.filter(v=>v.status==='selesai').length;
-  const bookingHariIni = Store.data.bookings.filter(b=>b.tanggalKontrol===today);
-  const perPoli = Store.data.poli.map(p=>({poli:p, count: visits.filter(v=>v.poliId===p.id).length}));
-  const maxCount = Math.max(1, ...perPoli.map(p=>p.count));
+  const bookingHariIni = Store.data.bookings.filter(function(b){ return b.tanggalKontrol===today; });
+  const totalPendapatan = Store.data.transactions.filter(function(t){ return todayStr(new Date(t.createdAt))===today; }).reduce(function(s,t){ return s+t.total; },0);
+  const selesai = visits.filter(function(v){ return v.status==='selesai'; }).length;
+  const checkedIn = bookingHariIni.filter(function(b){ return b.status==='checked_in'; }).length;
+  const waiting = visits.filter(function(v){ return v.status==='menunggu_poli'; }).length;
+  const diperiksa = visits.filter(function(v){ return v.status==='diperiksa'; }).length;
+  const obatMenipis = Store.data.medicines.filter(function(m){ return m.stok < ((Store.data.meta.settings||{}).lowStockThreshold || LOW_STOCK_THRESHOLD); });
+  const admissionsAktif = Store.data.admissions.filter(function(a){ return a.status==='dirawat'; });
+  const totalBeds = Store.data.beds.length;
+  const bedsOccupied = Store.data.beds.filter(function(b){ return b.status==='terisi'; }).length;
+  const bedsAvailable = Store.data.beds.filter(function(b){ return b.status==='kosong'; }).length;
+  const alerts = [];
+  const queueThreshold = ((Store.data.meta.settings||{}).alertQueueThreshold)||10;
+  Store.data.poli.forEach(function(p){
+    const q=queueMetrics(p.id), av=getDoctorAvailability(p.id);
+    if(q.waiting.length>=queueThreshold) alerts.push({cls:'warning',icon:'🟡',title:p.nama,body:'Antrean menunggu '+q.waiting.length+' pasien'});
+    if(av.status==='cancel') alerts.push({cls:'danger',icon:'🔴',title:p.nama,body:'Dokter tidak praktik — '+(alternativeDoctors(p.id).length?'tersedia '+alternativeDoctors(p.id).length+' dokter alternatif pada spesialisasi yang sama.':'belum ada dokter alternatif; sediakan reschedule sesuai kebijakan.')});
+    if(av.status==='delay') alerts.push({cls:'warning',icon:'⏱',title:p.nama,body:'Dokter terlambat — info praktik: '+av.message});
+  });
+  if(obatMenipis.length) alerts.push({cls:'warning',icon:'💊',title:'Farmasi',body:obatMenipis.length+' obat berada di bawah batas stok'});
+  if(bedsAvailable===0 && totalBeds>0) alerts.push({cls:'danger',icon:'🛏️',title:'Rawat Inap',body:'Tidak ada tempat tidur kosong'});
+  const perPoli = Store.data.poli.map(function(p){ return {poli:p, q:queueMetrics(p.id), av:getDoctorAvailability(p.id)}; });
+
+  const kpi = function(icon,label,value,sub,cls){
+    return '<div class="ops-kpi '+(cls||'')+'"><div class="ops-kpi-icon">'+icon+'</div><div><div class="ops-kpi-label">'+label+'</div><div class="ops-kpi-value">'+value+'</div><div class="ops-kpi-sub">'+sub+'</div></div></div>';
+  };
+  const statusDot = function(av){
+    return av.status==='available' ? '<span class="ops-status ok">● Tersedia</span>' :
+      av.status==='delay' ? '<span class="ops-status warn">● Terlambat</span>' :
+      av.status==='cancel' ? '<span class="ops-status bad">● Tidak Praktik</span>' :
+      '<span class="ops-status">● Belum Ada Dokter</span>';
+  };
 
   document.getElementById('main-content').innerHTML =
-    pageIntro('Ringkasan operasional hari ini, '+formatTanggalIndo(today)+'.')+
-    '<div class="action-grid">'+
-      '<div class="action-card" data-nav="pendaftaran"><span class="ic">📝</span><span class="lbl">Pendaftaran</span></div>'+
-      '<div class="action-card" data-nav="poli"><span class="ic">🩺</span><span class="lbl">Poli (Rawat Jalan)</span></div>'+
-      '<div class="action-card" data-nav="ranap"><span class="ic">🏨</span><span class="lbl">Rawat Inap</span></div>'+
-      '<div class="action-card" data-action="global-search"><span class="ic">🔍</span><span class="lbl">Cari Pasien</span></div>'+
-      '<div class="action-card" data-nav="master-data"><span class="ic">⚙️</span><span class="lbl">Master Data</span></div>'+
+    '<div class="ops-hero">'+
+      '<div><div class="ops-eyebrow">SIMRS COMMAND CENTER</div><h2>Monitoring Operasional</h2><p>'+formatTanggalIndo(today)+' · Pantauan pelayanan rumah sakit secara ringkas.</p></div>'+
+      '<div class="ops-hero-actions"><button class="btn btn-outline btn-sm" id="btn-dashboard-refresh">↻ Perbarui</button><button class="btn btn-primary btn-sm" data-nav="cek-antrian">📺 Papan Antrian</button></div>'+
     '</div>'+
-    '<div class="grid grid-4">'+
-      statCard('Pasien Hari Ini', visits.length, 'kunjungan tercatat')+
-      statCard('Pendapatan Hari Ini', formatRupiah(totalPendapatan), 'dari transaksi selesai')+
-      statCard('Kunjungan Selesai', selesai, 'dari total '+visits.length)+
-      statCard('Obat Menipis', obatMenipis.length, 'perlu restock segera')+
-      statCard('Booking Terjadwal', bookingHariIni.length, 'kontrol hari ini (BPJS &amp; umum)')+
-      statCard('Pasien Dirawat', Store.data.admissions.filter(a=>a.status==='dirawat').length, 'rawat inap aktif')+
+    '<div class="ops-kpi-grid">'+
+      kpi('👥','Pasien Terdaftar',visits.length,'kunjungan hari ini')+
+      kpi('🎫','Antrean Menunggu',waiting,'pasien aktif',waiting>=queueThreshold?'hot':'')+
+      kpi('🩺','Sedang Diperiksa',diperiksa,'pelayanan berlangsung')+
+      kpi('✓','Selesai',selesai,'dari '+visits.length+' kunjungan')+
+      kpi('🗓️','Booking Hari Ini',bookingHariIni.length,checkedIn+' sudah check-in')+
+      kpi('🛏️','Bed Tersedia',bedsAvailable,totalBeds+' total · '+bedsOccupied+' terisi')+
+      kpi('💰','Pendapatan Hari Ini',formatRupiah(totalPendapatan),Store.data.transactions.filter(function(t){return todayStr(new Date(t.createdAt))===today;}).length+' transaksi')+
+      kpi('💊','Stok Menipis',obatMenipis.length,obatMenipis.length?'perlu perhatian':'stok aman',obatMenipis.length?'hot':'')+
     '</div>'+
-    '<div class="grid grid-2">'+
-      '<div class="panel"><div class="panel-head"><h2>Pasien per Poli (Hari Ini)</h2></div><div class="panel-body">'+
-        (perPoli.every(p=>p.count===0) ? '<div class="empty"><div class="big">—</div>Belum ada kunjungan hari ini</div>' :
-        perPoli.map(p=>barRow(p.poli.nama, p.count, maxCount, poliColor(p.poli.id))).join(''))+
-      '</div></div>'+
-      '<div class="panel"><div class="panel-head"><h2>Stok Obat Menipis</h2></div><div class="panel-body">'+
-        (obatMenipis.length===0 ? '<div class="empty"><div class="big">✓</div>Semua stok obat aman</div>' :
-        '<div class="table-wrap"><table><thead><tr><th>Obat</th><th>Sisa Stok</th><th>Satuan</th></tr></thead><tbody>'+
-        obatMenipis.map(m=>'<tr><td>'+esc(m.nama)+'</td><td class="mono" style="color:var(--brick);font-weight:700">'+m.stok+'</td><td>'+esc(m.satuan)+'</td></tr>').join('')+
-        '</tbody></table></div>')+
-      '</div></div>'+
+    '<div class="ops-grid-main">'+
+      '<section class="panel ops-panel"><div class="panel-head"><div><h2>🎫 Antrean Aktif</h2><div class="hint">Nomor berjalan, pasien menunggu, dan estimasi waktu.</div></div><button class="btn btn-ghost btn-sm" data-nav="cek-antrian">Lihat semua →</button></div><div class="panel-body ops-queue-grid">'+
+      perPoli.map(function(x){
+        const q=x.q, current=q.current;
+        return '<div class="ops-queue-card">'+
+          '<div class="ops-queue-head"><div><strong>'+esc(x.poli.nama)+'</strong><div class="hint">'+statusDot(x.av)+'</div></div><span class="ops-queue-code">'+(current?current.noAntrian:'—')+'</span></div>'+
+          '<div class="ops-queue-row"><span>Menunggu</span><strong>'+q.waiting.length+'</strong></div>'+
+          '<div class="ops-queue-row"><span>Perkiraan tunggu</span><strong>'+ (q.waiting.length ? '±'+q.estimate+' mnt' : '—') +'</strong></div>'+
+          '<div class="ops-queue-progress"><span style="width:'+Math.min(100, q.waiting.length*8)+'%"></span></div>'+
+          '<div class="ops-queue-foot"><span>'+q.completed+' selesai</span><span>Kuota '+getTodayBookings(x.poli.id).length+'/'+quotaForPoli(x.poli.id)+'</span></div>'+
+        '</div>';
+      }).join('')+
+      '</div></section>'+
+      '<section class="panel ops-panel"><div class="panel-head"><div><h2>⚠️ Perlu Perhatian</h2><div class="hint">Alert operasional yang membutuhkan tindakan.</div></div></div><div class="panel-body">'+
+        (alerts.length===0 ? '<div class="ops-empty">✓ Tidak ada alert kritis saat ini.</div>' :
+          alerts.slice(0,8).map(function(a){ return '<div class="ops-alert '+a.cls+'"><span class="ops-alert-icon">'+a.icon+'</span><div><strong>'+esc(a.title)+'</strong><div>'+esc(a.body)+'</div></div></div>'; }).join(''))+
+      '</div></section>'+
     '</div>'+
-    '<div class="panel"><div class="panel-head"><h2>Antrian Hari Ini — Semua Poli</h2></div><div class="panel-body">'+renderAntrianTable(visits)+'</div></div>';
+    '<div class="ops-grid-main">'+
+      '<section class="panel ops-panel"><div class="panel-head"><div><h2>🩺 Status Dokter & Poli</h2><div class="hint">Ketersediaan dan kapasitas pelayanan hari ini.</div></div></div><div class="panel-body"><div class="ops-doctor-table">'+
+      perPoli.map(function(x){
+        const q=x.q, bookings=getTodayBookings(x.poli.id), quota=quotaForPoli(x.poli.id);
+        return '<div class="ops-doctor-row"><div><strong>'+esc(x.poli.nama)+'</strong><div class="hint">'+esc(x.av.doctor ? x.av.doctor.nama : 'Belum ditugaskan')+'</div></div><div>'+statusDot(x.av)+'</div><div class="ops-capacity"><span>'+bookings.length+'/'+quota+'</span><div class="ops-capacity-bar"><i style="width:'+Math.min(100,(bookings.length/quota)*100)+'%"></i></div></div><div class="ops-wait">'+q.waiting.length+' menunggu</div></div>';
+      }).join('')+
+      '</div></div></section>'+
+      '<section class="panel ops-panel"><div class="panel-head"><div><h2>🛏️ Bed Management</h2><div class="hint">Ringkasan ketersediaan tempat tidur.</div></div><button class="btn btn-ghost btn-sm" data-nav="ranap">Kelola →</button></div><div class="panel-body">'+
+      '<div class="bed-summary"><div><span class="bed-number available">'+bedsAvailable+'</span><span>Tersedia</span></div><div><span class="bed-number occupied">'+bedsOccupied+'</span><span>Terisi</span></div><div><span class="bed-number total">'+totalBeds+'</span><span>Total</span></div></div>'+
+      Store.data.wards.map(function(w){ const bs=Store.data.beds.filter(function(b){return b.wardId===w.id;}), av=bs.filter(function(b){return b.status==='kosong';}).length; return '<div class="ops-ward-row"><span>'+esc(w.nama)+'</span><strong>'+av+'/'+bs.length+'</strong></div>'; }).join('')+
+      '</div></section>'+
+    '</div>'+
+    '<div class="ops-grid-main">'+
+      '<section class="panel ops-panel"><div class="panel-head"><div><h2>📈 Alur Pelayanan Hari Ini</h2><div class="hint">Distribusi status pasien.</div></div></div><div class="panel-body"><div class="flow-status-grid">'+
+        [['BOOKING',bookingHariIni.length,'slate'],['CHECK-IN',checkedIn,'sage'],['MENUNGGU',waiting,'amber'],['DIPERIKSA',diperiksa,'clinical'],['SELESAI',selesai,'slate']].map(function(x){ return '<div class="flow-status '+x[2]+'"><span>'+x[0]+'</span><strong>'+x[1]+'</strong></div>'; }).join('')+
+      '</div></div></section>'+
+      '<section class="panel ops-panel"><div class="panel-head"><div><h2>💊 Stok Kritis</h2><div class="hint">Obat di bawah batas minimum.</div></div><button class="btn btn-ghost btn-sm" data-nav="farmasi">Farmasi →</button></div><div class="panel-body">'+
+        (obatMenipis.length ? obatMenipis.slice(0,6).map(function(m){ return '<div class="ops-stock-row"><span>'+esc(m.nama)+'</span><strong>'+m.stok+' '+esc(m.satuan)+'</strong></div>'; }).join('') : '<div class="ops-empty">✓ Semua stok berada di atas batas minimum.</div>')+
+      '</div></section>'+
+    '</div>'+
+    '<div class="panel ops-panel"><div class="panel-head"><div><h2>🧾 Aktivitas Terbaru</h2><div class="hint">Audit trail terbaru untuk monitoring operasional.</div></div><button class="btn btn-ghost btn-sm" data-nav="master-data">Audit Log →</button></div><div class="panel-body">'+
+      ((Store.data.auditLog||[]).slice(0,8).map(function(l){ return '<div class="ops-audit-row"><span class="mono">'+formatJam(l.createdAt)+'</span><strong>'+esc(l.aksi)+'</strong><span>'+esc(l.detail)+'</span></div>'; }).join('') || '<div class="ops-empty">Belum ada aktivitas.</div>')+
+    '</div></div>';
   bindBerandaActionEvents();
+  const refresh=document.getElementById('btn-dashboard-refresh');
+  if(refresh) refresh.addEventListener('click', function(){ renderDashboard(); showToast('Dashboard diperbarui','success'); });
 }
 
 /* =================================================================
@@ -1007,6 +1194,11 @@ function bookingFormHtml(jenisBayar){
     '<button type="submit" class="btn btn-primary" disabled id="btn-submit-booking">'+(isBpjs?'Simulasikan Booking Masuk':'Buat Booking')+'</button>'+
     '</form><div id="bk-confirm"></div>';
 }
+function bindBookingListActions(){
+  document.querySelectorAll('[data-reschedule]').forEach(function(b){ b.addEventListener('click',function(){ rescheduleBooking(this.dataset.reschedule); }); });
+  document.querySelectorAll('[data-cancel-booking]').forEach(function(b){ b.addEventListener('click',function(){ cancelBooking(this.dataset.cancelBooking); }); });
+  document.querySelectorAll('[data-view-booking]').forEach(function(b){ b.addEventListener('click',function(){ const x=getBooking(this.dataset.viewBooking); if(!x)return; openModal('<div class="modal-head"><h2>Detail Booking '+esc(x.noAntrian)+'</h2><button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button></div><div class="modal-body"><p><strong>Pasien:</strong> '+esc(getPatient(x.patientId).nama)+'<br><strong>Poli:</strong> '+esc(getPoli(x.poliId).nama)+'<br><strong>Tanggal:</strong> '+formatTanggalIndo(x.tanggalKontrol)+'<br><strong>Status:</strong> '+bookingStatusLabel(x.status)+'</p></div>'); }); });
+}
 function renderBookingJknTab(){
   bookingSearchPatientId = null;
   document.getElementById('booking-tab-area').innerHTML =
@@ -1014,6 +1206,7 @@ function renderBookingJknTab(){
     '<div class="panel"><div class="panel-head"><h2>Simulasi Booking Masuk — BPJS / JKN Mobile</h2></div><div class="panel-body">'+bookingFormHtml('BPJS')+'</div></div>'+
     '<div class="panel"><div class="panel-head"><h2>Booking BPJS Terjadwal</h2></div><div class="panel-body" id="bk-list-area">'+renderBookingListHtml('BPJS')+'</div></div>';
   bindBookingFormEvents('BPJS');
+  bindBookingListActions();
 }
 function renderBookingUmumTab(){
   bookingSearchPatientId = null;
@@ -1022,6 +1215,7 @@ function renderBookingUmumTab(){
     '<div class="panel"><div class="panel-head"><h2>Buat Booking — Pasien Umum</h2></div><div class="panel-body">'+bookingFormHtml('Umum')+'</div></div>'+
     '<div class="panel"><div class="panel-head"><h2>Booking Umum Terjadwal</h2></div><div class="panel-body" id="bk-list-area">'+renderBookingListHtml('Umum')+'</div></div>';
   bindBookingFormEvents('Umum');
+  bindBookingListActions();
 }
 function bindBookingFormEvents(jenisBayar){
   document.getElementById('bk-btn-cari').addEventListener('click', function(){
@@ -1051,14 +1245,19 @@ function submitBooking(jenisBayar){
   const noBpjs = jenisBayar==='BPJS' ? document.getElementById('bk-nobpjs').value.trim() : '';
   if(jenisBayar==='BPJS' && !noBpjs){ showToast('Isi nomor kartu BPJS', 'danger'); return; }
   if(!tanggalKontrol){ showToast('Pilih tanggal kontrol', 'danger'); return; }
+  const kuota = quotaForPoli(poliId, tanggalKontrol);
+  const terjadwal = Store.data.bookings.filter(function(b){ return b.poliId===poliId && b.tanggalKontrol===tanggalKontrol && ['terjadwal','checked_in'].includes(b.status); }).length;
+  if(terjadwal >= kuota){ showToast('Kuota booking poli pada tanggal tersebut sudah penuh ('+kuota+' pasien)', 'danger'); return; }
   const noAntrian = generateNoAntrian(poliId, tanggalKontrol);
   const booking = {
     id: uid('BK'), patientId: bookingSearchPatientId, poliId, tanggalKontrol, jenisBayar,
     sumber: jenisBayar==='BPJS' ? 'JKN Mobile (Simulasi)' : 'Aplikasi RS',
     noBpjs, noAntrian, kodeCheckIn: uid('CHK').toUpperCase(), status:'terjadwal', visitId:null,
-    reminded:false, remindedAt:null, createdAt: nowISO()
+    reminded:false, remindedAt:null, createdAt: nowISO(), updatedAt: nowISO(), cancelReason:'', rescheduledFrom:null
   };
   Store.data.bookings.push(booking);
+  recordIntegrity('booking',booking.id,{patientId:booking.patientId,poliId:booking.poliId,tanggalKontrol:booking.tanggalKontrol,noAntrian:booking.noAntrian,status:booking.status});
+  pushNotification('booking','Booking baru',booking.noAntrian+' — '+getPatient(booking.patientId).nama,booking.patientId);
   Store.save();
   logAudit('booking_'+jenisBayar.toLowerCase(), noAntrian+' — '+esc(getPatient(bookingSearchPatientId).nama)+' ('+formatTanggalIndo(tanggalKontrol)+')');
   showToast('Booking dibuat — nomor antrian '+noAntrian, 'success');
@@ -1071,13 +1270,62 @@ function submitBooking(jenisBayar){
   document.getElementById('bk-list-area').innerHTML = renderBookingListHtml(jenisBayar);
 }
 function renderBookingListHtml(jenisBayar){
-  const list = Store.data.bookings.filter(b=>b.jenisBayar===jenisBayar).sort((a,b)=> b.tanggalKontrol.localeCompare(a.tanggalKontrol) || a.noAntrian.localeCompare(b.noAntrian));
+  const list = Store.data.bookings.filter(function(b){ return b.jenisBayar===jenisBayar; }).sort(function(a,b){ return b.tanggalKontrol.localeCompare(a.tanggalKontrol) || a.noAntrian.localeCompare(b.noAntrian); });
   if(list.length===0) return '<div class="empty">Belum ada booking.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>No. Antrian</th><th>Pasien</th><th>Poli</th><th>Tanggal Kontrol</th><th>Kode</th><th>Status</th></tr></thead><tbody>'+
-    list.map(b=>{ const p=getPatient(b.patientId), poli=getPoli(b.poliId);
+  return '<div class="table-wrap"><table><thead><tr><th>No. Antrian</th><th>Pasien</th><th>Poli</th><th>Tanggal Kontrol</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+
+    list.map(function(b){
+      const p=getPatient(b.patientId), poli=getPoli(b.poliId);
+      const canManage = b.status==='terjadwal' && b.tanggalKontrol>=todayStr();
       return '<tr><td class="mono" style="font-weight:700">'+b.noAntrian+'</td><td>'+esc(p.nama)+'</td><td>'+esc(poli.nama)+'</td>'+
-        '<td>'+formatTanggalIndo(b.tanggalKontrol)+'</td><td class="mono">'+b.kodeCheckIn+'</td><td>'+badgeStatus(b.status)+'</td></tr>';
+        '<td>'+formatTanggalIndo(b.tanggalKontrol)+'</td><td>'+badgeStatus(b.status)+'<div class="booking-state-label">'+bookingStatusLabel(b.status)+'</div></td>'+
+        '<td><div class="chip-row">'+
+          (canManage?'<button class="btn btn-outline btn-sm" data-reschedule="'+b.id+'">🔄 Ubah</button><button class="btn btn-danger btn-sm" data-cancel-booking="'+b.id+'">Batal</button>':'')+
+          (b.status==='checked_in'?'<button class="btn btn-ghost btn-sm" data-view-booking="'+b.id+'">Detail</button>':'')+
+        '</div></td></tr>';
     }).join('')+'</tbody></table></div>';
+}
+function refreshBookingListAfterAction(){
+  const area=document.getElementById('bk-list-area');
+  if(area) area.innerHTML=renderBookingListHtml(bookingTab==='jkn'?'BPJS':'Umum');
+}
+function cancelBooking(bookingId){
+  const b=getBooking(bookingId);
+  if(!b || b.status!=='terjadwal'){ showToast('Booking tidak dapat dibatalkan','danger'); return; }
+  openModal('<div class="modal-head"><h2>Batalkan Booking</h2><button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button></div>'+
+    '<div class="modal-body"><p>Batalkan booking <strong>'+esc(b.noAntrian)+'</strong> untuk '+esc(getPatient(b.patientId).nama)+'?</p>'+
+    '<div class="field"><label>Alasan pembatalan</label><textarea id="cancel-booking-reason" placeholder="Contoh: pasien meminta perubahan jadwal"></textarea></div>'+
+    '<button class="btn btn-danger btn-block" id="btn-confirm-cancel">Batalkan Booking</button></div>');
+  document.getElementById('btn-confirm-cancel').addEventListener('click',function(){
+    const reason=(document.getElementById('cancel-booking-reason').value||'Tidak disebutkan').trim();
+    b.status='dibatalkan'; b.cancelReason=reason; b.updatedAt=nowISO();
+    recordIntegrity('booking',b.id,{status:b.status,reason:reason});
+    Store.save(); logAudit('booking_dibatalkan',b.noAntrian+' — '+reason); pushNotification('booking','Booking dibatalkan',b.noAntrian+' — '+getPatient(b.patientId).nama,b.patientId);
+    closeModal(); refreshBookingListAfterAction(); showToast('Booking dibatalkan','success');
+  });
+}
+function rescheduleBooking(bookingId){
+  const b=getBooking(bookingId);
+  if(!b || b.status!=='terjadwal'){ showToast('Booking tidak dapat diubah','danger'); return; }
+  const poliOptions=Store.data.poli.map(function(p){ return '<option value="'+p.id+'" '+(p.id===b.poliId?'selected':'')+'>'+esc(p.nama)+'</option>'; }).join('');
+  openModal('<div class="modal-head"><h2>🔄 Ubah Jadwal Booking</h2><button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button></div>'+
+    '<div class="modal-body"><div class="field"><label>Poli</label><select id="rs-poli">'+poliOptions+'</select></div>'+
+    '<div class="field"><label>Tanggal baru</label><input type="date" id="rs-tanggal" min="'+todayStr()+'" value="'+esc(b.tanggalKontrol)+'"></div>'+
+    '<button class="btn btn-primary btn-block" id="btn-confirm-reschedule">Simpan Jadwal Baru</button></div>');
+  document.getElementById('btn-confirm-reschedule').addEventListener('click',function(){
+    const poliId=document.getElementById('rs-poli').value, tanggal=document.getElementById('rs-tanggal').value;
+    if(!tanggal){ showToast('Pilih tanggal baru','danger'); return; }
+    const oldQueue=b.noAntrian, oldDate=b.tanggalKontrol;
+    b.poliId=poliId; b.tanggalKontrol=tanggal; b.noAntrian=generateNoAntrian(poliId,tanggal); b.status='terjadwal'; b.rescheduledFrom=oldQueue; b.updatedAt=nowISO();
+    recordIntegrity('booking',b.id,{from:oldDate,to:tanggal,oldQueue:oldQueue,newQueue:b.noAntrian});
+    Store.save(); logAudit('booking_reschedule',oldQueue+' → '+b.noAntrian+' ('+formatTanggalIndo(tanggal)+')'); pushNotification('booking','Jadwal diperbarui',b.noAntrian+' — '+getPatient(b.patientId).nama,b.patientId);
+    closeModal(); refreshBookingListAfterAction(); showToast('Booking berhasil dijadwalkan ulang','success');
+  });
+}
+function markBookingNoShow(bookingId){
+  const b=getBooking(bookingId);
+  if(!b || b.status!=='terjadwal' || b.tanggalKontrol!==todayStr()){ showToast('Hanya booking hari ini yang dapat ditandai tidak hadir','danger'); return; }
+  b.status='tidak_hadir'; b.updatedAt=nowISO(); Store.save(); logAudit('booking_tidak_hadir',b.noAntrian+' — '+getPatient(b.patientId).nama); recordIntegrity('booking',b.id,{status:b.status});
+  showToast('Booking ditandai tidak hadir','warning');
 }
 
 function renderBookingCheckinTab(){
@@ -1100,9 +1348,11 @@ function renderCheckinList(list){
       '<div style="display:flex;align-items:center;gap:8px">'+
         '<span class="badge '+(b.jenisBayar==='BPJS'?'badge-slate':'badge-amber')+'">'+b.jenisBayar+'</span>'+
         '<button class="btn btn-success btn-sm" data-checkin="'+b.id+'">Check-in</button>'+
+        '<button class="btn btn-outline btn-sm" data-noshow="'+b.id+'">Tidak Hadir</button>'+
       '</div></div>';
   }).join('');
   el.querySelectorAll('[data-checkin]').forEach(btn=> btn.addEventListener('click', ()=> doCheckIn(btn.dataset.checkin)));
+  el.querySelectorAll('[data-noshow]').forEach(btn=> btn.addEventListener('click', ()=> markBookingNoShow(btn.dataset.noshow)));
 }
 function doCheckIn(bookingId){
   const booking = getBooking(bookingId);
@@ -1117,6 +1367,9 @@ function doCheckIn(bookingId){
   Store.data.visits.push(visit);
   booking.status = 'checked_in';
   booking.visitId = visit.id;
+  booking.updatedAt = nowISO();
+  recordIntegrity('booking',booking.id,{status:booking.status,visitId:visit.id});
+  pushNotification('queue','Check-in berhasil',booking.noAntrian+' — '+getPatient(booking.patientId).nama,booking.patientId);
   Store.save();
   logAudit('checkin', booking.noAntrian+' — '+esc(getPatient(booking.patientId).nama));
   showToast('Check-in berhasil — '+esc(getPatient(booking.patientId).nama)+' masuk antrian '+booking.noAntrian, 'success');
@@ -2386,17 +2639,59 @@ function renderMasterData(){
   setPageTitle('Master Data');
   masterTab = 'poli';
   document.getElementById('main-content').innerHTML =
-    pageIntro('Kelola data induk rumah sakit: daftar poli, staf pengguna sistem, dan log aktivitas.')+
-    '<div class="tabs"><button class="tab active" data-mtab="poli">Poli</button><button class="tab" data-mtab="staff">Staf &amp; Pengguna</button>'+
-    '<button class="tab" data-mtab="log">Log Aktivitas</button></div>'+
+    pageIntro('Kelola data induk, struktur fasilitas, staf, hak akses, dan jejak aktivitas sistem.')+
+    '<div class="tabs"><button class="tab active" data-mtab="poli">Poli</button><button class="tab" data-mtab="staff">Staf & Pengguna</button>'+
+    '<button class="tab" data-mtab="facility">Fasilitas</button><button class="tab" data-mtab="rbac">Hak Akses</button><button class="tab" data-mtab="log">Audit Log</button></div>'+
     '<div id="master-tab-area"></div>';
-  document.querySelectorAll('[data-mtab]').forEach(t=> t.addEventListener('click', ()=> switchMasterTab(t.dataset.mtab)));
+  document.querySelectorAll('[data-mtab]').forEach(function(t){ t.addEventListener('click',function(){ switchMasterTab(t.dataset.mtab); }); });
   renderMasterPoliTab();
 }
 function switchMasterTab(tab){
   masterTab = tab;
-  document.querySelectorAll('[data-mtab]').forEach(t=> t.classList.toggle('active', t.dataset.mtab===tab));
-  if(tab==='poli') renderMasterPoliTab(); else if(tab==='staff') renderMasterStaffTab(); else renderMasterLogTab();
+  document.querySelectorAll('[data-mtab]').forEach(function(t){ t.classList.toggle('active',t.dataset.mtab===tab); });
+  if(tab==='poli') renderMasterPoliTab();
+  else if(tab==='staff') renderMasterStaffTab();
+  else if(tab==='facility') renderMasterFacilityTab();
+  else if(tab==='rbac') renderMasterRbacTab();
+  else renderMasterLogTab();
+}
+function renderMasterFacilityTab(){
+  const el=document.getElementById('master-tab-area');
+  const typeLabel={gedung:'Gedung',lantai:'Lantai',unit:'Unit/Instalasi',ruang:'Ruang',kamar:'Kamar',bed:'Bed'};
+  el.innerHTML='<div class="alert alert-info">Struktur fasilitas dibuat bertingkat agar nanti mudah dipetakan ke struktur nyata RSUD R.T. Notopuro. Data yang belum diverifikasi resmi sengaja dibuat sebagai placeholder dan tidak dianggap sebagai denah rumah sakit.</div>'+
+    '<div class="panel"><div class="panel-head"><h2>Tambah Node Fasilitas</h2></div><div class="panel-body"><form id="form-facility" class="field-row3">'+
+    '<div class="field"><label>Jenis</label><select id="fc-type">'+Object.keys(typeLabel).map(function(k){return '<option value="'+k+'">'+typeLabel[k]+'</option>';}).join('')+'</select></div>'+
+    '<div class="field"><label>Nama</label><input id="fc-nama" required placeholder="Contoh: Ruang Mawar"></div>'+
+    '<div class="field"><label>Induk (opsional)</label><select id="fc-parent"><option value="">Tidak ada</option>'+Store.data.facilities.map(function(f){return '<option value="'+f.id+'">'+esc(typeLabel[f.type]||f.type)+' — '+esc(f.nama)+'</option>';}).join('')+'</select></div>'+
+    '<div style="grid-column:1/-1"><button class="btn btn-primary">Tambah</button></div></form></div></div>'+
+    '<div class="panel"><div class="panel-head"><h2>Struktur Fasilitas</h2></div><div class="panel-body"><div class="facility-tree">'+
+    Store.data.facilities.map(function(f){return '<div class="facility-node"><span class="facility-type">'+(typeLabel[f.type]||f.type)+'</span><strong>'+esc(f.nama)+'</strong><span class="hint">'+(f.parentId?'Induk: '+esc((Store.data.facilities.find(function(x){return x.id===f.parentId;})||{}).nama||f.parentId):'Root')+'</span></div>';}).join('')+
+    '</div></div></div>';
+  document.getElementById('form-facility').addEventListener('submit',function(e){
+    e.preventDefault();
+    const f={id:'FAC-'+Date.now().toString(36),type:document.getElementById('fc-type').value,nama:document.getElementById('fc-nama').value.trim(),parentId:document.getElementById('fc-parent').value||null};
+    if(!f.nama){showToast('Nama fasilitas wajib diisi','danger');return;}
+    Store.data.facilities.push(f); Store.save(); logAudit('fasilitas_baru',f.type+' — '+f.nama); showToast('Fasilitas ditambahkan','success'); renderMasterFacilityTab();
+  });
+}
+function renderMasterRbacTab(){
+  const matrix=[
+    ['Dashboard','admin','—','—','—','—','—','—'],
+    ['Pendaftaran','✓','✓','—','—','—','—','—'],
+    ['Booking Antrian','✓','✓','—','—','—','—','—'],
+    ['Poli','✓','—','✓','—','—','—','—'],
+    ['Rawat Inap','✓','—','✓','—','—','—','✓'],
+    ['Laboratorium','✓','—','—','—','✓','—','—'],
+    ['Farmasi','✓','—','—','✓','—','—','—'],
+    ['Kasir','✓','—','—','—','—','✓','—'],
+    ['Rekam Medis','✓','—','✓','—','—','—','—'],
+    ['Master Data','✓','—','—','—','—','—','—']
+  ];
+  const roles=['Admin','Loket','Dokter','Farmasi','Lab','Kasir','Perawat'];
+  document.getElementById('master-tab-area').innerHTML='<div class="alert alert-info">RBAC (Role-Based Access Control) membatasi modul berdasarkan peran. Ini masih demo sisi client; autentikasi produksi harus dipindahkan ke backend dengan sesi/token aman.</div>'+
+    '<div class="panel"><div class="panel-head"><h2>Matriks Hak Akses</h2></div><div class="panel-body"><div class="table-wrap"><table class="rbac-table"><thead><tr><th>Modul</th>'+roles.map(function(r){return '<th>'+r+'</th>';}).join('')+'</tr></thead><tbody>'+
+    matrix.map(function(row){return '<tr>'+row.map(function(v,i){return '<td class="'+(i===0?'rbac-module':'')+'">'+(i===0?esc(v):v)+'</td>';}).join('')+'</tr>';}).join('')+
+    '</tbody></table></div></div></div>';
 }
 function renderMasterLogTab(){
   const list = (Store.data.auditLog||[]).slice(0,150);
