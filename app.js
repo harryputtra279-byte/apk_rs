@@ -484,7 +484,10 @@ const Session = {
 const POLI_ALIAS = {UMU:'RJ-UMU',GIG:'SP-GIG',ANA:'SP-ANA',KDG:'SP-KDG',MAT:'SP-MAT',THT:'SP-THT',JAN:'SP-JAN',KUL:'SP-KUL',PDL:'SP-PDL',SYA:'SP-SAR',PAR:'SP-PAR'};
 function canonicalPoliId(id){ return POLI_ALIAS[id] || id; }
 function samePoli(a,b){ return canonicalPoliId(a)===canonicalPoliId(b); }
-function getPoli(id){ return Store.data.poli.find(p=>p.id===canonicalPoliId(id)); }
+function getPoli(id){
+  const cid=canonicalPoliId(id);
+  return (Store.data && Array.isArray(Store.data.poli)) ? Store.data.poli.find(p=>p.id===cid) : null;
+}
 
 function getMedicine(id){ return Store.data.medicines.find(m=>m.id===id); }
 function getPatient(id){ return Store.data.patients.find(p=>p.id===id); }
@@ -626,14 +629,24 @@ function navigate(hash){ location.hash = '#/' + hash; }
 function currentRoute(){ return location.hash.replace(/^#\/?/, '').split('?')[0]; }
 
 function render(){
-  if(!Session.currentUser){ renderLogin(); return; }
-  let route = currentRoute();
-  if(!route){ location.hash = '#/'+defaultRouteForRole(Session.currentUser.role); return; }
-  if(!isRouteAllowed(route, Session.currentUser.role)){
-    location.hash = '#/'+defaultRouteForRole(Session.currentUser.role);
-    return;
+  try{
+    if(!Session.currentUser){ renderLogin(); return; }
+    let route = currentRoute();
+    if(!route){ location.hash = '#/'+defaultRouteForRole(Session.currentUser.role); return; }
+    if(!isRouteAllowed(route, Session.currentUser.role)){
+      location.hash = '#/'+defaultRouteForRole(Session.currentUser.role);
+      return;
+    }
+    renderShell(route);
+  }catch(err){
+    console.error('SIMRS render error:',err);
+    const app=document.getElementById('app');
+    if(app){
+      app.innerHTML='<div style="max-width:760px;margin:40px auto;padding:24px;font-family:system-ui"><h2>SIMRS sedang memulihkan data demo</h2><p>Data browser sebelumnya kemungkinan terhapus. Tekan tombol di bawah untuk membuat ulang data demo.</p><button id="btn-recover-demo" style="padding:12px 18px;border:0;border-radius:12px;cursor:pointer">Pulihkan Data Demo</button><pre style="white-space:pre-wrap;margin-top:16px;opacity:.65">'+esc(err&&err.message?err.message:String(err))+'</pre></div>';
+      const b=document.getElementById('btn-recover-demo');
+      if(b) b.onclick=function(){ localStorage.removeItem('simrs_db_v1'); localStorage.removeItem('simrs_session_v1'); location.reload(); };
+    }
   }
-  renderShell(route);
 }
 window.addEventListener('hashchange', render);
 
@@ -2007,7 +2020,7 @@ function renderRawatJalanAlerts(poliId){
 function renderPoli(){
   setPageTitle('Rawat Jalan');
   const u=Session.currentUser;
-  poliState={poliId:canonicalPoliId(u.role==='dokter'?u.poliId:(Store.data.poli[0]&&Store.data.poli[0].id)),activeVisitId:null,resepItems:[]};
+  poliState={poliId:canonicalPoliId((u.role==='dokter'||u.role==='perawat')&&u.poliId ? u.poliId : (Store.data.poli[0]&&Store.data.poli[0].id)),activeVisitId:null,resepItems:[]};
   const poliSelector=(u.role==='admin'||u.role==='rawat_jalan'||u.role==='perawat')?'<div class="field" style="max-width:360px"><label>Unit / Poli</label><select id="poli-select">'+Store.data.poli.filter(p=>p.official).map(p=>'<option value="'+p.id+'">'+esc(p.nama)+' — '+esc(p.layanan||'Rawat Jalan')+'</option>').join('')+'</select></div>':'';
   document.getElementById('main-content').innerHTML=
     pageIntro(u.role==='dokter'?'Workspace dokter untuk '+esc(getPoli(u.poliId).nama)+'.':'Command Center pelayanan Rawat Jalan — pilih poli untuk melihat perjalanan pasien, antrean, screening, dokter, penunjang, farmasi, dan penyelesaian.')+
