@@ -1,6 +1,6 @@
 # SIMRS Terpadu — RSUD R.T. Notopuro
 
-**Versi portfolio: v13.1** — fokus revisi pada pengalaman pasien, Live Queue Monitor, tiket yang dapat dibuka kembali, kontrol antrean berkelanjutan, serta pemisahan hak pembatalan berdasarkan penjamin.
+**Versi portfolio: v13.5** — fokus revisi pada pengalaman pasien, Live Queue Monitor, tiket yang dapat dibuka kembali, kontrol antrean berkelanjutan, serta pemisahan hak pembatalan berdasarkan penjamin.
 
 Aplikasi manajemen rumah sakit (PWA) yang mencakup alur lengkap **Pendaftaran → Poli → Laboratorium → Farmasi → Kasir → Obat Diambil**, dengan rekam medis yang terlihat lintas poli. Dibangun murni dengan HTML/CSS/JavaScript (tanpa framework atau dependency eksternal) agar ringan, cepat, dan bisa dipasang (install) sebagai aplikasi serta dipakai offline.
 
@@ -280,3 +280,13 @@ Prototype masih menggunakan localStorage sehingga **belum untuk data pasien nyat
 - Akses rute tetap diperiksa oleh RBAC, bukan hanya menyembunyikan tombol.
 - Akun pasien tidak memiliki menu pencarian pasien/global search.
 - Untuk deployment rumah sakit produksi, RBAC tetap wajib ditegakkan di backend/server.
+
+## V13.5 — Master Dokter & Jadwal Editable
+- Smart Queue tetap memakai nomor antrean per poli + tanggal.
+- Dokter/sesi menjadi alokasi pelayanan, bukan pembentuk nomor antrean.
+- Master Dokter & Jadwal dapat diedit langsung dari menu **Master Data → Dokter & Jadwal**.
+- Admin dapat menambah dokter, menambah/menghapus jadwal, mengedit nama/spesialisasi, serta ekspor/impor JSON.
+- Baseline jadwal publik RSUD R.T. Notopuro dimasukkan sebagai data referensi dan diberi status **Perlu verifikasi**.
+- Poliklinik Eksekutif dipisahkan dari Spesialis dan mengikuti model appointment/pilihan dokter serta batas booking H-1 / maksimal satu jam sebelum sesi dimulai.
+- Monitor antrean dibuat per poli dan otomatis mengikuti sesi dokter aktif.
+- Data master yang diedit tersimpan di localStorage perangkat; untuk sinkronisasi lintas perangkat/monitor fisik diperlukan backend + database + realtime API/WebSocket.

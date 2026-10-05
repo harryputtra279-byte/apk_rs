@@ -405,3 +405,82 @@ body.kiosk-on .content{max-width:1100px;margin:0 auto;padding-top:32px}
 
 /* V12 revision: camera check-in */
 .checkin-grid{display:grid;grid-template-columns:minmax(280px,1.15fr) minmax(260px,.85fr);gap:18px;align-items:start}.scanner-frame{position:relative;min-height:250px;border:1px solid var(--line,#d8e5e1);border-radius:18px;overflow:hidden;background:#102522;display:flex;align-items:center;justify-content:center}.scanner-frame video{width:100%;height:280px;object-fit:cover}.scanner-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#dce9e6;font-size:34px;gap:8px}.scanner-placeholder span{font-size:13px}.scanner-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.checkin-result-card{border:1px solid var(--line,#d8e5e1);border-radius:16px;padding:16px;background:rgba(255,255,255,.55)}.checkin-result-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.checkin-result-head h3{margin:3px 0}.checkin-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}.checkin-detail-grid>div{padding:10px;border-radius:12px;background:rgba(14,92,86,.05)}.checkin-detail-grid span{display:block;font-size:11px;color:var(--ink-soft)}.checkin-detail-grid strong{display:block;margin-top:3px}.queue-control-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.queue-control-actions .ops-alert{flex:1;min-width:220px}@media(max-width:760px){.checkin-grid{grid-template-columns:1fr}.scanner-frame video{height:230px}.checkin-detail-grid{grid-template-columns:1fr}.checkin-result-head{flex-direction:column}.queue-control-actions .ops-alert{flex-basis:100%}}
+
+/* =========================================================
+   V13.2 — PILIHAN LAYANAN RAWAT JALAN & BOOKING TABS
+   ========================================================= */
+.poli-service-switch{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  margin:0 0 12px;
+  max-width:520px;
+}
+.poli-service-btn{
+  border:1px solid var(--glass-border);
+  background:var(--glass-bg);
+  color:var(--ink-soft);
+  border-radius:14px;
+  padding:12px 14px;
+  font-weight:800;
+  cursor:pointer;
+  box-shadow:var(--shadow-float);
+}
+.poli-service-btn.active{
+  background:var(--accent);
+  color:#fff;
+  border-color:var(--accent);
+}
+.booking-tabs-grid{
+  width:min(620px,100%);
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;
+  overflow:visible;
+  border-radius:18px;
+}
+.booking-tabs-grid .tab{
+  width:100%;
+  min-height:44px;
+  white-space:normal;
+  line-height:1.2;
+}
+@media(max-width:520px){
+  .poli-service-switch{grid-template-columns:1fr 1fr}
+  .booking-tabs-grid{grid-template-columns:1fr 1fr}
+  .booking-tabs-grid .tab{padding:10px 8px;font-size:12px}
+}
+
+/* =========================================================
+   V13.3 — DASHBOARD SESI DOKTER & MONITOR POLI
+   ========================================================= */
+.doctor-session-dashboard{margin:14px 0}
+.doctor-live-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.doctor-live-grid>div{padding:14px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.55)}
+.doctor-live-number{display:block;font-size:38px;line-height:1.05;margin-top:6px;font-weight:850;letter-spacing:.02em}
+.doctor-live-number.small{font-size:25px}
+.public-monitor{min-height:calc(100vh - 110px);padding:28px;border-radius:24px;background:linear-gradient(145deg,#f8fbfa,#eaf3f0);display:flex;flex-direction:column;gap:20px}
+.monitor-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+.monitor-head h1{margin:2px 0 6px;font-size:clamp(28px,4vw,52px);letter-spacing:.03em}
+.monitor-head>div:first-child>div:last-child{font-size:18px;color:var(--ink-soft)}
+.monitor-clock{font-size:clamp(26px,4vw,48px);font-weight:850;white-space:nowrap}
+.monitor-current{background:#fff;border-radius:24px;padding:24px;text-align:center;box-shadow:var(--shadow-float);border:1px solid var(--line)}
+.monitor-current span{font-weight:800;letter-spacing:.12em;color:var(--ink-soft);font-size:14px}
+.monitor-current strong{display:block;font-size:clamp(80px,15vw,180px);line-height:1;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;margin:8px 0}
+.monitor-current div{font-size:22px;font-weight:700}
+.monitor-next{background:#fff;border-radius:22px;padding:20px;border:1px solid var(--line)}
+.monitor-next h2{text-align:center;margin:0 0 14px;font-size:20px}
+.monitor-queue-list{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.monitor-queue-list>div{border:1px solid var(--line);border-radius:16px;padding:16px;text-align:center;background:#f7faf9}
+.monitor-queue-list strong{display:block;font-size:30px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.monitor-queue-list span{font-size:13px;color:var(--ink-soft)}
+.monitor-empty{text-align:center!important;grid-column:1/-1;color:var(--ink-soft)}
+.monitor-footer{text-align:center;color:var(--ink-soft);font-size:14px;margin-top:auto}
+@media(max-width:760px){.doctor-live-grid{grid-template-columns:1fr}.monitor-head{flex-direction:column}.monitor-clock{align-self:flex-end}.monitor-queue-list{grid-template-columns:repeat(2,1fr)}.public-monitor{padding:16px}.monitor-current strong{font-size:78px}}
+
+/* V13.4 — monitor poli / smart queue */
+.monitor-session-strip{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;margin-top:14px;padding:14px 18px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.72)}
+.monitor-session-strip span{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--ink-soft)}
+.monitor-session-strip strong{font-size:17px}
+.monitor-session-strip small{color:var(--ink-soft);text-align:right}
+@media(max-width:700px){.monitor-session-strip{grid-template-columns:1fr}.monitor-session-strip small{text-align:left}}
