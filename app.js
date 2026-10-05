@@ -606,6 +606,7 @@ const NAV_ITEMS = [
   {hash:'kasir-rawat-inap', label:'Kasir Rawat Inap', ic:'🧾', roles:['admin','kasir']},
   {hash:'kasir-igd', label:'Kasir IGD', ic:'🧾', roles:['admin','kasir']},
   {hash:'rekam-medis', label:'Rekam Medis', ic:'📁', roles:['admin','dokter','dokter_igd','dokter_ranap']},
+  {hash:'riwayat-dokter', label:'Riwayat Pemeriksaan', ic:'🩺', roles:['dokter']},
   {hash:'master-data', label:'Master Data', ic:'⚙️', roles:['admin']},
   {hash:'cek-antrian', label:'Cek Antrian', ic:'📺', roles:['admin','loket','dokter','farmasi','kasir','lab','perawat','rawat_jalan','dokter_igd','perawat_igd','dokter_ranap','perawat_ranap']}
 ];
@@ -850,21 +851,19 @@ function renderLogin(){
   });
 }
 function chipsForDemo(){
-  const staff=[
-    ['admin','Admin'],['loket','Pendaftaran'],['rawatjalan','Rawat Jalan'],['dokter.rajal','Dokter Rawat Jalan'],
-    ['farmasi.rajal','Farmasi RJ'],['kasir.rajal','Kasir RJ'],['dokter.igd','Dokter IGD'],['perawat.igd','Perawat IGD'],
-    ['farmasi.igd','Farmasi IGD'],['kasir.igd','Kasir IGD'],['dokter.ranap','Dokter RI'],['perawat.ranap','Perawat RI'],
-    ['farmasi.ranap','Farmasi RI'],['kasir.ranap','Kasir RI'],['lab','Laboratorium'],
-    ['dokter.umum','👨‍⚕️ dr. Andi — Poli Umum'],['dokter.anak','👨‍⚕️ dr. Maria — Poli Anak'],['dokter.gigi','🦷 drg. Hendra — Poli Gigi'],['dokter.jantung','❤️ dr. Rudi — Poli Jantung'],['dokter.penyakitdalam','🩺 dr. Bima — Poli Penyakit Dalam'],
-    ['asisten.umum','👩‍⚕️ Asisten Poli Umum'],['asisten.anak','👩‍⚕️ Asisten Poli Anak'],['asisten.gigi','👩‍⚕️ Asisten Poli Gigi'],['asisten.jantung','👩‍⚕️ Asisten Poli Jantung'],['asisten.penyakitdalam','👩‍⚕️ Asisten Poli Penyakit Dalam'],
-    ['pasien.demo','Pasien Demo Lama']
+  const sections=[
+    {title:'🛡️ ADMIN',hint:'Pengelola sistem, master data, hak akses, dan audit log.',items:[['admin','Admin — Siti Rahayu']]},
+    {title:'📝 PENDAFTARAN / RAWAT JALAN',hint:'Registrasi, check-in, booking, dan antrean rawat jalan.',items:[['loket','Pendaftaran / Loket'],['rawatjalan','Petugas Rawat Jalan']]},
+    {title:'👨‍⚕️ DOKTER',hint:'Dokter poli dan dokter unit pelayanan khusus.',items:[['dokter.umum','dr. Andi — Poli Umum'],['dokter.anak','dr. Maria — Poli Anak'],['dokter.gigi','drg. Hendra — Poli Gigi'],['dokter.jantung','dr. Rudi — Poli Jantung'],['dokter.penyakitdalam','dr. Bima — Poli Penyakit Dalam'],['dokter.igd','Dokter IGD'],['dokter.ranap','Dokter Rawat Inap']]},
+    {title:'👩‍⚕️ PERAWAT / ASISTEN',hint:'Asisten screening poli, perawat IGD, dan perawat rawat inap.',items:[['asisten.umum','Asisten Poli Umum'],['asisten.anak','Asisten Poli Anak'],['asisten.gigi','Asisten Poli Gigi'],['asisten.jantung','Asisten Poli Jantung'],['asisten.penyakitdalam','Asisten Poli Penyakit Dalam'],['perawat.igd','Perawat IGD'],['perawat.ranap','Perawat Rawat Inap']]},
+    {title:'💊 FARMASI',hint:'Pelayanan obat berdasarkan resep dari dokter.',items:[['farmasi.rajal','Farmasi Rawat Jalan'],['farmasi.igd','Farmasi IGD'],['farmasi.ranap','Farmasi Rawat Inap']]},
+    {title:'🧪 LABORATORIUM',hint:'Penerimaan permintaan pemeriksaan dan input hasil.',items:[['lab','Petugas Laboratorium']]},
+    {title:'🧾 KASIR',hint:'Billing dan pembayaran sesuai unit pelayanan.',items:[['kasir.rajal','Kasir Rawat Jalan'],['kasir.igd','Kasir IGD'],['kasir.ranap','Kasir Rawat Inap']]}
   ];
-  const patients=[
-    ['pasien.demo1','👤 Andi Pratama'],['pasien.demo2','👤 Sari Wulandari'],['pasien.demo3','👤 Budi Setiawan'],['pasien.demo4','👤 Rina Maharani'],['pasien.demo5','👤 Dimas Saputra']
-  ];
+  const patients=[['pasien.demo1','👤 Andi Pratama'],['pasien.demo2','👤 Sari Wulandari'],['pasien.demo3','👤 Budi Setiawan'],['pasien.demo4','👤 Rina Maharani'],['pasien.demo5','👤 Dimas Saputra']];
   const make=function(items){return items.map(function(item){const uname=item[0],label=item[1],u=Store.data.users.find(function(x){return x.username===uname;});if(!u)return '';return '<button type="button" class="chip" data-username="'+uname+'" data-password="'+u.password+'">'+label+'</button>';}).join('');};
-  return '<div class="login-demo-section"><div class="login-demo-title">Akun Petugas / Demo Sistem</div><div class="chip-row">'+make(staff)+'</div></div>'+
-    '<div class="login-demo-section patient-demo-section"><div class="login-demo-title">👥 5 Akun Pasien Demo</div><div class="login-demo-hint">Klik nama pasien untuk langsung masuk ke Dashboard Pasien.</div><div class="chip-row">'+make(patients)+'</div></div>';
+  const staffHtml=sections.map(function(sec){return '<div class="login-demo-section"><div class="login-demo-title">'+sec.title+'</div><div class="login-demo-hint">'+sec.hint+'</div><div class="chip-row">'+make(sec.items)+'</div></div>';}).join('');
+  return staffHtml+'<div class="login-demo-section patient-demo-section"><div class="login-demo-title">👥 PASIEN DEMO</div><div class="login-demo-hint">5 akun pasien fiktif untuk menguji booking, QR/check-in, antrean, notifikasi, dan riwayat kontrol.</div><div class="chip-row">'+make(patients)+'</div></div>';
 }
 function handleLogin(e){
   e.preventDefault();
@@ -1081,7 +1080,7 @@ function renderPatientRiwayat(){
   setPageTitle('Riwayat Kontrol');
   const u=Session.currentUser, p=getPatient(u.patientId);
   if(!p){document.getElementById('main-content').innerHTML='<div class="empty">Data pasien tidak ditemukan.</div>';return;}
-  const list=patientVisits(p.id).filter(function(v){return v.status==='selesai';}).sort(function(a,b){return new Date(b.tanggal||b.createdAt)-new Date(a.tanggal||a.createdAt);});
+  const list=patientVisits(p.id).filter(function(v){return v.diagnosis || v.catatan || v.vital || v.screening;}).sort(function(a,b){return new Date(b.tanggal||b.createdAt)-new Date(a.tanggal||a.createdAt);});
   document.getElementById('main-content').innerHTML=
     pageIntro('Riwayat kontrol Anda. Informasi yang ditampilkan dibatasi untuk menjaga privasi.')+
     '<section class="panel"><div class="panel-head"><div><h2>📋 Riwayat Kontrol</h2><div class="hint">Hanya ringkasan kunjungan, tanpa membuka detail rekam medis di sisi pasien.</div></div></div><div class="panel-body">'+
@@ -2335,10 +2334,14 @@ function openRiwayatModal(patientId){
 function historyItemHtmlFull(v){
   const poli = getPoli(v.poliId);
   const resep = v.resepId ? getResep(v.resepId) : null;
-  return '<div class="history-item"><div class="when">'+formatTanggalWaktu(v.createdAt)+' &middot; '+esc(poli.nama)+' &middot; '+badgeStatus(v.status)+'</div>'+
-    '<div style="margin-top:4px"><strong>Diagnosis:</strong> '+esc(v.diagnosis||'-')+'</div>'+
-    (v.catatan ? '<div><strong>Catatan:</strong> '+esc(v.catatan)+'</div>' : '')+
-    (resep ? '<div><strong>Resep:</strong> '+resep.items.map(i=>esc(i.nama)+' ×'+i.jumlah).join(', ')+'</div>' : '')+'</div>';
+  const vital=v.vital||v.screening||{};
+  return '<div class="history-item"><div class="when">'+formatTanggalWaktu(v.updatedAt||v.createdAt)+' &middot; '+esc(poli.nama)+' &middot; '+badgeStatus(v.status)+'</div>'+
+    '<div style="margin-top:4px"><strong>Dokter:</strong> '+esc((getUserById(v.dokterId)||{}).nama||'-')+'</div>'+
+    '<div><strong>Keluhan:</strong> '+esc(v.keluhan||'-')+'</div>'+
+    '<div><strong>Diagnosis:</strong> '+esc(v.diagnosis||'-')+'</div>'+
+    (v.catatan ? '<div><strong>Catatan/Tindakan:</strong> '+esc(v.catatan)+'</div>' : '')+
+    ((vital.td||vital.nadi||vital.suhu||vital.rr||vital.bb||vital.tb) ? '<div><strong>Tanda vital:</strong> TD '+esc(vital.td||'-')+' · Nadi '+esc(vital.nadi||'-')+' · Suhu '+esc(vital.suhu||'-')+' °C · RR '+esc(vital.rr||'-')+' · BB '+esc(vital.bb||'-')+' kg · TB '+esc(vital.tb||'-')+' cm</div>' : '')+
+    (resep ? '<div><strong>Resep:</strong> '+resep.items.map(i=>esc(i.nama)+' ×'+i.jumlah+' ('+esc(i.aturanPakai||'-')+')').join(', ')+'</div>' : '')+'</div>';
 }
 function simpanDraftPeriksa(visitId){
   const visit=getVisit(visitId); if(!visit)return;
@@ -3232,6 +3235,32 @@ function rujukRawatInap(visitId){
 }
 
 /* =================================================================
+   MODULE: RIWAYAT PEMERIKSAAN DOKTER
+   ================================================================= */
+function renderRiwayatDokter(){
+  setPageTitle('Riwayat Pemeriksaan');
+  const u=Session.currentUser;
+  const list=Store.data.visits.filter(function(v){
+    return v.dokterId===u.id && (v.diagnosis || v.catatan || v.vital || v.screening);
+  }).sort(function(a,b){return new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt);});
+  document.getElementById('main-content').innerHTML=
+    pageIntro('Riwayat pemeriksaan yang ditangani oleh dokter yang sedang login. Data klinis tetap melekat pada nomor rekam medis pasien dan dapat dibuka melalui Rekam Medis.')+
+    '<div class="panel"><div class="panel-head"><div><h2>🩺 Riwayat Pemeriksaan Saya</h2><div class="hint">'+list.length+' kunjungan memiliki data klinis yang sudah dicatat.</div></div></div><div class="panel-body">'+
+    (list.length ? list.map(function(v){return '<div class="history-item"><div class="when">'+formatTanggalWaktu(v.updatedAt||v.createdAt)+' · '+esc(getPoli(v.poliId).nama)+' · '+esc(v.noAntrian||'-')+' · '+badgeStatus(v.status)+'</div><div><strong>'+esc(getPatient(v.patientId).nama)+'</strong> <span class="hint">· RM '+esc(getPatient(v.patientId).id)+'</span></div>'+clinicalSummaryHtml(v)+'</div>';}).join('') : '<div class="empty"><div class="big">🩺</div>Belum ada pemeriksaan yang tercatat oleh dokter ini.</div>')+
+    '</div></div>';
+}
+function clinicalSummaryHtml(v){
+  const vital=v.vital||v.screening||{};
+  const parts=[];
+  if(v.diagnosis) parts.push('<div><strong>Diagnosis:</strong> '+esc(v.diagnosis)+'</div>');
+  if(v.catatan) parts.push('<div><strong>Catatan/Tindakan:</strong> '+esc(v.catatan)+'</div>');
+  if(vital.td||vital.nadi||vital.suhu||vital.rr||vital.bb||vital.tb) parts.push('<div><strong>Tanda vital:</strong> TD '+esc(vital.td||'-')+' · Nadi '+esc(vital.nadi||'-')+' · Suhu '+esc(vital.suhu||'-')+' °C · RR '+esc(vital.rr||'-')+' · BB '+esc(vital.bb||'-')+' kg · TB '+esc(vital.tb||'-')+' cm</div>');
+  const resep=v.resepId?getResep(v.resepId):null;
+  if(resep) parts.push('<div><strong>Resep:</strong> '+resep.items.map(function(i){return esc(i.nama)+' ×'+i.jumlah+' ('+esc(i.aturanPakai||'-')+')';}).join(', ')+'</div>');
+  return parts.join('') || '<div class="hint">Data klinis belum lengkap.</div>';
+}
+
+/* =================================================================
    MODULE: REKAM MEDIS
    ================================================================= */
 function renderRekamMedis(){
@@ -3479,6 +3508,7 @@ MODULE_RENDERERS['kasir-rawat-jalan'] = renderKasir;
 MODULE_RENDERERS['kasir-rawat-inap'] = renderKasir;
 MODULE_RENDERERS['kasir-igd'] = renderKasir;
 MODULE_RENDERERS['rekam-medis'] = renderRekamMedis;
+MODULE_RENDERERS['riwayat-dokter'] = renderRiwayatDokter;
 MODULE_RENDERERS['master-data'] = renderMasterData;
 MODULE_RENDERERS['cek-antrian'] = renderCekAntrian;
 
