@@ -1,4 +1,4 @@
-# SIMRS Terpadu — RSU Sehat Sentosa
+# SIMRS Terpadu — RSUD R.T. Notopuro
 
 Aplikasi manajemen rumah sakit (PWA) yang mencakup alur lengkap **Pendaftaran → Poli → Laboratorium → Farmasi → Kasir → Obat Diambil**, dengan rekam medis yang terlihat lintas poli. Dibangun murni dengan HTML/CSS/JavaScript (tanpa framework atau dependency eksternal) agar ringan, cepat, dan bisa dipasang (install) sebagai aplikasi serta dipakai offline.
 
@@ -186,3 +186,42 @@ Cakupan workflow:
 Aplikasi ini diposisikan sebagai lapisan UX/operasional di atas sistem yang sudah ada. Tujuannya mengurangi input berulang, perpindahan pasien yang tidak perlu, waktu tunggu yang tidak terlihat, dan komunikasi manual yang dapat digantikan notifikasi/audit trail, tanpa mengambil keputusan klinis dari tenaga kesehatan.
 
 Target desain menggunakan prinsip patient-centered care, continuity of care, workflow efficiency, auditability, dan interoperabilitas nasional/internasional. Klaim kepatuhan akreditasi internasional tidak dibuat; implementasi produksi tetap membutuhkan validasi SOP, kebijakan RSUD, keamanan, integrasi sistem, dan asesmen resmi.
+
+
+## v9 — Patient Queue Companion
+- Dashboard pasien khusus poli yang sedang didaftarkan.
+- Posisi antrean dan nomor yang sedang dilayani pada prototype.
+- Peringatan saat tersisa 3 pasien sebelum nomor pasien.
+- Notifikasi in-app dan Browser Notification jika izin diberikan.
+- Booking dari JKN Mobile dan booking mandiri tetap menggunakan counter antrean poli/tanggal yang sama.
+- Akun demo pasien: `pasien.demo` / `pasien123`, terhubung ke RM-2026-0001.
+- Catatan prototype: localStorage tidak dapat menyinkronkan antrean lintas perangkat; produksi memerlukan backend/API dan Web Push agar notifikasi tetap bekerja saat aplikasi pasien tertutup.
+
+
+## v10 — Rawat Jalan End-to-End (Rumah Sakit + Pasien)
+
+Versi v10 mematangkan Rawat Jalan sebagai modul prioritas sebelum pengembangan IGD dan Rawat Inap. UI glassmorphism dipertahankan.
+
+### Sisi pasien
+- Dashboard pasien hanya menampilkan poli/layanan yang sedang didaftarkan pasien.
+- Pendaftaran online Rawat Jalan untuk **Reguler/Poliklinik Spesialis** dan **Poliklinik Eksekutif**.
+- Pilihan penjamin: JKN/BPJS, Umum, dan Asuransi.
+- Booking maksimal H-3 dan validasi kuota.
+- Nomor antrean booking menggunakan counter yang sama dengan alur JKN Mobile pada poli dan tanggal yang sama.
+- QR/barcode booking untuk konfirmasi kedatangan di loket rumah sakit.
+- Notifikasi antrean ketika tersisa 3 pasien sebelum giliran.
+- Patient Journey: booking → check-in → screening → dokter → tindak lanjut.
+- Reschedule/no-show tetap menjadi bagian dari siklus booking.
+- **Pembayaran tidak ditampilkan dan tidak dilakukan di aplikasi pasien.** Saat pasien benar-benar datang, QR/barcode diverifikasi di loket dan administrasi/pembayaran diproses di rumah sakit.
+
+### Sisi rumah sakit
+- Booking JKN Mobile dan booking mandiri diarahkan ke urutan antrean poli/tanggal yang sama pada prototype.
+- Check-in melalui scan QR/barcode di loket.
+- Konfirmasi kedatangan dicatat dengan kanal `loket_scan_qr`.
+- Status administrasi/pembayaran ditandai sebagai diproses di loket, tanpa mengekspos proses pembayaran ke dashboard pasien.
+- Monitoring kuota, booking, antrean, screening, pemeriksaan, penunjang, review, farmasi, dan penyelesaian.
+- Monitoring keterlambatan dokter, alternatif dokter dengan spesialisasi/poli yang sama, reschedule, no-show, dan notifikasi.
+- Jalur Reguler dan Eksekutif tetap berada dalam satu ekosistem aplikasi dengan layanan/poli dan antrean yang dapat dibedakan.
+
+### Catatan keamanan produksi
+Prototype masih menggunakan localStorage sehingga **belum untuk data pasien nyata** dan belum menyediakan sinkronisasi lintas perangkat. Produksi membutuhkan backend/API, database terpusat, autentikasi/otorisasi kuat, HTTPS, audit trail terpusat, Web Push/layanan notifikasi, backup, monitoring, serta integrasi resmi dengan sistem eksternal seperti antrean JKN dan SATUSEHAT sesuai kewenangan/ketentuan.
