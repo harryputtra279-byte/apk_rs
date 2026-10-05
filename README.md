@@ -1,6 +1,6 @@
 # SIMRS Terpadu — RSUD R.T. Notopuro
 
-**Versi portfolio: v12** — fokus revisi pada pengalaman pasien, Live Queue Monitor, tiket yang dapat dibuka kembali, kontrol antrean berkelanjutan, serta pemisahan hak pembatalan berdasarkan penjamin.
+**Versi portfolio: v13.1** — fokus revisi pada pengalaman pasien, Live Queue Monitor, tiket yang dapat dibuka kembali, kontrol antrean berkelanjutan, serta pemisahan hak pembatalan berdasarkan penjamin.
 
 Aplikasi manajemen rumah sakit (PWA) yang mencakup alur lengkap **Pendaftaran → Poli → Laboratorium → Farmasi → Kasir → Obat Diambil**, dengan rekam medis yang terlihat lintas poli. Dibangun murni dengan HTML/CSS/JavaScript (tanpa framework atau dependency eksternal) agar ringan, cepat, dan bisa dipasang (install) sebagai aplikasi serta dipakai offline.
 
@@ -269,3 +269,14 @@ Prototype masih menggunakan localStorage sehingga **belum untuk data pasien nyat
 - Tombol Panggil Berikutnya, Mulai Pemeriksaan, Panggil Ulang, Tunda, dan Selesaikan Pemeriksaan & Panggil Berikutnya.
 - Normalisasi ID poli menjaga akun demo lama tetap terhubung dengan katalog poli resmi.
 - Service worker dinaikkan ke V12.3 agar perubahan tidak tertahan cache.
+
+
+## V13.1 — RBAC & Penyederhanaan Navigasi
+
+- Navigasi dokter Rawat Jalan dirapikan menjadi **Beranda → Poli → Rekam Medis → Riwayat**.
+- Menu **Rawat Inap** tidak muncul pada akun dokter poli Rawat Jalan.
+- **Riwayat** ditempatkan sebagai menu utama bersebelahan dengan Rekam Medis.
+- **Cek Antrian** diposisikan sebagai modul monitor/kiosk untuk petugas loket/operator dan layar ruang tunggu, bukan workspace dokter/perawat.
+- Akses rute tetap diperiksa oleh RBAC, bukan hanya menyembunyikan tombol.
+- Akun pasien tidak memiliki menu pencarian pasien/global search.
+- Untuk deployment rumah sakit produksi, RBAC tetap wajib ditegakkan di backend/server.

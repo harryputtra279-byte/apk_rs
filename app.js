@@ -588,20 +588,50 @@ function routeContext(route){
   return null;
 }
 
+/* ================================================================
+   NAVIGASI V13.1 — satu katalog menu, lalu disaring oleh RBAC.
+   Urutan sengaja dibuat agar menu klinis utama muncul lebih dulu.
+   ================================================================ */
+const NAV_ITEMS = [
+  {hash:'dashboard',label:'Dashboard',ic:'▦'},
+  {hash:'beranda',label:'Beranda',ic:'⌂'},
+  {hash:'pendaftaran',label:'Pendaftaran',ic:'📝'},
+  {hash:'booking',label:'Booking',ic:'📅'},
+  {hash:'poli',label:'Poli',ic:'🩺'},
+  {hash:'igd',label:'IGD',ic:'🚑'},
+  {hash:'ranap',label:'Rawat Inap',ic:'🏨'},
+  {hash:'lab',label:'Laboratorium',ic:'🧪'},
+  {hash:'farmasi-rawat-jalan',label:'Farmasi Rawat Jalan',ic:'💊'},
+  {hash:'farmasi-rawat-inap',label:'Farmasi Rawat Inap',ic:'💊'},
+  {hash:'farmasi-igd',label:'Farmasi IGD',ic:'💊'},
+  {hash:'kasir-rawat-jalan',label:'Kasir Rawat Jalan',ic:'🧾'},
+  {hash:'kasir-rawat-inap',label:'Kasir Rawat Inap',ic:'🧾'},
+  {hash:'kasir-igd',label:'Kasir IGD',ic:'🧾'},
+  {hash:'rekam-medis',label:'Rekam Medis',ic:'📋'},
+  {hash:'riwayat-dokter',label:'Riwayat',ic:'🕘'},
+  {hash:'master-data',label:'Master Data',ic:'⚙️'},
+  {hash:'cek-antrian',label:'Cek Antrian',ic:'📺'},
+  {hash:'pasien-dashboard',label:'Dashboard',ic:'⌂'},
+  {hash:'pasien-booking',label:'Rawat Jalan',ic:'📅'},
+  {hash:'pasien-booking-saya',label:'Booking Saya',ic:'🎫'},
+  {hash:'pasien-riwayat',label:'Riwayat Kontrol',ic:'📋'}
+];
+
 const ROLE_ROUTE_RULES = {
   admin: ['*'],
   pasien: ['pasien-dashboard','pasien-booking','pasien-booking-saya','pasien-riwayat'],
   loket: ['beranda','pendaftaran','booking','cek-antrian'],
   rawat_jalan: ['pendaftaran','booking','poli','cek-antrian'],
-  dokter: ['beranda','poli','rekam-medis','riwayat-dokter','cek-antrian'],
-  dokter_igd: ['igd','rekam-medis','riwayat-dokter','cek-antrian'],
-  dokter_ranap: ['ranap','rekam-medis','riwayat-dokter','cek-antrian'],
-  perawat: ['beranda','poli','rekam-medis','cek-antrian'],
-  perawat_igd: ['igd','rekam-medis','cek-antrian'],
-  perawat_ranap: ['ranap','rekam-medis','cek-antrian'],
-  lab: ['beranda','lab','cek-antrian'],
-  farmasi: ['beranda','farmasi-rawat-jalan','farmasi-rawat-inap','farmasi-igd','cek-antrian'],
-  kasir: ['beranda','kasir-rawat-jalan','kasir-rawat-inap','kasir-igd','cek-antrian']
+  // Dokter poli: hanya Beranda, Poli, Rekam Medis, dan Riwayat.
+  dokter: ['beranda','poli','rekam-medis','riwayat-dokter'],
+  dokter_igd: ['igd','rekam-medis','riwayat-dokter'],
+  dokter_ranap: ['ranap','rekam-medis','riwayat-dokter'],
+  perawat: ['beranda','poli','rekam-medis'],
+  perawat_igd: ['igd','rekam-medis'],
+  perawat_ranap: ['ranap','rekam-medis'],
+  lab: ['beranda','lab'],
+  farmasi: ['beranda','farmasi-rawat-jalan','farmasi-rawat-inap','farmasi-igd'],
+  kasir: ['beranda','kasir-rawat-jalan','kasir-rawat-inap','kasir-igd']
 };
 
 function isRouteAllowed(route, role){
@@ -671,7 +701,7 @@ function getVisibleNotifications(){
 function renderShell(route){
   const u = Session.currentUser;
   const visibleNotifications=getVisibleNotifications();
-  const items = NAV_ITEMS.filter(n=>isRouteAllowed(n.hash,u.role));
+  const items = NAV_ITEMS.filter(n=>isRouteAllowed(n.hash,u.role) && !(u.role==='pasien' && (n.hash==='cek-antrian' || /cari|pencarian/i.test(n.label))));
   const primary = items.slice(0,4);
   const overflow = items.slice(4);
   const initial = (u.nama||'?').trim().charAt(0).toUpperCase();
@@ -784,6 +814,7 @@ function openAccountSheet(logoutHandler){
 
 function openGlobalSearch(){
   if(!Session.currentUser || Session.currentUser.role==='pasien'){ return; }
+  if(!isRouteAllowed('rekam-medis', Session.currentUser.role) && Session.currentUser.role!=='loket' && Session.currentUser.role!=='rawat_jalan'){ return; }
   document.getElementById('modal-root').innerHTML =
     '<div class="sheet-overlay" id="modal-overlay"><div class="bottom-sheet">'+
       '<div class="sheet-handle"></div>'+
@@ -1290,8 +1321,8 @@ function berandaDokter(){
   }
   html += '<div class="action-grid">'+
       '<div class="action-card" data-nav="poli"><span class="ic">🩺</span><span class="lbl">Antrian Poli</span></div>'+
-      '<div class="action-card" data-action="global-search"><span class="ic">🔍</span><span class="lbl">Cari Rekam Medis</span></div>'+
-      '<div class="action-card" data-nav="cek-antrian"><span class="ic">📺</span><span class="lbl">Cek Antrian</span></div>'+
+      '<div class="action-card" data-nav="rekam-medis"><span class="ic">📋</span><span class="lbl">Rekam Medis</span></div>'+
+      '<div class="action-card" data-nav="riwayat-dokter"><span class="ic">🕘</span><span class="lbl">Riwayat</span></div>'+
     '</div>';
   return html;
 }
@@ -1353,8 +1384,8 @@ function berandaPerawat(){
       '</div>'+
       '<div class="action-grid">'+
         '<div class="action-card" data-nav="poli"><span class="ic">🩺</span><span class="lbl">Screening & Antrian Poli</span></div>'+
-        '<div class="action-card" data-nav="cek-antrian"><span class="ic">📺</span><span class="lbl">Cek Antrian</span></div>'+
-        '<div class="action-card" data-action="global-search"><span class="ic">🔍</span><span class="lbl">Cari Pasien</span></div>'+
+        '<div class="action-card" data-nav="rekam-medis"><span class="ic">📋</span><span class="lbl">Rekam Medis</span></div>'+
+        '<div class="action-card" data-nav="poli"><span class="ic">🩺</span><span class="lbl">Buka Poli</span></div>'+
       '</div>'+
       '<div class="panel"><div class="panel-head"><h2>Pasien yang Perlu Ditangani</h2></div><div class="panel-body">'+
         (screening.length ? screening.map(v=>{const p=getPatient(v.patientId);return '<div class="rj-queue-item"><div><div class="rj-q-top"><span class="rj-q-no">'+esc(v.noAntrian)+'</span>'+badgeStatus(v.status)+'</div><strong>'+esc(p?.nama||'-')+'</strong></div><button class="btn btn-primary btn-sm" data-nav="poli">Buka Screening</button></div>';}).join('') : '<div class="empty">Tidak ada pasien yang menunggu screening.</div>')+
@@ -1364,7 +1395,7 @@ function berandaPerawat(){
   const perluPerhatian = aktif.filter(a=>{ const v=a.vitalLog[a.vitalLog.length-1]; return v && v.news2>=5; }).length;
   const bedKosong = Store.data.beds.filter(b=>b.status==='kosong').length;
   return '<div class="grid grid-3">'+statCard('Pasien Dirawat',aktif.length,'seluruh bangsal')+statCard('Perlu Perhatian',perluPerhatian,'skor NEWS2 ≥5')+statCard('Bed Kosong',bedKosong,'dari '+Store.data.beds.length+' total')+'</div>'+
-    '<div class="action-grid"><div class="action-card" data-nav="ranap"><span class="ic">🏨</span><span class="lbl">Rawat Inap</span></div><div class="action-card" data-action="global-search"><span class="ic">🔍</span><span class="lbl">Cari Pasien</span></div><div class="action-card" data-nav="cek-antrian"><span class="ic">📺</span><span class="lbl">Cek Antrian</span></div></div>';
+    '<div class="action-grid"><div class="action-card" data-nav="poli"><span class="ic">🩺</span><span class="lbl">Poli Saya</span></div><div class="action-card" data-nav="rekam-medis"><span class="ic">📋</span><span class="lbl">Rekam Medis</span></div><div class="action-card" data-nav="riwayat-dokter"><span class="ic">🕘</span><span class="lbl">Riwayat</span></div></div>';
 }
 
 /* =================================================================
@@ -3436,7 +3467,7 @@ function renderMasterStaffTab(){
 function renderCekAntrian(){
   setPageTitle('Cek Antrian');
   document.getElementById('main-content').innerHTML =
-    pageIntro('Papan status antrian seluruh poli hari ini — cocok ditampilkan di layar ruang tunggu.')+
+    pageIntro('Papan monitor antrean untuk petugas loket/operator dan layar ruang tunggu. Menu ini bukan menu kerja dokter atau perawat.')+
     '<div style="margin-bottom:14px"><button class="btn btn-outline btn-sm" id="btn-kiosk">⛶ Mode Layar Penuh</button> <button class="btn btn-ghost btn-sm" id="btn-refresh-antrian">↻ Perbarui</button></div>'+
     '<h3 style="color:var(--ink-soft);margin-bottom:10px">🩺 Antrian Rawat Jalan</h3>'+
     '<div class="kiosk-grid" id="cek-antrian-grid"></div>'+
