@@ -259,3 +259,13 @@ Versi v10 mematangkan Rawat Jalan sebagai modul prioritas sebelum pengembangan I
 
 ### Catatan keamanan produksi
 Prototype masih menggunakan localStorage sehingga **belum untuk data pasien nyata** dan belum menyediakan sinkronisasi lintas perangkat. Produksi membutuhkan backend/API, database terpusat, autentikasi/otorisasi kuat, HTTPS, audit trail terpusat, Web Push/layanan notifikasi, backup, monitoring, serta integrasi resmi dengan sistem eksternal seperti antrean JKN dan SATUSEHAT sesuai kewenangan/ketentuan.
+
+
+## V12 — Revisi Check-in & Kontrol Antrean
+- Scanner kamera QR/barcode di Pendaftaran.
+- Input manual kode booking tetap tersedia sebagai fallback.
+- Konfirmasi pasien hadir membuat visit/check-in dan mengaktifkan antrean poli.
+- Kontrol antrean dinamis berlaku untuk semua poli berdasarkan poli akun.
+- Tombol Panggil Berikutnya, Mulai Pemeriksaan, Panggil Ulang, Tunda, dan Selesaikan Pemeriksaan & Panggil Berikutnya.
+- Normalisasi ID poli menjaga akun demo lama tetap terhubung dengan katalog poli resmi.
+- Service worker dinaikkan ke V12.2 agar perubahan tidak tertahan cache.
