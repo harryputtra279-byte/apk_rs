@@ -784,18 +784,22 @@ function renderLogin(){
   });
 }
 function chipsForDemo(){
-  const groups = [
+  const staff = [
     ['admin','Admin'],['loket','Pendaftaran'],['rawatjalan','Rawat Jalan'],['dokter.rajal','Dokter Rawat Jalan'],
     ['farmasi.rajal','Farmasi RJ'],['kasir.rajal','Kasir RJ'],['dokter.igd','Dokter IGD'],['perawat.igd','Perawat IGD'],
     ['farmasi.igd','Farmasi IGD'],['kasir.igd','Kasir IGD'],['dokter.ranap','Dokter RI'],['perawat.ranap','Perawat RI'],
-    ['farmasi.ranap','Farmasi RI'],['kasir.ranap','Kasir RI'],['lab','Laboratorium'],
-    ['pasien.demo','Pasien Demo Lama'],['pasien.demo1','Pasien Demo 1'],['pasien.demo2','Pasien Demo 2'],['pasien.demo3','Pasien Demo 3'],['pasien.demo4','Pasien Demo 4'],['pasien.demo5','Pasien Demo 5']
+    ['farmasi.ranap','Farmasi RI'],['kasir.ranap','Kasir RI'],['lab','Laboratorium']
   ];
-  return groups.map(([uname,label])=>{
-    const u = Store.data.users.find(x=>x.username===uname);
-    if(!u) return '';
-    return '<button type="button" class="chip" data-username="'+uname+'" data-password="'+u.password+'">'+label+'</button>';
-  }).join('');
+  const patients = [
+    ['pasien.demo1','Pasien 1 — Andi'],['pasien.demo2','Pasien 2 — Sari'],['pasien.demo3','Pasien 3 — Budi'],
+    ['pasien.demo4','Pasien 4 — Rina'],['pasien.demo5','Pasien 5 — Dimas']
+  ];
+  const chip = (item) => {
+    const u = Store.data.users.find(x=>x.username===item[0]);
+    return u ? '<button type="button" class="chip" data-username="'+u.username+'" data-password="'+u.password+'">'+item[1]+'</button>' : '';
+  };
+  return '<div class="demo-section"><div class="demo-section-title">Akun Petugas / Tenaga Kesehatan</div><div class="chip-row">'+staff.map(chip).join('')+'</div></div>'+
+    '<div class="demo-section patient-demo-section"><div class="demo-section-title">👤 5 Akun Pasien Demo</div><div class="chip-row">'+patients.map(chip).join('')+'</div><div class="demo-section-note">Klik akun pasien untuk langsung masuk dan menguji tiket, QR/barcode, buka ulang tiket, serta Download Tiket.</div></div>';
 }
 function handleLogin(e){
   e.preventDefault();
