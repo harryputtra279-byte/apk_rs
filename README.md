@@ -1,6 +1,6 @@
 # SIMRS Terpadu — RSUD R.T. Notopuro
 
-**Versi portfolio: v13.5** — fokus revisi pada pengalaman pasien, Live Queue Monitor, tiket yang dapat dibuka kembali, kontrol antrean berkelanjutan, serta pemisahan hak pembatalan berdasarkan penjamin.
+**Versi portfolio: v13.7 Final** — sinkronisasi sisi pasien dengan jalur Rawat Jalan V13.6, pemisahan Reguler/Eksekutif, pemilihan dokter, appointment Eksekutif, tiket QR/barcode, dan Live Queue Monitor.
 
 Aplikasi manajemen rumah sakit (PWA) yang mencakup alur lengkap **Pendaftaran → Poli → Laboratorium → Farmasi → Kasir → Obat Diambil**, dengan rekam medis yang terlihat lintas poli. Dibangun murni dengan HTML/CSS/JavaScript (tanpa framework atau dependency eksternal) agar ringan, cepat, dan bisa dipasang (install) sebagai aplikasi serta dipakai offline.
 
@@ -40,7 +40,7 @@ lalu buka `http://localhost:8080`.
 Atau gunakan tombol akun demo di halaman login untuk login sekali klik.
 
 
-## Fitur pasien v12
+## Fitur pasien v13.7
 
 - Menu pasien dipisahkan menjadi **Dashboard**, **Rawat Jalan**, **Booking Saya**, dan **Riwayat Kontrol**.
 - **Booking Saya** tidak digabung dengan pendaftaran Rawat Jalan. Setiap tiket dapat dibuka kembali untuk menampilkan QR/barcode tanpa screenshot.
@@ -54,7 +54,7 @@ Atau gunakan tombol akun demo di halaman login untuk login sekali klik.
 
 ## Alur & integrasi antar modul
 
-1. **Booking (opsional, H-1 s/d H-3)** — booking BPJS disimulasikan sebagai data masuk dari JKN Mobile, atau booking mandiri untuk pasien umum. Keduanya berbagi **satu nomor urut yang sama** per poli & tanggal (BPJS dapat No. 5 → umum berikutnya otomatis No. 6, dst).
+1. **Pendaftaran pasien** — pasien memilih **Poli Reguler** atau **Poli Eksekutif** terlebih dahulu. Reguler memilih klinik, tanggal, dan dokter; Eksekutif memilih klinik, tanggal, dokter, serta slot waktu/janji yang tersedia. Keduanya memakai identitas layanan yang berbeda sampai proses check-in.
 2. **Check-in (hari-H)** — pasien check-in via scan QR (kamera, pakai Web API `BarcodeDetector` bawaan browser) atau input kode manual. Setelah check-in, booking berubah jadi kunjungan aktif hari itu dengan nomor antrian yang **sama persis** dengan yang didapat saat booking.
 3. **Pendaftaran (jalur walk-in)** — pasien baru/lama tanpa booking tetap bisa mendaftar langsung; nomor antriannya otomatis melanjutkan urutan yang sama (tidak bentrok dengan yang sudah dibooking).
 4. **Poli** — dokter memanggil pasien, melihat riwayat rekam medis dari poli mana pun, mengisi tanda vital & diagnosis, membuat e-resep, atau merujuk ke laboratorium.
@@ -290,3 +290,18 @@ Prototype masih menggunakan localStorage sehingga **belum untuk data pasien nyat
 - Poliklinik Eksekutif dipisahkan dari Spesialis dan mengikuti model appointment/pilihan dokter serta batas booking H-1 / maksimal satu jam sebelum sesi dimulai.
 - Monitor antrean dibuat per poli dan otomatis mengikuti sesi dokter aktif.
 - Data master yang diedit tersimpan di localStorage perangkat; untuk sinkronisasi lintas perangkat/monitor fisik diperlukan backend + database + realtime API/WebSocket.
+
+
+## V13.7 Final — Sinkronisasi Sisi Pasien dengan V13.6
+- Akun demo dokter menggunakan nama dokter yang tercantum pada halaman resmi RSUD R.T. Notopuro.
+- Pendaftaran langsung dan booking memiliki pilihan eksplisit Poli Reguler (Poliklinik Spesialis) atau Poli Eksekutif.
+- Poli Reguler dan Eksekutif dipisahkan pada data layanan, jadwal, kapasitas, antrean, dan aturan booking.
+- QR/barcode tetap menjadi identitas check-in pada kedua jalur.
+- Empat menu Booking BPJS, Pasien Umum, Check-in, dan Pengingat H-1 ditampilkan sebagai grid 2×2 tanpa slider.
+- Data publik dokter/jadwal tetap diberi status perlu verifikasi karena situs resmi dapat menampilkan data yang belum diperbarui.
+
+- Form pasien tidak lagi menggabungkan Reguler dan Eksekutif sebagai satu alur.
+- Booking menyimpan `jenisLayanan`, `dokterId`, `sessionId`, dan untuk Eksekutif `appointmentTime`.
+- Slot waktu Eksekutif yang sudah dipesan tidak ditampilkan kembali sebagai slot tersedia.
+- Tiket pasien menampilkan jenis layanan, dokter, tanggal, penjamin, nomor antrean, dan QR/barcode check-in.
+- Alur ini merupakan simulasi portfolio; tidak terhubung langsung ke Santri RS, Mobile JKN, BPJS, atau sistem produksi RSUD.
