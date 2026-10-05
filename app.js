@@ -16,6 +16,7 @@ function poliColor(id){ return POLI_COLOR[id] || 'clinical'; }
    Dashboard memakai ID yang stabil; detail lantai/ruang tidak diasumsikan.
    ================================================================ */
 const OFFICIAL_POLI_CATALOG = [
+  ['RJ-UMU','Poli Umum','Rawat Jalan'],
   ['SP-GCU','Klinik General Check Up','Poliklinik Spesialis'],['SP-BPL','Klinik Bedah Plastik','Poliklinik Spesialis'],['SP-BUM','Klinik Bedah Umum','Poliklinik Spesialis'],['SP-BUR','Klinik Bedah Urologi','Poliklinik Spesialis'],['SP-BSR','Klinik Bedah Saraf','Poliklinik Spesialis'],['SP-BOR','Klinik Bedah Orthopedi','Poliklinik Spesialis'],['SP-BDI','Klinik Bedah Digestif','Poliklinik Spesialis'],['SP-PDL','Klinik Penyakit Dalam','Poliklinik Spesialis'],['SP-GER','Klinik Geriatri','Poliklinik Spesialis'],['SP-END','Klinik Endoskopi','Poliklinik Spesialis'],['SP-JAN','Klinik Jantung','Poliklinik Spesialis'],['SP-SAR','Klinik Saraf','Poliklinik Spesialis'],['SP-PAR','Klinik Paru','Poliklinik Spesialis'],['SP-HKB','Klinik Hamil/KB','Poliklinik Spesialis'],['SP-KDG','Klinik Kandungan','Poliklinik Spesialis'],['SP-AND','Klinik Andrologi','Poliklinik Spesialis'],['SP-PSI','Klinik Psikologi','Poliklinik Spesialis'],['SP-PSK','Klinik Psikiatri','Poliklinik Spesialis'],['SP-REH','Klinik Rehabilitasi Medik','Poliklinik Spesialis'],['SP-ANA','Klinik Anak','Poliklinik Spesialis'],['SP-TBK','Klinik Tumbuh Kembang','Poliklinik Spesialis'],['SP-GIG','Klinik Gigi dan Mulut','Poliklinik Spesialis'],['SP-THT','Klinik THT','Poliklinik Spesialis'],['SP-MAT','Klinik Mata','Poliklinik Spesialis'],['SP-KUL','Klinik Kulit dan Kelamin','Poliklinik Spesialis'],['SP-MRV','Klinik Mawar Merah/VCT','Poliklinik Spesialis'],['SP-GIZ','Klinik Gizi','Poliklinik Spesialis'],['SP-HOM','Pelayanan Homecare','Poliklinik Spesialis'],
   ['EX-EST','Klinik Estetika','Poliklinik Eksekutif'],['EX-KUL','Klinik Kulit dan Kelamin','Poliklinik Eksekutif'],['EX-BUM','Klinik Bedah Umum','Poliklinik Eksekutif'],['EX-BUR','Klinik Bedah Urologi','Poliklinik Eksekutif'],['EX-BSR','Klinik Bedah Saraf','Poliklinik Eksekutif'],['EX-BOR','Klinik Bedah Orthopedi','Poliklinik Eksekutif'],['EX-BDI','Klinik Bedah Digestif','Poliklinik Eksekutif'],['EX-BTKV','Klinik Bedah TKV','Poliklinik Eksekutif'],['EX-BONK','Klinik Bedah Onkologi','Poliklinik Eksekutif'],['EX-PDL','Klinik Penyakit Dalam','Poliklinik Eksekutif'],['EX-AKU','Klinik Akupuntur','Poliklinik Eksekutif'],['EX-JAN','Klinik Jantung','Poliklinik Eksekutif'],['EX-SAR','Klinik Saraf','Poliklinik Eksekutif'],['EX-PAR','Klinik Paru','Poliklinik Eksekutif'],['EX-HKB','Klinik Hamil/KB','Poliklinik Eksekutif'],['EX-KDG','Klinik Kandungan','Poliklinik Eksekutif'],['EX-AND','Klinik Andrologi','Poliklinik Eksekutif'],['EX-PSI','Klinik Psikologi','Poliklinik Eksekutif'],['EX-PSK','Klinik Psikiatri','Poliklinik Eksekutif'],['EX-REH','Klinik Rehabilitasi Medik','Poliklinik Eksekutif'],['EX-ANA','Klinik Anak','Poliklinik Eksekutif'],['EX-TBK','Klinik Tumbuh Kembang','Poliklinik Eksekutif'],['EX-GIG','Klinik Gigi dan Mulut','Poliklinik Eksekutif'],['EX-THT','Klinik THT','Poliklinik Eksekutif'],['EX-MAT','Klinik Mata','Poliklinik Eksekutif'],['EX-KUL2','Klinik Kulit dan Kelamin','Poliklinik Eksekutif'],['EX-GIZ','Klinik Gizi','Poliklinik Eksekutif'],['EX-RAD','Klinik Radioterapi','Poliklinik Eksekutif']
 ];
@@ -295,6 +296,16 @@ function ensureDivisionDemoUsers(data){
   const demoUsers = [
     {id:'U-RJ-ADM', username:'rawatjalan', password:'rawatjalan123', nama:'Budi Santoso', role:'rawat_jalan', unit:'rawat-jalan'},
     {id:'U-RJ-DOK', username:'dokter.rajal', password:'dokter123', nama:'dr. Andi Wijaya', role:'dokter', unit:'rawat-jalan', poliId:'UMU'},
+    {id:'U-RJ-DOK-01', username:'dokter.umum', password:'dokter123', nama:'dr. Andi Wijaya', role:'dokter', unit:'rawat-jalan', poliId:'UMU'},
+    {id:'U-RJ-DOK-02', username:'dokter.anak', password:'dokter123', nama:'dr. Maria Christiani, Sp.A', role:'dokter', unit:'rawat-jalan', poliId:'ANA'},
+    {id:'U-RJ-DOK-03', username:'dokter.gigi', password:'dokter123', nama:'drg. Hendra Kusuma', role:'dokter', unit:'rawat-jalan', poliId:'GIG'},
+    {id:'U-RJ-DOK-04', username:'dokter.jantung', password:'dokter123', nama:'dr. Rudi Hartono, Sp.JP', role:'dokter', unit:'rawat-jalan', poliId:'JAN'},
+    {id:'U-RJ-DOK-05', username:'dokter.penyakitdalam', password:'dokter123', nama:'dr. Bima Prasetyo, Sp.PD', role:'dokter', unit:'rawat-jalan', poliId:'PDL'},
+    {id:'U-RJ-PWT-01', username:'asisten.umum', password:'perawat123', nama:'Ns. Lestari Handayani, S.Kep', role:'perawat', unit:'rawat-jalan', poliId:'UMU'},
+    {id:'U-RJ-PWT-02', username:'asisten.anak', password:'perawat123', nama:'Ns. Sinta Maharani, S.Kep', role:'perawat', unit:'rawat-jalan', poliId:'ANA'},
+    {id:'U-RJ-PWT-03', username:'asisten.gigi', password:'perawat123', nama:'Ns. Dedi Kurniawan, S.Kep', role:'perawat', unit:'rawat-jalan', poliId:'GIG'},
+    {id:'U-RJ-PWT-04', username:'asisten.jantung', password:'perawat123', nama:'Ns. Rina Lestari, S.Kep', role:'perawat', unit:'rawat-jalan', poliId:'JAN'},
+    {id:'U-RJ-PWT-05', username:'asisten.penyakitdalam', password:'perawat123', nama:'Ns. Fajar Nugroho, S.Kep', role:'perawat', unit:'rawat-jalan', poliId:'PDL'},
     {id:'U-RJ-FAR', username:'farmasi.rajal', password:'farmasi123', nama:'Apt. Dewi Lestari', role:'farmasi', unit:'rawat-jalan'},
     {id:'U-RJ-KAS', username:'kasir.rajal', password:'kasir123', nama:'Rina Marlina', role:'kasir', unit:'rawat-jalan'},
     {id:'U-IGD-DOK', username:'dokter.igd', password:'dokter123', nama:'dr. Rudi Hartono', role:'dokter_igd', unit:'igd'},
@@ -808,7 +819,10 @@ function chipsForDemo(){
     ['admin','Admin'],['loket','Pendaftaran'],['rawatjalan','Rawat Jalan'],['dokter.rajal','Dokter Rawat Jalan'],
     ['farmasi.rajal','Farmasi RJ'],['kasir.rajal','Kasir RJ'],['dokter.igd','Dokter IGD'],['perawat.igd','Perawat IGD'],
     ['farmasi.igd','Farmasi IGD'],['kasir.igd','Kasir IGD'],['dokter.ranap','Dokter RI'],['perawat.ranap','Perawat RI'],
-    ['farmasi.ranap','Farmasi RI'],['kasir.ranap','Kasir RI'],['lab','Laboratorium'],['pasien.demo','Pasien Demo Lama']
+    ['farmasi.ranap','Farmasi RI'],['kasir.ranap','Kasir RI'],['lab','Laboratorium'],
+    ['dokter.umum','👨‍⚕️ dr. Andi — Poli Umum'],['dokter.anak','👨‍⚕️ dr. Maria — Poli Anak'],['dokter.gigi','🦷 drg. Hendra — Poli Gigi'],['dokter.jantung','❤️ dr. Rudi — Poli Jantung'],['dokter.penyakitdalam','🩺 dr. Bima — Poli Penyakit Dalam'],
+    ['asisten.umum','👩‍⚕️ Asisten Poli Umum'],['asisten.anak','👩‍⚕️ Asisten Poli Anak'],['asisten.gigi','👩‍⚕️ Asisten Poli Gigi'],['asisten.jantung','👩‍⚕️ Asisten Poli Jantung'],['asisten.penyakitdalam','👩‍⚕️ Asisten Poli Penyakit Dalam'],
+    ['pasien.demo','Pasien Demo Lama']
   ];
   const patients=[
     ['pasien.demo1','👤 Andi Pratama'],['pasien.demo2','👤 Sari Wulandari'],['pasien.demo3','👤 Budi Setiawan'],['pasien.demo4','👤 Rina Maharani'],['pasien.demo5','👤 Dimas Saputra']
