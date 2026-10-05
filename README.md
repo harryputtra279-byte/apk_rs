@@ -166,3 +166,23 @@ Akun demo dipisahkan agar setiap divisi dapat direview satu per satu tanpa menca
 | Kasir Rawat Inap | `kasir.ranap` | `kasir123` |
 
 Menu Farmasi dan Kasir sekarang dipisahkan menjadi **Rawat Jalan, IGD, dan Rawat Inap**.
+
+## Rawat Jalan UX v8
+
+Versi ini memprioritaskan penyempurnaan alur Rawat Jalan tanpa menggantikan sistem rumah sakit yang sudah berjalan.
+
+Cakupan workflow:
+- Registrasi/booking dan check-in terintegrasi.
+- Satu identitas pasien dan satu kunjungan sebagai sumber data lintas unit.
+- Status perjalanan pasien: booking → check-in → screening → menunggu dokter → pemeriksaan → penunjang/review → farmasi/kasir → selesai.
+- Screening awal dapat dicatat sebelum pasien masuk antrean dokter dan datanya ditampilkan kembali pada workspace dokter.
+- Monitoring per poli: pasien terdaftar, booking, screening, menunggu dokter, diperiksa, penunjang, review, selesai, dan antrean farmasi.
+- Peringatan keterlambatan dokter, pasien yang terlalu lama menunggu, dan farmasi yang melewati parameter SLA prototype.
+- Riwayat rekam medis tetap dapat dibuka dari antrean.
+- Rencana langkah berikutnya (farmasi, kontrol, penunjang, rawat inap, rujuk, atau selesai) ditampilkan di proses pemeriksaan.
+- Hasil laboratorium dikembalikan ke status `Menunggu Review` agar dokter meninjau hasil sebelum kunjungan ditutup.
+
+### Prinsip desain
+Aplikasi ini diposisikan sebagai lapisan UX/operasional di atas sistem yang sudah ada. Tujuannya mengurangi input berulang, perpindahan pasien yang tidak perlu, waktu tunggu yang tidak terlihat, dan komunikasi manual yang dapat digantikan notifikasi/audit trail, tanpa mengambil keputusan klinis dari tenaga kesehatan.
+
+Target desain menggunakan prinsip patient-centered care, continuity of care, workflow efficiency, auditability, dan interoperabilitas nasional/internasional. Klaim kepatuhan akreditasi internasional tidak dibuat; implementasi produksi tetap membutuhkan validasi SOP, kebijakan RSUD, keamanan, integrasi sistem, dan asesmen resmi.

@@ -108,6 +108,11 @@ function calcUmur(tglLahir){
 }
 
 const STATUS_MAP = {
+  menunggu_screening:{label:'Menunggu Screening', cls:'badge-amber'},
+  screening:        {label:'Screening',            cls:'badge-clinical'},
+  menunggu_dokter:  {label:'Menunggu Dokter',      cls:'badge-amber'},
+  menunggu_review:  {label:'Menunggu Review',      cls:'badge-plum'},
+  menunggu_penunjang:{label:'Menunggu Penunjang',  cls:'badge-plum'},
   menunggu_poli:   {label:'Menunggu Poli',        cls:'badge-amber'},
   diperiksa:       {label:'Sedang Diperiksa',      cls:'badge-clinical'},
   menunggu_lab:    {label:'Menunggu Hasil Lab',    cls:'badge-plum'},
@@ -282,7 +287,7 @@ function seedData(){
 }
 
 /* ---------------- persistence ---------------- */
-const DB_SCHEMA_VERSION = 7;
+const DB_SCHEMA_VERSION = 8;
 
 function ensureDivisionDemoUsers(data){
   if(!Array.isArray(data.users)) data.users=[];
@@ -337,7 +342,15 @@ function migrateData(data){
   }, data.meta.settings||{});
   if(!Array.isArray(data.prescriptions)) data.prescriptions=[];
   data.prescriptions.forEach(function(r){ if(r.unit===undefined) r.unit=r.admissionId?'rawat-inap':'rawat-jalan'; if(r.updatedAt===undefined) r.updatedAt=r.createdAt||nowISO(); if(r.siapAt===undefined) r.siapAt=null; if(r.diambilAt===undefined) r.diambilAt=null; if(r.jenisLayanan===undefined) r.jenisLayanan=r.admissionId?'rawat_inap':'rawat_jalan'; });
-  if(Array.isArray(data.visits)) data.visits.forEach(function(v){ if(v.unit===undefined) v.unit='rawat-jalan'; });
+  if(Array.isArray(data.visits)) data.visits.forEach(function(v){
+    if(v.unit===undefined) v.unit='rawat-jalan';
+    if(!v.workflow) v.workflow={bookedAt:v.createdAt||null, checkinAt:null, screeningAt:null, doctorStartAt:null, supportingAt:null, reviewAt:null, completedAt:null};
+    if(v.screening===undefined) v.screening=null;
+    if(v.nextStep===undefined) v.nextStep=null;
+    if(v.communication===undefined) v.communication=[];
+    if(v.supportingOrders===undefined) v.supportingOrders=[];
+    if(v.status==='menunggu_poli' && !v.workflow.screeningAt) v.status='menunggu_screening';
+  });
   if(Array.isArray(data.admissions)) data.admissions.forEach(function(a){ if(a.unit===undefined) a.unit='rawat-inap'; });
   if(!Array.isArray(data.doctorSchedules)) data.doctorSchedules = [];
   if(!Array.isArray(data.notifications)) data.notifications = [];
@@ -541,7 +554,7 @@ function renderShell(route){
   document.getElementById('app').innerHTML =
    '<div class="app-shell">'+
      '<aside class="sidebar" id="sidebar">'+
-       '<div class="brand"><div class="brand-mark"></div><div class="brand-text"><div class="t1">SIMRS Terpadu</div><div class="t2">RSU Sehat Sentosa</div></div></div>'+
+       '<div class="brand"><div class="brand-mark"></div><div class="brand-text"><div class="t1">SIMRS Terpadu</div><div class="t2">RSUD R.T. Notopuro Sidoarjo</div></div></div>'+
        '<nav class="nav">'+sidebarNavHtml+'</nav>'+
        '<div class="sidebar-user"><div class="name">'+esc(u.nama)+'</div><div class="role">'+roleLabel(u.role)+(u.poliId?' · '+esc(getPoli(u.poliId).nama):'')+'</div>'+
          '<button class="btn btn-outline btn-sm btn-block" id="btn-logout-sidebar">🚪 Keluar</button></div>'+
@@ -695,7 +708,7 @@ function renderLogin(){
       '<div class="login-hero">'+
         '<div class="login-emblem"></div>'+
         '<h1>SIMRS Terpadu</h1>'+
-        '<div class="sub">RSU Sehat Sentosa — Sistem Informasi Manajemen Rumah Sakit</div>'+
+        '<div class="sub">RSUD R.T. Notopuro Sidoarjo — Sistem Informasi Manajemen Rumah Sakit</div>'+
         '<div class="ticket-hint">NO. ANTRIAN &nbsp;— · — · — —</div>'+
       '</div>'+
       '<div class="login-body">'+
@@ -810,7 +823,7 @@ function renderDashboard(){
   setPageTitle('Dashboard Operasional');
   const today=todayStr(), visits=visitsToday();
   const bookingHariIni=Store.data.bookings.filter(function(b){return b.tanggalKontrol===today;});
-  const waiting=visits.filter(function(v){return v.status==='menunggu_poli';}).length;
+  const waiting=visits.filter(function(v){return ['menunggu_screening','screening','menunggu_dokter','menunggu_review'].includes(v.status);}).length;
   const diperiksa=visits.filter(function(v){return v.status==='diperiksa';}).length;
   const selesai=visits.filter(function(v){return v.status==='selesai';}).length;
   const checkedIn=bookingHariIni.filter(function(b){return b.status==='checked_in';}).length;
@@ -1174,7 +1187,7 @@ function submitKunjungan(e){
   const noAntrian = generateNoAntrian(poliId);
   const visit = {
     id: uid('KJ'), patientId, tanggal: todayStr(), poliId, dokterId:null, jenisBayar, noBpjs:'', noAntrian, keluhan,
-    status:'menunggu_poli', vital:null, diagnosis:'', catatan:'', labRequest:null, resepId:null, prioritas,
+    status:'menunggu_screening', vital:null, diagnosis:'', catatan:'', labRequest:null, resepId:null, prioritas, screening:null, nextStep:null, communication:[], supportingOrders:[], workflow:{bookedAt:nowISO(),checkinAt:null,screeningAt:null,doctorStartAt:null,supportingAt:null,reviewAt:null,completedAt:null},
     billing:{registrasi:BIAYA_REGISTRASI, konsultasi:0, obat:0, lab:0}, createdAt: nowISO(), updatedAt: nowISO()
   };
   Store.data.visits.push(visit); Store.save();
@@ -1403,13 +1416,14 @@ function doCheckIn(bookingId){
   const visit = {
     id: uid('KJ'), patientId: booking.patientId, tanggal: todayStr(), poliId: booking.poliId, dokterId:null,
     jenisBayar: booking.jenisBayar, noBpjs: booking.noBpjs||'', noAntrian: booking.noAntrian,
-    keluhan:'Kontrol terjadwal ('+booking.sumber+')', status:'menunggu_poli', vital:null, diagnosis:'', catatan:'',
+    keluhan:'Kontrol terjadwal ('+booking.sumber+')', status:'menunggu_screening', vital:null, diagnosis:'', catatan:'',
     labRequest:null, resepId:null, billing:{registrasi:BIAYA_REGISTRASI, konsultasi:0, obat:0, lab:0},
     bookingId: booking.id, createdAt: nowISO(), updatedAt: nowISO()
   };
   Store.data.visits.push(visit);
   booking.status = 'checked_in';
   booking.visitId = visit.id;
+  visit.workflow.checkinAt = nowISO();
   booking.updatedAt = nowISO();
   pushNotification('queue','Check-in berhasil',booking.noAntrian+' — '+getPatient(booking.patientId).nama,booking.patientId);
   Store.save();
@@ -1540,38 +1554,71 @@ function checkAndNotifyH1(manual){
    ================================================================= */
 let poliState = { poliId:null, activeVisitId:null, resepItems:[] };
 
+function rawatJalanKpiHtml(poliId){
+  const m=clinicTodayMetrics(poliId), visits=m.queue.visits;
+  const screening=visits.filter(v=>['menunggu_screening','screening'].includes(v.status)).length;
+  const waitingDoctor=visits.filter(v=>v.status==='menunggu_dokter').length;
+  const review=visits.filter(v=>v.status==='menunggu_review').length;
+  const penunjang=visits.filter(v=>v.status==='menunggu_penunjang'||v.status==='menunggu_lab').length;
+  const ph=pharmacyMetrics('rawat_jalan',poliId);
+  const k=(ic,l,v,sub,cls)=>'<div class="rj-kpi '+(cls||'')+'"><span>'+ic+'</span><div><b>'+v+'</b><small>'+l+'</small><em>'+sub+'</em></div></div>';
+  return '<div class="rj-kpi-grid">'+
+    k('👥','Terdaftar',m.registered,'kunjungan hari ini')+
+    k('🎫','Booking',m.bookings,'terjadwal')+
+    k('🟡','Screening',screening,'belum selesai')+
+    k('⏳','Menunggu Dokter',waitingDoctor,'siap dipanggil',waitingDoctor? 'warn':'')+
+    k('🩺','Diperiksa',m.examined,'sedang berlangsung')+
+    k('🧪','Penunjang',penunjang,'menunggu hasil/order')+
+    k('🔎','Review',review,'hasil siap ditinjau',review?'warn':'')+
+    k('✓','Selesai',m.completed,'kunjungan selesai')+
+    k('💊','Farmasi',ph.pending,'resep · max '+ph.maxWait+' mnt',ph.maxWait>ph.sla?'danger':'')+
+  '</div>';
+}
+function renderRawatJalanPatientJourney(poliId){
+  const list=visitsToday(poliId).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+  const counts={booking:Store.data.bookings.filter(b=>b.poliId===poliId&&b.tanggalKontrol===todayStr()).length,checkin:list.filter(v=>v.workflow&&v.workflow.checkinAt).length,screening:list.filter(v=>['screening','menunggu_dokter'].includes(v.status)||v.screening).length,doctor:list.filter(v=>v.status==='diperiksa').length,penunjang:list.filter(v=>['menunggu_lab','menunggu_penunjang','menunggu_review'].includes(v.status)).length,done:list.filter(v=>v.status==='selesai').length};
+  const steps=[['BOOKING',counts.booking,'slate'],['CHECK-IN',counts.checkin,'sage'],['SCREENING',counts.screening,'clinical'],['DOKTER',counts.doctor,'plum'],['PENUNJANG/REVIEW',counts.penunjang,'amber'],['SELESAI',counts.done,'slate']];
+  return '<div class="panel rj-journey"><div class="panel-head"><div><h2>🧭 Patient Journey Hari Ini</h2><div class="hint">Satu perjalanan pasien dari registrasi sampai selesai, tanpa input identitas berulang.</div></div></div><div class="panel-body"><div class="rj-flow">'+steps.map((x,i)=>'<div class="rj-flow-step '+x[2]+'"><span>'+x[0]+'</span><strong>'+x[1]+'</strong>'+(i<steps.length-1?'<i>→</i>':'')+'</div>').join('')+'</div></div></div>';
+}
+function renderRawatJalanAlerts(poliId){
+  const visits=visitsToday(poliId), av=getDoctorAvailability(poliId), now=Date.now();
+  const late=visits.filter(v=>v.status==='menunggu_dokter' && v.workflow && v.workflow.screeningAt && now-new Date(v.workflow.screeningAt).getTime()>30*60000).length;
+  const items=[];
+  if(av.status==='delay') items.push('Dokter terlambat: '+(av.message||'silakan koordinasikan jadwal dokter.'));
+  if(av.status==='cancel') items.push('Dokter tidak praktik: informasikan pasien dan lakukan penjadwalan ulang sesuai kewenangan.');
+  if(late) items.push(late+' pasien menunggu dokter lebih dari 30 menit setelah screening.');
+  const ph=pharmacyMetrics('rawat_jalan',poliId); if(ph.maxWait>ph.sla) items.push('Farmasi rawat jalan melewati parameter SLA pada resep pasien poli ini.');
+  return '<div class="panel rj-alert-panel"><div class="panel-head"><h2>🔔 Perhatian Operasional</h2></div><div class="panel-body">'+(items.length?items.map(x=>'<div class="rj-alert">⚠ '+esc(x)+'</div>').join(''):'<div class="rj-ok">✓ Tidak ada alert kritis pada poli ini.</div>')+'</div></div>';
+}
 function renderPoli(){
-  setPageTitle('Poli');
-  const u = Session.currentUser;
-  poliState = { poliId: u.role==='dokter' ? u.poliId : (Store.data.poli[0] && Store.data.poli[0].id), activeVisitId:null, resepItems:[] };
-  const poliSelector = u.role==='admin' ?
-    '<div class="field" style="max-width:280px"><label>Pilih Poli</label><select id="poli-select">'+
-      Store.data.poli.map(p=>'<option value="'+p.id+'">'+esc(p.nama)+'</option>').join('')+'</select></div>' : '';
-
-  document.getElementById('main-content').innerHTML =
-    pageIntro(u.role==='dokter' ? 'Antrian dan pemeriksaan pasien untuk '+esc(getPoli(u.poliId).nama)+'.' : 'Pilih poli untuk melihat antrian dan memeriksa pasien.')+
-    poliSelector+
-    '<div class="split-2" id="poli-grid">'+
-      '<div class="panel"><div class="panel-head"><h2 id="poli-queue-title">Antrian</h2></div><div class="panel-body" id="poli-queue-area"></div></div>'+
-      '<div id="poli-exam-area"><div class="panel"><div class="panel-body"><div class="empty"><div class="big">🩺</div>Pilih pasien dari antrian untuk memulai pemeriksaan.</div></div></div></div>'+
-    '</div>'+
-    '<div class="grid grid-2">'+
-      '<div class="panel" id="poli-jadwal-panel"></div>'+
-      '<div class="panel" id="poli-info-panel"></div>'+
-    '</div>';
-
-  if(u.role==='admin'){
-    document.getElementById('poli-select').addEventListener('change', function(){
-      poliState.poliId = this.value; poliState.activeVisitId=null;
-      refreshPoliQueue();
-      document.getElementById('poli-exam-area').innerHTML = '<div class="panel"><div class="panel-body"><div class="empty"><div class="big">🩺</div>Pilih pasien dari antrian untuk memulai pemeriksaan.</div></div></div>';
-      renderJadwalKontrolPoli();
-      renderInfoPraktikPoli();
-    });
+  setPageTitle('Rawat Jalan');
+  const u=Session.currentUser;
+  poliState={poliId:u.role==='dokter'?u.poliId:(Store.data.poli[0]&&Store.data.poli[0].id),activeVisitId:null,resepItems:[]};
+  const poliSelector=(u.role==='admin'||u.role==='rawat_jalan')?'<div class="field" style="max-width:360px"><label>Unit / Poli</label><select id="poli-select">'+Store.data.poli.filter(p=>p.official).map(p=>'<option value="'+p.id+'">'+esc(p.nama)+' — '+esc(p.layanan||'Rawat Jalan')+'</option>').join('')+'</select></div>':'';
+  document.getElementById('main-content').innerHTML=
+    pageIntro(u.role==='dokter'?'Workspace dokter untuk '+esc(getPoli(u.poliId).nama)+'.':'Command Center pelayanan Rawat Jalan — pilih poli untuk melihat perjalanan pasien, antrean, screening, dokter, penunjang, farmasi, dan penyelesaian.')+
+    poliSelector+'<div id="rj-kpi-area"></div>'+renderRawatJalanPatientJourney(poliState.poliId)+
+    '<div class="rj-work-grid"><div><div class="panel"><div class="panel-head"><div><h2 id="poli-queue-title">Antrian Rawat Jalan</h2><div class="hint">Status pasien ditampilkan per tahap agar petugas tahu apa yang harus dikerjakan berikutnya.</div></div></div><div class="panel-body" id="poli-queue-area"></div></div></div><div id="poli-exam-area"><div class="panel"><div class="panel-body"><div class="empty"><div class="big">🩺</div>Pilih pasien untuk screening atau pemeriksaan.</div></div></div></div></div>'+renderRawatJalanAlerts(poliState.poliId)+
+    '<div class="grid grid-2"><div class="panel" id="poli-jadwal-panel"></div><div class="panel" id="poli-info-panel"></div></div>';
+  function rerenderHeader(){
+    const k=document.getElementById('rj-kpi-area'); if(k) k.innerHTML=rawatJalanKpiHtml(poliState.poliId);
+    const j=document.querySelector('.rj-journey'); if(j) j.outerHTML=renderRawatJalanPatientJourney(poliState.poliId);
+    const a=document.querySelector('.rj-alert-panel'); if(a) a.outerHTML=renderRawatJalanAlerts(poliState.poliId);
   }
-  refreshPoliQueue();
-  renderJadwalKontrolPoli();
-  renderInfoPraktikPoli();
+  window.__rjRerender=rerenderHeader;
+  if(document.getElementById('poli-select')) document.getElementById('poli-select').addEventListener('change',function(){poliState.poliId=this.value;poliState.activeVisitId=null;rerenderHeader();refreshPoliQueue();document.getElementById('poli-exam-area').innerHTML='<div class="panel"><div class="panel-body"><div class="empty"><div class="big">🩺</div>Pilih pasien untuk screening atau pemeriksaan.</div></div></div>';renderJadwalKontrolPoli();renderInfoPraktikPoli();});
+  rerenderHeader(); refreshPoliQueue(); renderJadwalKontrolPoli(); renderInfoPraktikPoli();
+}
+
+function openScreening(visitId){
+  const v=getVisit(visitId), p=getPatient(v.patientId); if(!v||!p)return;
+  openModal('<div class="modal-head"><h2>🩺 Screening Awal — '+esc(p.nama)+'</h2><button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button></div><div class="modal-body"><p class="hint">Data screening akan diteruskan ke dokter agar pasien tidak perlu diukur ulang.</p><div class="field-row"><div class="field"><label>Tekanan Darah</label><input id="scr-td" placeholder="120/80"></div><div class="field"><label>Nadi</label><input id="scr-nadi" type="number" placeholder="80"></div></div><div class="field-row"><div class="field"><label>Suhu °C</label><input id="scr-suhu" type="number" step="0.1" placeholder="36.7"></div><div class="field"><label>SpO₂ %</label><input id="scr-spo2" type="number" placeholder="98"></div></div><div class="field-row"><div class="field"><label>Berat Badan kg</label><input id="scr-bb" type="number" step="0.1"></div><div class="field"><label>Tinggi Badan cm</label><input id="scr-tb" type="number" step="0.1"></div></div><div class="field"><label>Keluhan Utama / Screening</label><textarea id="scr-keluhan">'+esc(v.keluhan||'')+'</textarea></div><div class="field"><label>Alergi</label><input id="scr-alergi" value="'+esc(p.alergi||'')+'" placeholder="Tidak diketahui / sebutkan bila ada"></div><button class="btn btn-primary btn-block" id="btn-save-screening">Simpan Screening & Kirim ke Dokter</button></div>');
+  document.getElementById('btn-save-screening').addEventListener('click',function(){
+    v.screening={td:document.getElementById('scr-td').value.trim(),nadi:document.getElementById('scr-nadi').value,suhu:document.getElementById('scr-suhu').value,spo2:document.getElementById('scr-spo2').value,bb:document.getElementById('scr-bb').value,tb:document.getElementById('scr-tb').value,keluhan:document.getElementById('scr-keluhan').value.trim(),alergi:document.getElementById('scr-alergi').value.trim(),by:Session.currentUser.nama,at:nowISO()};
+    v.vital=v.screening; v.workflow=v.workflow||{}; v.workflow.screeningAt=nowISO(); v.status='menunggu_dokter'; v.updatedAt=nowISO();
+    if(v.communication===undefined)v.communication=[]; v.communication.push({type:'screening',message:'Screening selesai dan data diteruskan ke dokter.',createdAt:nowISO(),by:Session.currentUser.nama});
+    Store.save(); logAudit('screening_selesai',v.noAntrian+' — '+getPatient(v.patientId).nama); pushNotification('queue','Pasien siap diperiksa',v.noAntrian+' — '+getPatient(v.patientId).nama,v.patientId); closeModal(); refreshPoliQueue(); if(window.__rjRerender)window.__rjRerender(); showToast('Screening selesai — pasien masuk antrean dokter','success');
+  });
 }
 
 function renderJadwalKontrolPoli(){
@@ -1655,23 +1702,26 @@ function renderInfoPraktikFeed(){
   ).join('');
 }
 function refreshPoliQueue(){
-  const poli = getPoli(poliState.poliId);
-  document.getElementById('poli-queue-title').textContent = 'Antrian — ' + poli.nama;
-  const list = visitsToday().filter(v => v.poliId===poliState.poliId && ['menunggu_poli','diperiksa','menunggu_lab'].includes(v.status))
-    .sort((a,b)=> (b.prioritas?1:0)-(a.prioritas?1:0) || new Date(a.createdAt)-new Date(b.createdAt));
-  const area = document.getElementById('poli-queue-area');
-  if(list.length===0){ area.innerHTML = '<div class="empty">Tidak ada antrian saat ini.</div>'; return; }
-  area.innerHTML = list.map(v=>{
-    const p = getPatient(v.patientId);
-    const clickable = v.status !== 'menunggu_lab';
-    const cls = (v.id===poliState.activeVisitId?'active':'') + (v.prioritas?' urgent':'');
-    return '<div class="queue-list-item '+cls+'" '+(clickable?'data-visit="'+v.id+'"':'style="opacity:.6;cursor:default"')+'>'+
-      '<div><div class="no">'+v.noAntrian+'</div><div class="nm">'+esc(p.nama)+'</div></div>'+
-      '<div style="display:flex;align-items:center;gap:6px">'+badgeStatus(v.status)+
-      '<button type="button" class="flag-btn'+(v.prioritas?' on':'')+'" data-flag="'+v.id+'" title="Tandai/batalkan prioritas">🚩</button></div></div>';
+  const poli=getPoli(poliState.poliId), u=Session.currentUser;
+  const title=document.getElementById('poli-queue-title'); if(title) title.textContent='Antrian — '+poli.nama;
+  let allowed;
+  if(u.role==='dokter') allowed=['menunggu_dokter','menunggu_review','menunggu_poli'];
+  else if(u.role==='rawat_jalan') allowed=['menunggu_screening','screening','menunggu_dokter','menunggu_review','menunggu_lab','menunggu_penunjang'];
+  else allowed=['menunggu_screening','screening','menunggu_dokter','diperiksa','menunggu_review','menunggu_lab','menunggu_penunjang'];
+  const list=visitsToday().filter(v=>v.poliId===poliState.poliId&&allowed.includes(v.status)).sort((a,b)=>(b.prioritas?1:0)-(a.prioritas?1:0)||new Date(a.createdAt)-new Date(b.createdAt));
+  const area=document.getElementById('poli-queue-area'); if(!area)return;
+  if(!list.length){area.innerHTML='<div class="empty"><div class="big">✓</div>Tidak ada pasien pada tahap yang perlu ditangani.</div>';return;}
+  area.innerHTML=list.map(v=>{
+    const p=getPatient(v.patientId), age=v.workflow&&v.workflow.screeningAt?Math.max(0,Math.round((Date.now()-new Date(v.workflow.screeningAt).getTime())/60000)):Math.max(0,Math.round((Date.now()-new Date(v.createdAt).getTime())/60000));
+    let action='';
+    if(u.role==='rawat_jalan' && ['menunggu_screening','screening'].includes(v.status)) action='<button class="btn btn-primary btn-sm" data-screening="'+v.id+'">🩺 Screening</button>';
+    else if(u.role==='dokter' && ['menunggu_dokter','menunggu_review','menunggu_poli'].includes(v.status)) action='<button class="btn btn-primary btn-sm" data-openvisit="'+v.id+'">Buka</button>';
+    else if(u.role==='admin' && ['menunggu_screening','screening'].includes(v.status)) action='<button class="btn btn-primary btn-sm" data-screening="'+v.id+'">Screening</button>';
+    return '<div class="rj-queue-item '+(v.prioritas?'urgent':'')+'"><div><div class="rj-q-top"><span class="rj-q-no">'+esc(v.noAntrian)+'</span>'+badgeStatus(v.status)+'</div><strong>'+esc(p.nama)+'</strong><div class="hint">RM '+esc(p.id)+' · '+age+' menit dalam tahap aktif'+(v.prioritas?' · 🚩 prioritas':'')+'</div></div><div class="rj-q-actions">'+action+'<button class="btn btn-ghost btn-sm" data-history="'+v.patientId+'">Riwayat</button></div></div>';
   }).join('');
-  area.querySelectorAll('[data-visit]').forEach(el=> el.addEventListener('click', function(e){ if(e.target.closest('[data-flag]')) return; bukaPeriksa(el.dataset.visit); }));
-  area.querySelectorAll('[data-flag]').forEach(btn=> btn.addEventListener('click', function(e){ e.stopPropagation(); toggleUrgent(this.dataset.flag); }));
+  area.querySelectorAll('[data-screening]').forEach(b=>b.addEventListener('click',()=>openScreening(b.dataset.screening)));
+  area.querySelectorAll('[data-openvisit]').forEach(b=>b.addEventListener('click',()=>bukaPeriksa(b.dataset.openvisit)));
+  area.querySelectorAll('[data-history]').forEach(b=>b.addEventListener('click',()=>openRiwayatModal(b.dataset.history)));
 }
 function toggleUrgent(visitId){
   const v = getVisit(visitId);
@@ -1682,14 +1732,12 @@ function toggleUrgent(visitId){
   refreshPoliQueue();
 }
 function bukaPeriksa(visitId){
-  poliState.activeVisitId = visitId;
-  const visit = getVisit(visitId);
-  if(Session.currentUser.role==='dokter') visit.dokterId = Session.currentUser.id;
-  if(visit.status==='menunggu_poli') visit.status='diperiksa';
-  Store.save();
-  refreshPoliQueue();
-  poliState.resepItems = [];
-  renderFormPeriksa(visit);
+  poliState.activeVisitId=visitId;
+  const visit=getVisit(visitId);
+  if(!visit)return;
+  if(Session.currentUser.role==='dokter') visit.dokterId=Session.currentUser.id;
+  visit.status='diperiksa'; visit.workflow=visit.workflow||{}; visit.workflow.doctorStartAt=nowISO(); visit.updatedAt=nowISO();
+  Store.save(); refreshPoliQueue(); if(window.__rjRerender)window.__rjRerender(); poliState.resepItems=[]; renderFormPeriksa(visit);
 }
 function historyItemHtml(v){
   const poli = getPoli(v.poliId);
@@ -1700,8 +1748,11 @@ function renderFormPeriksa(visit){
   const patient = getPatient(visit.patientId);
   const riwayat = patientVisits(patient.id).filter(v=>v.id!==visit.id && v.status==='selesai');
   const vital = visit.vital || {};
+  const screeningBlock = visit.screening ? '<div class="alert alert-info"><strong>Screening Awal</strong><br>TD '+esc(visit.screening.td||'-')+' · Nadi '+esc(visit.screening.nadi||'-')+' · Suhu '+esc(visit.screening.suhu||'-')+' °C · SpO₂ '+esc(visit.screening.spo2||'-')+'% · BB '+esc(visit.screening.bb||'-')+' kg · TB '+esc(visit.screening.tb||'-')+' cm<br><span class="hint">Dicatat oleh '+esc(visit.screening.by||'-')+' · '+formatTanggalWaktu(visit.screening.at)+'</span></div>' : '';
   const hasilLabBlock = (visit.labRequest && visit.labRequest.hasil) ?
     '<div class="alert alert-info"><div><strong>Hasil Laboratorium — '+esc(visit.labRequest.jenis)+'</strong><br>'+esc(visit.labRequest.hasil)+'</div></div>' : '';
+
+  const nextStepValue=visit.nextStep||'selesai';
 
   document.getElementById('poli-exam-area').innerHTML =
     '<div class="panel"><div class="panel-head"><h2>Pemeriksaan Pasien</h2><div style="display:flex;gap:6px">'+(visit.prioritas?'<span class="badge badge-brick">🚩 Prioritas</span>':'')+badgeStatus(visit.status)+'</div></div><div class="panel-body">'+
@@ -1710,6 +1761,7 @@ function renderFormPeriksa(visit){
         '<span style="color:var(--ink-soft);font-size:13px">No. RM '+patient.id+' &middot; No. Antrian '+visit.noAntrian+'</span></div>'+
         '<button class="btn btn-outline btn-sm" id="btn-lihat-riwayat">📁 Riwayat Rekam Medis</button>'+
       '</div>'+
+      screeningBlock+
       (patient.alergi ? '<div class="allergy-flag">⚠ Riwayat alergi: '+esc(patient.alergi)+'</div>' : '')+
       (riwayat.length ? '<details style="margin-bottom:14px"><summary style="cursor:pointer;font-size:13.5px;color:var(--clinical);font-weight:600">Lihat '+riwayat.length+' kunjungan sebelumnya dari semua poli (diagnosis &amp; obat)</summary>'+
         '<div style="margin-top:10px">'+riwayat.map(v=>historyItemHtmlFull(v)).join('')+'</div></details>' : '')+
@@ -1728,6 +1780,7 @@ function renderFormPeriksa(visit){
       '</div>'+
       '<div class="field"><label>Diagnosis</label><input type="text" id="px-diagnosis" value="'+esc(visit.diagnosis)+'" required></div>'+
       '<div class="field"><label>Catatan / Tindakan</label><textarea id="px-catatan">'+esc(visit.catatan)+'</textarea></div>'+
+      '<div class="field"><label>Rencana / Next Step</label><select id="px-next-step"><option value="selesai" '+(nextStepValue==='selesai'?'selected':'')+'>Selesai / Pulang</option><option value="farmasi" '+(nextStepValue==='farmasi'?'selected':'')+'>Resep → Farmasi Rawat Jalan</option><option value="kontrol" '+(nextStepValue==='kontrol'?'selected':'')+'>Jadwal Kontrol</option><option value="penunjang" '+(nextStepValue==='penunjang'?'selected':'')+'>Pemeriksaan Penunjang</option><option value="ranap" '+(nextStepValue==='ranap'?'selected':'')+'>Admisi Rawat Inap</option><option value="rujuk" '+(nextStepValue==='rujuk'?'selected':'')+'>Rujuk Keluar</option></select></div>'+
       '<div class="field checkbox-row"><input type="checkbox" id="px-rujuk-lab" '+(visit.labRequest?'checked disabled':'')+'><label for="px-rujuk-lab" style="margin:0">Rujuk ke Laboratorium / Penunjang</label></div>'+
       '<div class="field hidden" id="px-lab-jenis-wrap"><label>Jenis Pemeriksaan</label><input type="text" id="px-lab-jenis" placeholder="contoh: Darah Lengkap, Rontgen Thorax"></div>'+
       '<div id="px-resep-section">'+resepSectionHtml()+'</div>'+
@@ -1812,6 +1865,7 @@ function selesaiPeriksa(visitId){
     bb: document.getElementById('px-bb').value, tb: document.getElementById('px-tb').value
   };
   visit.diagnosis = document.getElementById('px-diagnosis').value.trim();
+  visit.nextStep = document.getElementById('px-next-step') ? document.getElementById('px-next-step').value : visit.nextStep;
   visit.catatan = document.getElementById('px-catatan').value.trim();
   visit.billing.konsultasi = getPoli(visit.poliId).biaya;
 
@@ -1821,7 +1875,7 @@ function selesaiPeriksa(visitId){
     if(!jenis){ showToast('Isi jenis pemeriksaan laboratorium', 'danger'); return; }
     visit.labRequest = {jenis, status:'menunggu', hasil:null};
     visit.billing.lab = BIAYA_LAB;
-    visit.status = 'menunggu_lab';
+    visit.status = 'menunggu_lab'; visit.nextStep='Pemeriksaan penunjang — hasil kembali ke dokter untuk review'; visit.workflow.supportingAt=nowISO();
     Store.save();
     logAudit('rujuk_lab', visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama)+' → '+jenis);
     showToast('Pasien dirujuk ke laboratorium', 'success');
@@ -1830,12 +1884,12 @@ function selesaiPeriksa(visitId){
     Store.data.prescriptions.push(resep);
     visit.resepId = resep.id;
     visit.billing.obat = resep.items.reduce((s,it)=>s+it.jumlah*it.hargaSatuan,0);
-    visit.status = 'menunggu_farmasi';
+    visit.status = 'menunggu_farmasi'; visit.nextStep='Farmasi Rawat Jalan';
     Store.save();
     logAudit('selesai_periksa', visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama)+' · Dx: '+esc(visit.diagnosis));
     showToast('Pemeriksaan selesai — resep dikirim ke farmasi', 'success');
   } else {
-    visit.status = 'menunggu_bayar';
+    visit.status = 'menunggu_bayar'; visit.nextStep='Billing / Kasir Rawat Jalan';
     Store.save();
     logAudit('selesai_periksa', visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama)+' · Dx: '+esc(visit.diagnosis));
     showToast('Pemeriksaan selesai — pasien diarahkan ke kasir', 'success');
@@ -1881,8 +1935,9 @@ function submitHasilLab(visitId){
   const visit = getVisit(visitId);
   visit.labRequest.hasil = hasil;
   visit.labRequest.status = 'selesai';
-  visit.status = 'diperiksa';
-  visit.updatedAt = nowISO();
+  visit.status = 'menunggu_review';
+  visit.workflow=visit.workflow||{}; visit.workflow.reviewAt=nowISO(); visit.updatedAt=nowISO();
+  visit.nextStep='Dokter meninjau hasil laboratorium';
   Store.save();
   logAudit('hasil_lab', visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama));
   showToast('Hasil lab terkirim ke dokter', 'success');
@@ -1955,7 +2010,7 @@ function siapkanObat(resepId, visitId){
   resep.status = 'disiapkan';
   resep.siapAt = nowISO(); resep.updatedAt = resep.siapAt;
   visit.billing.obat = totalObat;
-  visit.status = 'menunggu_bayar';
+  visit.status = 'menunggu_bayar'; visit.nextStep='Billing / Kasir Rawat Jalan';
   visit.updatedAt = nowISO();
   Store.save();
   logAudit('obat_disiapkan', visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama));
