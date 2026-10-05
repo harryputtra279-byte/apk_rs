@@ -145,3 +145,24 @@ Dashboard menampilkan:
 ## 🔐 Keamanan
 
 Project ini tetap merupakan prototype/portfolio. Data pasien harus fiktif. `localStorage`, password demo, dan autentikasi client-side tidak boleh dianggap sebagai kontrol keamanan produksi. Implementasi produksi membutuhkan backend, database server, sesi/token aman, audit server-side, enkripsi, backup, dan kontrol akses yang sesuai.
+
+## Akun Demo Per Divisi
+
+Akun demo dipisahkan agar setiap divisi dapat direview satu per satu tanpa mencampur alur Rawat Jalan, IGD, Rawat Inap, Farmasi, dan Kasir. Password demo bersifat dummy untuk portfolio lokal.
+
+| Divisi | Username | Password |
+|---|---|---|
+| Rawat Jalan | `rawatjalan` | `rawatjalan123` |
+| Dokter Rawat Jalan | `dokter.rajal` | `dokter123` |
+| Farmasi Rawat Jalan | `farmasi.rajal` | `farmasi123` |
+| Kasir Rawat Jalan | `kasir.rajal` | `kasir123` |
+| Dokter IGD | `dokter.igd` | `dokter123` |
+| Perawat IGD | `perawat.igd` | `perawat123` |
+| Farmasi IGD | `farmasi.igd` | `farmasi123` |
+| Kasir IGD | `kasir.igd` | `kasir123` |
+| Dokter Rawat Inap | `dokter.ranap` | `dokter123` |
+| Perawat Rawat Inap | `perawat.ranap` | `perawat123` |
+| Farmasi Rawat Inap | `farmasi.ranap` | `farmasi123` |
+| Kasir Rawat Inap | `kasir.ranap` | `kasir123` |
+
+Menu Farmasi dan Kasir sekarang dipisahkan menjadi **Rawat Jalan, IGD, dan Rawat Inap**.

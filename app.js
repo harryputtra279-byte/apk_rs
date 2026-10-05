@@ -174,8 +174,8 @@ function seedData(){
     {id:'U-DOK2', username:'dokter.anak', password:'dokter123', nama:'dr. Maria Christiani, Sp.A', role:'dokter', poliId:'ANA'},
     {id:'U-DOK3', username:'dokter.gigi', password:'dokter123', nama:'drg. Hendra Kusuma', role:'dokter', poliId:'GIG'},
     {id:'U-DOK4', username:'dokter.jantung', password:'dokter123', nama:'dr. Rudi Hartono, Sp.JP', role:'dokter', poliId:'JAN'},
-    {id:'U-FAR', username:'farmasi', password:'farmasi123', nama:'Apt. Dewi Lestari', role:'farmasi'},
-    {id:'U-KAS', username:'kasir', password:'kasir123', nama:'Rina Marlina', role:'kasir'},
+    {id:'U-FAR', username:'farmasi', password:'farmasi123', nama:'Apt. Dewi Lestari', role:'farmasi', unit:'rawat-jalan'},
+    {id:'U-KAS', username:'kasir', password:'kasir123', nama:'Rina Marlina', role:'kasir', unit:'rawat-jalan'},
     {id:'U-LAB', username:'lab', password:'lab123', nama:'Agus Setiawan', role:'lab'},
     {id:'U-PWT', username:'perawat', password:'perawat123', nama:'Ns. Lestari Handayani, S.Kep', role:'perawat'}
   ];
@@ -201,13 +201,13 @@ function seedData(){
   const visits = [
     {id:uid('KJ'), patientId:'RM-2026-0001', tanggal:todayStr(new Date(Date.now()-12*86400000)), poliId:'UMU', dokterId:'U-DOK1',
       jenisBayar:'Umum', noBpjs:'', noAntrian:'UMU-014', keluhan:'Demam dan sakit kepala',
-      status:'selesai', vital:{td:'120/80', nadi:'82', suhu:'37.8', rr:'20', bb:'68', tb:'170'},
+      status:'selesai', unit:'rawat-jalan', vital:{td:'120/80', nadi:'82', suhu:'37.8', rr:'20', bb:'68', tb:'170'},
       diagnosis:'ISPA (Infeksi Saluran Pernapasan Atas)', catatan:'Istirahat cukup, kontrol jika demam berlanjut 3 hari.',
       labRequest:null, resepId:null, billing:{registrasi:BIAYA_REGISTRASI, konsultasi:35000, obat:1600, lab:0},
       createdAt:daysAgoISO(12), updatedAt:daysAgoISO(12)}
   ];
   const prescriptions = [
-    {id:uid('RSP'), visitId:visits[0].id, items:[{medicineId:'OBT001', nama:'Paracetamol 500mg', jumlah:10, hargaSatuan:500, aturanPakai:'3x1 sesudah makan'}], status:'disiapkan', createdAt:daysAgoISO(12)}
+    {id:uid('RSP'), visitId:visits[0].id, jenisLayanan:'rawat-jalan', unit:'rawat-jalan', items:[{medicineId:'OBT001', nama:'Paracetamol 500mg', jumlah:10, hargaSatuan:500, aturanPakai:'3x1 sesudah makan'}], status:'disiapkan', createdAt:daysAgoISO(12)}
   ];
   visits[0].resepId = prescriptions[0].id;
   const transactions = [
@@ -282,7 +282,31 @@ function seedData(){
 }
 
 /* ---------------- persistence ---------------- */
-const DB_SCHEMA_VERSION = 6;
+const DB_SCHEMA_VERSION = 7;
+
+function ensureDivisionDemoUsers(data){
+  if(!Array.isArray(data.users)) data.users=[];
+  const demoUsers = [
+    {id:'U-RJ-ADM', username:'rawatjalan', password:'rawatjalan123', nama:'Budi Santoso', role:'rawat_jalan', unit:'rawat-jalan'},
+    {id:'U-RJ-DOK', username:'dokter.rajal', password:'dokter123', nama:'dr. Andi Wijaya', role:'dokter', unit:'rawat-jalan', poliId:'UMU'},
+    {id:'U-RJ-FAR', username:'farmasi.rajal', password:'farmasi123', nama:'Apt. Dewi Lestari', role:'farmasi', unit:'rawat-jalan'},
+    {id:'U-RJ-KAS', username:'kasir.rajal', password:'kasir123', nama:'Rina Marlina', role:'kasir', unit:'rawat-jalan'},
+    {id:'U-IGD-DOK', username:'dokter.igd', password:'dokter123', nama:'dr. Rudi Hartono', role:'dokter_igd', unit:'igd'},
+    {id:'U-IGD-PWT', username:'perawat.igd', password:'perawat123', nama:'Ns. Lestari Handayani', role:'perawat_igd', unit:'igd'},
+    {id:'U-IGD-FAR', username:'farmasi.igd', password:'farmasi123', nama:'Apt. Sari Wulandari', role:'farmasi', unit:'igd'},
+    {id:'U-IGD-KAS', username:'kasir.igd', password:'kasir123', nama:'Rina Pratama', role:'kasir', unit:'igd'},
+    {id:'U-RI-DOK', username:'dokter.ranap', password:'dokter123', nama:'dr. Maria Christiani, Sp.A', role:'dokter_ranap', unit:'rawat-inap'},
+    {id:'U-RI-PWT', username:'perawat.ranap', password:'perawat123', nama:'Ns. Dimas Saputra', role:'perawat_ranap', unit:'rawat-inap'},
+    {id:'U-RI-FAR', username:'farmasi.ranap', password:'farmasi123', nama:'Apt. Nanda Putri', role:'farmasi', unit:'rawat-inap'},
+    {id:'U-RI-KAS', username:'kasir.ranap', password:'kasir123', nama:'Rina Permata', role:'kasir', unit:'rawat-inap'}
+  ];
+  demoUsers.forEach(function(u){
+    const old=data.users.find(x=>x.id===u.id || x.username===u.username);
+    if(old){ Object.assign(old,u); }
+    else data.users.push(Object.assign({},u));
+  });
+  return data;
+}
 
 function migrateData(data){
   if(!data || typeof data!=='object') return seedData();
@@ -312,11 +336,15 @@ function migrateData(data){
     lowStockThreshold: LOW_STOCK_THRESHOLD
   }, data.meta.settings||{});
   if(!Array.isArray(data.prescriptions)) data.prescriptions=[];
-  data.prescriptions.forEach(function(r){ if(r.updatedAt===undefined) r.updatedAt=r.createdAt||nowISO(); if(r.siapAt===undefined) r.siapAt=null; if(r.diambilAt===undefined) r.diambilAt=null; if(r.jenisLayanan===undefined) r.jenisLayanan=r.admissionId?'rawat_inap':'rawat_jalan'; });
+  data.prescriptions.forEach(function(r){ if(r.unit===undefined) r.unit=r.admissionId?'rawat-inap':'rawat-jalan'; if(r.updatedAt===undefined) r.updatedAt=r.createdAt||nowISO(); if(r.siapAt===undefined) r.siapAt=null; if(r.diambilAt===undefined) r.diambilAt=null; if(r.jenisLayanan===undefined) r.jenisLayanan=r.admissionId?'rawat_inap':'rawat_jalan'; });
+  if(Array.isArray(data.visits)) data.visits.forEach(function(v){ if(v.unit===undefined) v.unit='rawat-jalan'; });
+  if(Array.isArray(data.admissions)) data.admissions.forEach(function(a){ if(a.unit===undefined) a.unit='rawat-inap'; });
   if(!Array.isArray(data.doctorSchedules)) data.doctorSchedules = [];
   if(!Array.isArray(data.notifications)) data.notifications = [];
   if(!Array.isArray(data.facilities)) data.facilities = [];
   ensureOfficialCatalog(data);
+  data.users.forEach(function(u){ if(u.username==='farmasi' && !u.unit) u.unit='rawat-jalan'; if(u.username==='kasir' && !u.unit) u.unit='rawat-jalan'; });
+  ensureDivisionDemoUsers(data);
   data.meta.settings = Object.assign({pharmacyOutpatientSlaMinutes:30, pharmacyInpatientSlaMinutes:60}, data.meta.settings||{});
   return data;
 }
@@ -436,30 +464,50 @@ function pushNotification(type, title, body, target){
 let installPromptEvent = null;
 const MODULE_RENDERERS = {};
 
+function operationalContextLabel(ctx){
+  return ({'rawat-jalan':'Rawat Jalan / Poli','igd':'IGD','rawat-inap':'Rawat Inap'}[ctx] || 'SIMRS');
+}
+function routeContext(route){
+  if(route==='poli' || route.indexOf('rawat-jalan')>=0) return 'rawat-jalan';
+  if(route==='igd' || route.indexOf('-igd')>=0) return 'igd';
+  if(route==='ranap' || route.indexOf('rawat-inap')>=0) return 'rawat-inap';
+  return null;
+}
+
 const NAV_ITEMS = [
   {hash:'dashboard', label:'Dashboard', ic:'📊', roles:['admin']},
-  {hash:'beranda', label:'Beranda', ic:'🏠', roles:['loket','dokter','farmasi','kasir','lab','perawat']},
-  {hash:'pendaftaran', label:'Pendaftaran', ic:'📝', roles:['admin','loket']},
-  {hash:'booking', label:'Booking Antrian', ic:'📅', roles:['admin','loket']},
-  {hash:'poli', label:'Poli', ic:'🩺', roles:['admin','dokter']},
-  {hash:'ranap', label:'Rawat Inap', ic:'🏨', roles:['admin','dokter','perawat']},
+  {hash:'beranda', label:'Beranda', ic:'🏠', roles:['loket','dokter','farmasi','kasir','lab','perawat','rawat_jalan','dokter_igd','perawat_igd','dokter_ranap','perawat_ranap']},
+  {hash:'pendaftaran', label:'Pendaftaran', ic:'📝', roles:['admin','loket','rawat_jalan']},
+  {hash:'booking', label:'Booking Antrian', ic:'📅', roles:['admin','loket','rawat_jalan']},
+  {hash:'poli', label:'Rawat Jalan', ic:'🩺', roles:['admin','dokter','rawat_jalan']},
+  {hash:'igd', label:'IGD', ic:'🚑', roles:['admin','dokter_igd','perawat_igd']},
+  {hash:'ranap', label:'Rawat Inap', ic:'🏨', roles:['admin','dokter','perawat','dokter_ranap','perawat_ranap']},
   {hash:'lab', label:'Laboratorium', ic:'🧪', roles:['admin','lab']},
-  {hash:'farmasi', label:'Farmasi', ic:'💊', roles:['admin','farmasi']},
-  {hash:'kasir', label:'Kasir', ic:'🧾', roles:['admin','kasir']},
-  {hash:'rekam-medis', label:'Rekam Medis', ic:'📁', roles:['admin','dokter']},
+  {hash:'farmasi-rawat-jalan', label:'Farmasi Rawat Jalan', ic:'💊', roles:['admin','farmasi']},
+  {hash:'farmasi-rawat-inap', label:'Farmasi Rawat Inap', ic:'💊', roles:['admin','farmasi']},
+  {hash:'farmasi-igd', label:'Farmasi IGD', ic:'💊', roles:['admin','farmasi']},
+  {hash:'kasir-rawat-jalan', label:'Kasir Rawat Jalan', ic:'🧾', roles:['admin','kasir']},
+  {hash:'kasir-rawat-inap', label:'Kasir Rawat Inap', ic:'🧾', roles:['admin','kasir']},
+  {hash:'kasir-igd', label:'Kasir IGD', ic:'🧾', roles:['admin','kasir']},
+  {hash:'rekam-medis', label:'Rekam Medis', ic:'📁', roles:['admin','dokter','dokter_igd','dokter_ranap']},
   {hash:'master-data', label:'Master Data', ic:'⚙️', roles:['admin']},
-  {hash:'cek-antrian', label:'Cek Antrian', ic:'📺', roles:['admin','loket','dokter','farmasi','kasir','lab','perawat']}
+  {hash:'cek-antrian', label:'Cek Antrian', ic:'📺', roles:['admin','loket','dokter','farmasi','kasir','lab','perawat','rawat_jalan','dokter_igd','perawat_igd','dokter_ranap','perawat_ranap']}
 ];
 
 function roleLabel(role){
-  return {admin:'Admin', loket:'Petugas Pendaftaran', dokter:'Dokter', farmasi:'Apoteker', kasir:'Kasir', lab:'Petugas Laboratorium', perawat:'Perawat'}[role] || role;
+  return {admin:'Admin', loket:'Petugas Pendaftaran', rawat_jalan:'Petugas Rawat Jalan', dokter:'Dokter', dokter_igd:'Dokter IGD', dokter_ranap:'Dokter Rawat Inap', farmasi:'Apoteker', kasir:'Kasir', lab:'Petugas Laboratorium', perawat:'Perawat', perawat_igd:'Perawat IGD', perawat_ranap:'Perawat Rawat Inap'}[role] || role;
 }
 function isRouteAllowed(route, role){
   const item = NAV_ITEMS.find(n=>n.hash===route);
-  return item ? item.roles.includes(role) : false;
+  if(!item || !item.roles.includes(role)) return false;
+  const u = Session.currentUser;
+  if(!u || role==='admin') return true;
+  const ctx = routeContext(route);
+  if(ctx && u.unit && u.unit!==ctx) return false;
+  return true;
 }
 function defaultRouteForRole(role){
-  return ({admin:'dashboard', loket:'beranda', dokter:'beranda', farmasi:'beranda', kasir:'beranda', lab:'beranda', perawat:'beranda'})[role] || 'cek-antrian';
+  return ({admin:'dashboard', loket:'beranda', rawat_jalan:'poli', dokter:'poli', dokter_igd:'igd', dokter_ranap:'ranap', farmasi:'farmasi-rawat-jalan', kasir:'kasir-rawat-jalan', lab:'beranda', perawat:'ranap', perawat_igd:'igd', perawat_ranap:'ranap'})[role] || 'cek-antrian';
 }
 function navigate(hash){ location.hash = '#/' + hash; }
 function currentRoute(){ return location.hash.replace(/^#\/?/, '').split('?')[0]; }
@@ -668,10 +716,15 @@ function renderLogin(){
   });
 }
 function chipsForDemo(){
-  const list = [['admin','Admin'],['loket','Loket'],['dokter.umum','Dr. Umum'],['dokter.anak','Dr. Anak'],
-    ['dokter.gigi','Dr. Gigi'],['dokter.jantung','Dr. Jantung'],['lab','Lab'],['farmasi','Farmasi'],['kasir','Kasir']];
-  return list.map(([uname,label])=>{
+  const groups = [
+    ['admin','Admin'],['loket','Pendaftaran'],['rawatjalan','Rawat Jalan'],['dokter.rajal','Dokter Rawat Jalan'],
+    ['farmasi.rajal','Farmasi RJ'],['kasir.rajal','Kasir RJ'],['dokter.igd','Dokter IGD'],['perawat.igd','Perawat IGD'],
+    ['farmasi.igd','Farmasi IGD'],['kasir.igd','Kasir IGD'],['dokter.ranap','Dokter RI'],['perawat.ranap','Perawat RI'],
+    ['farmasi.ranap','Farmasi RI'],['kasir.ranap','Kasir RI'],['lab','Laboratorium']
+  ];
+  return groups.map(([uname,label])=>{
     const u = Store.data.users.find(x=>x.username===uname);
+    if(!u) return '';
     return '<button type="button" class="chip" data-username="'+uname+'" data-password="'+u.password+'">'+label+'</button>';
   }).join('');
 }
@@ -1841,12 +1894,14 @@ function submitHasilLab(visitId){
    ================================================================= */
 let farmasiTab = 'resep';
 function renderFarmasi(){
-  setPageTitle('Farmasi');
+  const ctx = routeContext(currentRoute()) || (Session.currentUser && Session.currentUser.unit) || 'rawat-jalan';
+  setPageTitle('Farmasi ' + operationalContextLabel(ctx));
   farmasiTab = 'resep';
   document.getElementById('main-content').innerHTML =
-    pageIntro('Kelola resep masuk dari seluruh poli & rawat inap, siapkan obat, serahkan ke pasien, dan pantau stok.')+
+    pageIntro(ctx==='rawat-inap' ? 'Kelola pemenuhan instruksi obat pasien rawat inap dan distribusi obat ke unit perawatan.' : ctx==='igd' ? 'Kelola resep dan kebutuhan obat IGD secara terpisah dari rawat jalan dan rawat inap.' : 'Kelola resep pasien rawat jalan/poli, siapkan obat, serahkan ke pasien, dan pantau waktu tunggu farmasi.')+
+    '<div class="ops-alert" style="margin-bottom:12px"><strong>Unit Aktif:</strong> '+operationalContextLabel(ctx)+' — modul farmasi dipisahkan per layanan.</div>'+
     '<div class="tabs"><button class="tab active" data-ftab="resep">Antrian Resep</button>'+
-    '<button class="tab" data-ftab="ranap">Resep Rawat Inap</button>'+
+    (ctx==='rawat-inap' ? '<button class="tab" data-ftab="ranap">Instruksi Obat Rawat Inap</button>' : '')+
     '<button class="tab" data-ftab="siap">Obat Siap Diambil</button>'+
     '<button class="tab" data-ftab="stok">Stok Obat</button></div>'+
     '<div id="farmasi-tab-area"></div>';
@@ -1862,7 +1917,8 @@ function switchFarmasiTab(tab){
   else renderFarmasiStokTab();
 }
 function renderFarmasiResepTab(){
-  const list = visitsToday().filter(v=>v.status==='menunggu_farmasi').sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+  const ctx = routeContext(currentRoute()) || 'rawat-jalan';
+  const list = visitsToday().filter(v=>v.status==='menunggu_farmasi' && (ctx==='igd' ? v.unit==='igd' : ctx==='rawat-inap' ? false : (v.unit||'rawat-jalan')==='rawat-jalan')).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
   const area = document.getElementById('farmasi-tab-area');
   if(list.length===0){ area.innerHTML = '<div class="panel"><div class="panel-body"><div class="empty"><div class="big">✓</div>Tidak ada resep yang menunggu diracik.</div></div></div>'; return; }
   area.innerHTML = list.map(v=>{
@@ -1950,7 +2006,8 @@ function siapkanObatRanap(resepId){
   renderFarmasiRanapTab();
 }
 function renderFarmasiSiapTab(){
-  const list = visitsToday().filter(v=>v.status==='obat_siap').sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+  const ctx = routeContext(currentRoute()) || 'rawat-jalan';
+  const list = visitsToday().filter(v=>v.status==='obat_siap' && (ctx==='igd' ? v.unit==='igd' : (v.unit||'rawat-jalan')===ctx)).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
   const area = document.getElementById('farmasi-tab-area');
   if(list.length===0){ area.innerHTML = '<div class="panel"><div class="panel-body"><div class="empty"><div class="big">—</div>Belum ada obat yang menunggu diambil.</div></div></div>'; return; }
   area.innerHTML = '<div class="panel"><div class="panel-body"><div class="table-wrap"><table><thead><tr><th>No. Antrian</th><th>Pasien</th><th>Poli</th><th></th></tr></thead><tbody>'+
@@ -2010,12 +2067,14 @@ function renderFarmasiStokTab(){
    ================================================================= */
 let kasirTab = 'bayar';
 function renderKasir(){
-  setPageTitle('Kasir');
+  const ctx = routeContext(currentRoute()) || (Session.currentUser && Session.currentUser.unit) || 'rawat-jalan';
+  setPageTitle('Kasir ' + operationalContextLabel(ctx));
   kasirTab = 'bayar';
   document.getElementById('main-content').innerHTML =
-    pageIntro('Proses pembayaran kunjungan rawat jalan & rawat inap, dan lihat riwayat transaksi.')+
-    '<div class="tabs"><button class="tab active" data-ktab="bayar">Rawat Jalan</button>'+
-    '<button class="tab" data-ktab="ranap">Rawat Inap</button>'+
+    pageIntro(ctx==='rawat-inap' ? 'Kelola tagihan dan pembayaran pasien rawat inap.' : ctx==='igd' ? 'Kelola pembayaran layanan IGD secara terpisah.' : 'Kelola pembayaran pasien rawat jalan/poli secara terpisah.')+
+    '<div class="ops-alert" style="margin-bottom:12px"><strong>Unit Aktif:</strong> '+operationalContextLabel(ctx)+' — modul kasir dipisahkan per layanan.</div>'+
+    '<div class="tabs"><button class="tab active" data-ktab="bayar">Pembayaran '+(ctx==='rawat-inap'?'Rawat Inap':ctx==='igd'?'IGD':'Rawat Jalan')+'</button>'+
+    (ctx==='rawat-inap' ? '<button class="tab" data-ktab="ranap">Tagihan Rawat Inap</button>' : '')+
     '<button class="tab" data-ktab="riwayat">Riwayat Transaksi</button></div>'+
     '<div id="kasir-tab-area"></div>';
   document.querySelectorAll('[data-ktab]').forEach(t=> t.addEventListener('click', ()=> switchKasirTab(t.dataset.ktab)));
@@ -2037,7 +2096,8 @@ function computeBilling(visit){
   return {registrasi, konsultasi, obat, lab, subtotal, tanggungan, totalBayar: subtotal - tanggungan};
 }
 function renderKasirBayarTab(){
-  const list = visitsToday().filter(v=>v.status==='menunggu_bayar').sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+  const ctx = routeContext(currentRoute()) || 'rawat-jalan';
+  const list = visitsToday().filter(v=>v.status==='menunggu_bayar' && (ctx==='igd' ? v.unit==='igd' : (v.unit||'rawat-jalan')==='rawat-jalan')).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
   const area = document.getElementById('kasir-tab-area');
   if(list.length===0){ area.innerHTML = '<div class="panel"><div class="panel-body"><div class="empty"><div class="big">✓</div>Tidak ada tagihan yang menunggu.</div></div></div>'; return; }
   area.innerHTML = list.map(v=>{
@@ -2091,7 +2151,8 @@ function prosesBayar(visitId, metode, rincianRows, total){
   openInvoiceModal(trx.id);
 }
 function renderKasirRanapTab(){
-  const list = Store.data.admissions.filter(a=> a.status!=='dirawat' && a.billing.statusBayar==='belum_bayar');
+  const ctx = routeContext(currentRoute()) || 'rawat-inap';
+  const list = ctx==='rawat-inap' ? Store.data.admissions.filter(a=> a.status!=='dirawat' && a.billing.statusBayar==='belum_bayar') : [];
   const area = document.getElementById('kasir-tab-area');
   if(list.length===0){ area.innerHTML = '<div class="panel"><div class="panel-body"><div class="empty"><div class="big">✓</div>Tidak ada tagihan rawat inap yang menunggu.</div></div></div>'; return; }
   area.innerHTML = list.map(function(a){
@@ -2784,6 +2845,27 @@ function toggleKioskMode(){
 }
 
 /* =================================================================
+   MODULE: IGD
+   ================================================================= */
+function renderIGD(){
+  setPageTitle('Instalasi Gawat Darurat (IGD)');
+  const visits = visitsToday().filter(v=>v.unit==='igd');
+  const waiting = visits.filter(v=>v.status==='menunggu_poli').length;
+  const exam = visits.filter(v=>v.status==='diperiksa').length;
+  const done = visits.filter(v=>v.status==='selesai').length;
+  document.getElementById('main-content').innerHTML =
+    pageIntro('Dashboard operasional IGD. Detail triase, tindakan, farmasi IGD, dan kasir IGD akan kita lengkapi saat review divisi IGD.')+
+    '<div class="ops-kpi-grid">'+
+      '<div class="ops-kpi"><div class="kpi-label">Pasien IGD Hari Ini</div><div class="kpi-value">'+visits.length+'</div></div>'+
+      '<div class="ops-kpi"><div class="kpi-label">Menunggu</div><div class="kpi-value">'+waiting+'</div></div>'+
+      '<div class="ops-kpi"><div class="kpi-label">Diperiksa</div><div class="kpi-value">'+exam+'</div></div>'+
+      '<div class="ops-kpi"><div class="kpi-label">Selesai</div><div class="kpi-value">'+done+'</div></div>'+
+    '</div>'+ 
+    '<div class="ops-grid-main"><div class="panel"><div class="panel-head"><h2>Zona IGD</h2></div><div class="panel-body"><div class="ops-queue-grid"><div class="ops-queue-card"><strong>Zona Merah</strong><div class="hint">Prioritas kegawatan tinggi</div></div><div class="ops-queue-card"><strong>Zona Kuning</strong><div class="hint">Prioritas sesuai hasil triase</div></div></div></div></div>'+ 
+    '<div class="panel"><div class="panel-head"><h2>Integrasi Layanan</h2></div><div class="panel-body"><div class="hint">Farmasi IGD dan Kasir IGD tersedia sebagai menu terpisah agar alur IGD tidak tercampur dengan Rawat Jalan/Rawat Inap.</div></div></div></div>';
+}
+
+/* =================================================================
    INIT / PWA BOOTSTRAP
    ================================================================= */
 MODULE_RENDERERS['dashboard'] = renderDashboard;
@@ -2793,8 +2875,13 @@ MODULE_RENDERERS['booking'] = renderBooking;
 MODULE_RENDERERS['poli'] = renderPoli;
 MODULE_RENDERERS['ranap'] = renderRanap;
 MODULE_RENDERERS['lab'] = renderLab;
-MODULE_RENDERERS['farmasi'] = renderFarmasi;
-MODULE_RENDERERS['kasir'] = renderKasir;
+MODULE_RENDERERS['igd'] = renderIGD;
+MODULE_RENDERERS['farmasi-rawat-jalan'] = renderFarmasi;
+MODULE_RENDERERS['farmasi-rawat-inap'] = renderFarmasi;
+MODULE_RENDERERS['farmasi-igd'] = renderFarmasi;
+MODULE_RENDERERS['kasir-rawat-jalan'] = renderKasir;
+MODULE_RENDERERS['kasir-rawat-inap'] = renderKasir;
+MODULE_RENDERERS['kasir-igd'] = renderKasir;
 MODULE_RENDERERS['rekam-medis'] = renderRekamMedis;
 MODULE_RENDERERS['master-data'] = renderMasterData;
 MODULE_RENDERERS['cek-antrian'] = renderCekAntrian;
