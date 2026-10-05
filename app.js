@@ -287,7 +287,7 @@ function seedData(){
 }
 
 /* ---------------- persistence ---------------- */
-const DB_SCHEMA_VERSION = 10;
+const DB_SCHEMA_VERSION = 11;
 
 function ensureDivisionDemoUsers(data){
   if(!Array.isArray(data.users)) data.users=[];
@@ -310,6 +310,39 @@ function ensureDivisionDemoUsers(data){
     const old=data.users.find(x=>x.id===u.id || x.username===u.username);
     if(old){ Object.assign(old,u); }
     else data.users.push(Object.assign({},u));
+  });
+  ensurePatientDemoAccounts(data);
+  return data;
+}
+
+/* ---------------- 5 akun demo pasien ----------------
+   Setiap akun memiliki data pasien + tiket booking contoh agar alur
+   Dashboard Pasien, buka ulang QR/barcode, dan Download Tiket dapat diuji
+   tanpa harus membuat booking baru terlebih dahulu.
+   Semua identitas di bawah adalah data fiktif untuk demo.
+*/
+function ensurePatientDemoAccounts(data){
+  if(!Array.isArray(data.patients)) data.patients=[];
+  if(!Array.isArray(data.bookings)) data.bookings=[];
+  const tanggal=todayStr(new Date(Date.now()+86400000));
+  const demos=[
+    {uid:'U-PAS-001',pid:'RM-DEMO-P001',username:'pasien.demo1',password:'pasien123',nama:'Andi Pratama',nik:'DEMO320101000001',jk:'L',lahir:'1992-04-12',hp:'081200000001',poli:'SP-JAN',layanan:'Poliklinik Spesialis',bayar:'Umum',no:'SP-JAN-003',kode:'DEMO-P001-JAN'},
+    {uid:'U-PAS-002',pid:'RM-DEMO-P002',username:'pasien.demo2',password:'pasien123',nama:'Sari Wulandari',nik:'DEMO320101000002',jk:'P',lahir:'1990-08-21',hp:'081200000002',poli:'EX-JAN',layanan:'Poliklinik Eksekutif',bayar:'Umum',no:'EX-JAN-002',kode:'DEMO-P002-EJAN'},
+    {uid:'U-PAS-003',pid:'RM-DEMO-P003',username:'pasien.demo3',password:'pasien123',nama:'Budi Setiawan',nik:'DEMO320101000003',jk:'L',lahir:'1987-02-03',hp:'081200000003',poli:'SP-GIG',layanan:'Poliklinik Spesialis',bayar:'BPJS',no:'SP-GIG-002',kode:'DEMO-P003-GIG'},
+    {uid:'U-PAS-004',pid:'RM-DEMO-P004',username:'pasien.demo4',password:'pasien123',nama:'Rina Maharani',nik:'DEMO320101000004',jk:'P',lahir:'1985-11-17',hp:'081200000004',poli:'EX-PDL',layanan:'Poliklinik Eksekutif',bayar:'Asuransi',no:'EX-PDL-001',kode:'DEMO-P004-EPDL'},
+    {uid:'U-PAS-005',pid:'RM-DEMO-P005',username:'pasien.demo5',password:'pasien123',nama:'Dimas Saputra',nik:'DEMO320101000005',jk:'L',lahir:'1995-06-28',hp:'081200000005',poli:'SP-ANA',layanan:'Poliklinik Spesialis',bayar:'BPJS',no:'SP-ANA-001',kode:'DEMO-P005-ANA'}
+  ];
+  demos.forEach(function(d){
+    if(!data.patients.some(function(x){return x.id===d.pid;})){
+      data.patients.push({id:d.pid,nik:d.nik,nama:d.nama,jenisKelamin:d.jk,tglLahir:d.lahir,alamat:'Data Demo — bukan data pasien nyata',noHp:d.hp,golDarah:'-',alergi:'',createdAt:nowISO()});
+    }
+    const oldUser=data.users.find(function(x){return x.id===d.uid || x.username===d.username;});
+    const user={id:d.uid,username:d.username,password:d.password,nama:d.nama,role:'pasien',unit:'rawat-jalan',patientId:d.pid};
+    if(oldUser) Object.assign(oldUser,user); else data.users.push(user);
+    const existing=data.bookings.find(function(b){return b.id==='BK-'+d.pid || (b.patientId===d.pid && b.tanggalKontrol===tanggal && b.poliId===d.poli);});
+    if(!existing){
+      data.bookings.push({id:'BK-'+d.pid,patientId:d.pid,poliId:d.poli,tanggalKontrol:tanggal,jenisBayar:d.bayar,sumber:'Aplikasi Pasien RS (Demo)',noBpjs:d.bayar==='BPJS'?'DEMO-'+d.pid:'',noAntrian:d.no,kodeCheckIn:d.kode,status:'terjadwal',visitId:null,reminded:false,remindedAt:null,confirmedAt:null,asuransiNama:d.bayar==='Asuransi'?'Asuransi Demo': '',createdAt:nowISO(),updatedAt:nowISO(),demo:true});
+    }
   });
   return data;
 }
@@ -755,7 +788,8 @@ function chipsForDemo(){
     ['admin','Admin'],['loket','Pendaftaran'],['rawatjalan','Rawat Jalan'],['dokter.rajal','Dokter Rawat Jalan'],
     ['farmasi.rajal','Farmasi RJ'],['kasir.rajal','Kasir RJ'],['dokter.igd','Dokter IGD'],['perawat.igd','Perawat IGD'],
     ['farmasi.igd','Farmasi IGD'],['kasir.igd','Kasir IGD'],['dokter.ranap','Dokter RI'],['perawat.ranap','Perawat RI'],
-    ['farmasi.ranap','Farmasi RI'],['kasir.ranap','Kasir RI'],['lab','Laboratorium'],['pasien.demo','Pasien Demo']
+    ['farmasi.ranap','Farmasi RI'],['kasir.ranap','Kasir RI'],['lab','Laboratorium'],
+    ['pasien.demo','Pasien Demo Lama'],['pasien.demo1','Pasien Demo 1'],['pasien.demo2','Pasien Demo 2'],['pasien.demo3','Pasien Demo 3'],['pasien.demo4','Pasien Demo 4'],['pasien.demo5','Pasien Demo 5']
   ];
   return groups.map(([uname,label])=>{
     const u = Store.data.users.find(x=>x.username===uname);
@@ -966,13 +1000,50 @@ function submitPatientBooking(){
   Store.data.bookings.push(booking); Store.save();
   pushNotification('booking','Booking Rawat Jalan berhasil',noAntrian+' — '+poli.nama+' pada '+formatTanggalIndo(tanggal),patientId,u.id);
   logAudit('patient_booking',noAntrian+' — '+getPatient(patientId).nama+' · '+poli.nama+' · '+penjamin);
-  openModal('<div class="modal-head"><h2>✓ Booking Berhasil</h2><button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button></div><div class="modal-body"><div class="patient-ticket"><span>Nomor Antrean</span><strong>'+esc(noAntrian)+'</strong><b>'+esc(poli.nama)+'</b><small>'+formatTanggalIndo(tanggal)+' · '+esc(poli.layanan)+'</small><div style="margin-top:14px">'+renderQrSvg(booking.kodeCheckIn,170)+'</div><small style="margin-top:8px">Tunjukkan QR/barcode ini di loket saat Anda benar-benar datang. Pembayaran dilakukan di rumah sakit, bukan di aplikasi.</small></div></div>');
+  openPatientBookingTicket(booking.id, true);
   renderPatientBookingList(patientId);
 }
 function renderPatientBookingList(patientId){
   const el=document.getElementById('patient-booking-list'); if(!el)return;
   const list=patientBookings(patientId).filter(function(b){return b.tanggalKontrol>=todayStr()&&['terjadwal','checked_in'].includes(b.status);}).slice(0,10);
-  el.innerHTML=list.length?list.map(function(b){const p=getPoli(b.poliId);return '<div class="queue-list-item" style="cursor:default"><div><div class="no">'+esc(b.noAntrian)+'</div><div class="nm">'+esc(p.nama)+' · '+formatTanggalIndo(b.tanggalKontrol)+'</div><div class="hint">'+esc(p.layanan)+' · '+esc(b.jenisBayar)+(b.jenisBayar==='Asuransi'&&b.asuransiNama?' · '+esc(b.asuransiNama):'')+'</div></div><div><span class="badge '+(b.status==='checked_in'?'badge-sage':'badge-amber')+'">'+bookingStatusLabel(b.status)+'</span></div></div>';}).join(''):'<div class="empty">Belum ada booking Rawat Jalan aktif.</div>';
+  el.innerHTML=list.length?list.map(function(b){const p=getPoli(b.poliId);return '<button type="button" class="queue-list-item patient-ticket-row" onclick="openPatientBookingTicket(\''+b.id+'\')"><div><div class="no">'+esc(b.noAntrian)+'</div><div class="nm">'+esc(p.nama)+' · '+formatTanggalIndo(b.tanggalKontrol)+'</div><div class="hint">'+esc(p.layanan)+' · '+esc(b.jenisBayar)+(b.jenisBayar==='Asuransi'&&b.asuransiNama?' · '+esc(b.asuransiNama):'')+'</div></div><div style="text-align:right"><span class="badge '+(b.status==='checked_in'?'badge-sage':'badge-amber')+'">'+bookingStatusLabel(b.status)+'</span><div class="hint" style="margin-top:6px">Tap untuk buka tiket</div></div></button>';}).join(''):'<div class="empty">Belum ada booking Rawat Jalan aktif.</div>';
+}
+
+function getPatientBookingById(bookingId){
+  const u=Session.currentUser;
+  if(!u || u.role!=='pasien') return null;
+  return Store.data.bookings.find(function(b){return b.id===bookingId && b.patientId===u.patientId;}) || null;
+}
+function openPatientBookingTicket(bookingId, fresh){
+  const booking=getPatientBookingById(bookingId);
+  if(!booking){showToast('Tiket tidak ditemukan.','danger');return;}
+  const p=getPatient(booking.patientId), poli=getPoli(booking.poliId);
+  openModal('<div class="modal-head"><div><h2>🎫 Tiket Rawat Jalan</h2><div class="hint">Tiket dapat dibuka kembali kapan saja.</div></div><button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button></div><div class="modal-body"><div class="patient-ticket ticket-download-target"><span>NOMOR ANTREAN</span><strong>'+esc(booking.noAntrian)+'</strong><b>'+esc(poli.nama)+'</b><small>'+formatTanggalIndo(booking.tanggalKontrol)+' · '+esc(poli.layanan)+' · '+esc(booking.jenisBayar)+'</small><div style="margin-top:14px">'+renderQrSvg(booking.kodeCheckIn,190)+'</div><small style="margin-top:8px">Tunjukkan QR/barcode ini di loket saat Anda datang. Pembayaran dilakukan di rumah sakit.</small><div class="ticket-actions"><button class="btn btn-primary" onclick="downloadPatientTicket(\''+booking.id+'\')">⬇️ Download Tiket</button><button class="btn btn-outline" onclick="printPatientTicket(\''+booking.id+'\')">🖨️ Cetak / Simpan PDF</button></div></div></div>');
+}
+function downloadPatientTicket(bookingId){
+  const booking=getPatientBookingById(bookingId); if(!booking)return;
+  const p=getPatient(booking.patientId), poli=getPoli(booking.poliId);
+  const svg=renderQrSvg(booking.kodeCheckIn,230);
+  const canvas=document.createElement('canvas'), ctx=canvas.getContext('2d'), scale=2;
+  canvas.width=900*scale; canvas.height=1250*scale; ctx.scale(scale,scale);
+  ctx.fillStyle='#f7faf9'; ctx.fillRect(0,0,900,1250);
+  ctx.fillStyle='#ffffff'; ctx.strokeStyle='#d8e5e1'; ctx.lineWidth=2;
+  if(ctx.roundRect) ctx.roundRect(45,45,810,1160,30); else ctx.rect(45,45,810,1160); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#0e5c56'; ctx.font='700 30px Arial'; ctx.fillText('SIMRS RSUD R.T. Notopuro',80,105);
+  ctx.fillStyle='#687773'; ctx.font='18px Arial'; ctx.fillText('TIKET RAWAT JALAN',80,145);
+  ctx.fillStyle='#263b37'; ctx.font='700 72px monospace'; ctx.fillText(booking.noAntrian,80,245);
+  ctx.font='700 30px Arial'; ctx.fillText(poli.nama,80,300);
+  ctx.font='20px Arial'; ctx.fillText(formatTanggalIndo(booking.tanggalKontrol)+' · '+poli.layanan,80,340);
+  ctx.fillText('Pasien: '+p.nama,80,380);
+  ctx.fillText('Penjamin: '+booking.jenisBayar,80,415);
+  const img=new Image(); const blob=new Blob([svg],{type:'image/svg+xml'}); const url=URL.createObjectURL(blob);
+  img.onload=function(){ctx.drawImage(img,335,475,230,230);URL.revokeObjectURL(url);ctx.fillStyle='#687773';ctx.font='18px monospace';ctx.textAlign='center';ctx.fillText(booking.kodeCheckIn,450,750);ctx.font='18px Arial';ctx.fillText('Tunjukkan QR/barcode ini saat check-in di loket.',450,805);ctx.fillText('Simpan tiket ini di ponsel Anda.',450,840);ctx.textAlign='left';const a=document.createElement('a');a.download='Tiket-'+booking.noAntrian+'-'+booking.tanggalKontrol+'.png';a.href=canvas.toDataURL('image/png');a.click();showToast('Tiket berhasil diunduh.','success');};
+  img.onerror=function(){URL.revokeObjectURL(url);showToast('Tiket gagal diunduh. Silakan coba lagi.','danger');}; img.src=url;
+}
+function printPatientTicket(bookingId){
+  const booking=getPatientBookingById(bookingId); if(!booking)return;
+  const p=getPatient(booking.patientId), poli=getPoli(booking.poliId);
+  printArea('<div style="max-width:420px;margin:30px auto;text-align:center;font-family:Arial,sans-serif"><h2>SIMRS RSUD R.T. Notopuro</h2><h3>Tiket Rawat Jalan</h3><div style="font-size:64px;font-weight:800;font-family:monospace">'+esc(booking.noAntrian)+'</div><h3>'+esc(poli.nama)+'</h3><p>'+formatTanggalIndo(booking.tanggalKontrol)+' · '+esc(poli.layanan)+'</p><p>Pasien: '+esc(p.nama)+'</p><div style="margin:20px auto;width:190px">'+renderQrSvg(booking.kodeCheckIn,190)+'</div><p>'+esc(booking.kodeCheckIn)+'</p><p>Tunjukkan QR/barcode ini saat check-in di loket.</p></div>');
 }
 
 function renderPatientDashboard(){
@@ -981,7 +1052,7 @@ function renderPatientDashboard(){
   if(!p){ document.getElementById('main-content').innerHTML='<div class="empty">Data pasien tidak ditemukan.</div>'; return; }
   if(!v){
     const upcoming=Store.data.bookings.filter(function(b){return b.patientId===u.patientId && b.tanggalKontrol>=todayStr() && ['terjadwal','checked_in'].includes(b.status);}).sort(function(a,b){return a.tanggalKontrol.localeCompare(b.tanggalKontrol)||a.noAntrian.localeCompare(b.noAntrian);})[0];
-    document.getElementById('main-content').innerHTML='<div class="patient-hero ops-hero"><div><div class="ops-eyebrow">PATIENT EXPERIENCE</div><h2>Halo, '+esc(p.nama)+'</h2><p>Dashboard ini hanya menampilkan perjalanan pelayanan Anda.</p></div></div><div class="panel"><div class="panel-body">'+(upcoming?'<div class="patient-ticket"><span>Jadwal Berikutnya</span><strong>'+esc(upcoming.noAntrian)+'</strong><b>'+esc(getPoli(upcoming.poliId).nama)+'</b><small>'+formatTanggalIndo(upcoming.tanggalKontrol)+' · '+upcoming.jenisBayar+'</small></div>':'<div class="empty"><div class="big">📅</div>Belum ada kunjungan Rawat Jalan aktif.</div>')+'</div></div>';
+    document.getElementById('main-content').innerHTML='<div class="patient-hero ops-hero"><div><div class="ops-eyebrow">PATIENT EXPERIENCE</div><h2>Halo, '+esc(p.nama)+'</h2><p>Dashboard ini hanya menampilkan perjalanan pelayanan Anda.</p></div></div><div class="panel"><div class="panel-body">'+(upcoming?'<button type="button" class="patient-ticket patient-ticket-clickable" onclick="openPatientBookingTicket(\''+upcoming.id+'\')"><span>Jadwal Berikutnya · Tap untuk buka tiket</span><strong>'+esc(upcoming.noAntrian)+'</strong><b>'+esc(getPoli(upcoming.poliId).nama)+'</b><small>'+formatTanggalIndo(upcoming.tanggalKontrol)+' · '+upcoming.jenisBayar+'</small><span class="ticket-reopen-hint">🎫 QR/barcode dapat dibuka kembali kapan saja</span></button>':'<div class="empty"><div class="big">📅</div>Belum ada kunjungan Rawat Jalan aktif.</div>')+'</div></div>';
     return;
   }
   const poli=getPoli(v.poliId), q=getPatientQueueState(v), statusInfo=STATUS_MAP[v.status]||{label:v.status,cls:'badge-slate'};

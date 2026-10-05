@@ -165,6 +165,20 @@ Akun demo dipisahkan agar setiap divisi dapat direview satu per satu tanpa menca
 | Farmasi Rawat Inap | `farmasi.ranap` | `farmasi123` |
 | Kasir Rawat Inap | `kasir.ranap` | `kasir123` |
 
+### 5 Akun Demo Pasien — Pengujian Tiket QR/Barcode
+
+Kelima akun berikut sudah memiliki **data pasien fiktif dan tiket booking contoh**. Gunakan untuk menguji Dashboard Pasien, membuka kembali tiket, menampilkan QR/barcode tanpa screenshot, serta tombol Download Tiket.
+
+| Pasien | Username | Password | Contoh tiket | Layanan | Penjamin |
+|---|---|---|---|---|---|
+| Andi Pratama | `pasien.demo1` | `pasien123` | `SP-JAN-003` | Reguler — Jantung | Umum |
+| Sari Wulandari | `pasien.demo2` | `pasien123` | `EX-JAN-002` | Eksekutif — Jantung | Umum |
+| Budi Setiawan | `pasien.demo3` | `pasien123` | `SP-GIG-002` | Reguler — Gigi | BPJS |
+| Rina Maharani | `pasien.demo4` | `pasien123` | `EX-PDL-001` | Eksekutif — Penyakit Dalam | Asuransi |
+| Dimas Saputra | `pasien.demo5` | `pasien123` | `SP-ANA-001` | Reguler — Anak | BPJS |
+
+> Seluruh data pasien demo di atas adalah data fiktif untuk pengujian portfolio, bukan data pasien nyata.
+
 Menu Farmasi dan Kasir sekarang dipisahkan menjadi **Rawat Jalan, IGD, dan Rawat Inap**.
 
 ## Rawat Jalan UX v8
