@@ -399,6 +399,10 @@ function migrateData(data){
   // Pastikan counter antrean tidak pernah menghasilkan nomor duplikat,
   // termasuk ketika sumber booking berasal dari JKN Mobile dan aplikasi RS.
   if(Array.isArray(data.visits)) data.visits.forEach(function(v){
+    if(v.unit==='rawat-jalan' && v.status==='screening' && v.screening && v.workflow && v.workflow.screeningAt){
+      v.status='menunggu_dokter';
+      v.updatedAt=v.updatedAt||nowISO();
+    }
     const n=queueNumberValue(v.noAntrian), key=v.poliId+'-'+(v.tanggal||todayStr());
     if(n!==null) data.meta.queueCounters[key]=Math.max(data.meta.queueCounters[key]||0,n);
   });
@@ -535,7 +539,7 @@ function pharmacyMetrics(kind, poliId){
 function alternativeDoctors(poliId){
   const current = getDoctorForPoli(poliId);
   if(!current) return [];
-  return Store.data.users.filter(function(u){ return u.role==='dokter' && u.id!==current.id && u.poliId===poliId; });
+  return Store.data.users.filter(function(u){ return u.role==='dokter' && u.id!==current.id && samePoli(u.poliId,poliId); });
 }
 function quotaForPoli(poliId, dateStr){
   const d = dateStr || todayStr();
@@ -1230,17 +1234,17 @@ function berandaLoket(){
 }
 function berandaDokter(){
   const u = Session.currentUser;
-  const visits = visitsToday().filter(v=>v.poliId===u.poliId);
-  const menunggu = visits.filter(v=>v.status==='menunggu_poli').sort((a,b)=> (b.prioritas?1:0)-(a.prioritas?1:0) || new Date(a.createdAt)-new Date(b.createdAt));
+  const visits = visitsToday().filter(v=>samePoli(v.poliId,u.poliId));
+  const menunggu = visits.filter(v=>['menunggu_dokter','dipanggil'].includes(v.status)).sort((a,b)=> (b.prioritas?1:0)-(a.prioritas?1:0) || (queueNumberValue(a.noAntrian)||999999)-(queueNumberValue(b.noAntrian)||999999));
   const urgentCount = menunggu.filter(v=>v.prioritas).length;
   const hasilLabSiap = visits.filter(v=>v.status==='diperiksa' && v.labRequest && v.labRequest.status==='selesai').length;
-  const bookingHariIni = Store.data.bookings.filter(b=>b.poliId===u.poliId && b.tanggalKontrol===todayStr());
+  const bookingHariIni = Store.data.bookings.filter(b=>samePoli(b.poliId,u.poliId) && b.tanggalKontrol===todayStr());
   const ranapSaya = Store.data.admissions.filter(a=>a.dpjpUserId===u.id && a.status==='dirawat');
   const ranapPerhatian = ranapSaya.filter(function(a){ const v=a.vitalLog[a.vitalLog.length-1]; return v && v.news2>=5; }).length;
 
   let html = '<h3 style="color:var(--ink-soft);margin-bottom:10px">🩺 Rawat Jalan — '+esc(getPoli(u.poliId).nama)+'</h3>'+
     '<div class="grid grid-3">'+
-      statCard('Menunggu Diperiksa', menunggu.length, urgentCount>0 ? urgentCount+' prioritas 🚩' : 'poli Anda')+
+      statCard('Siap Diperiksa', menunggu.length, urgentCount>0 ? urgentCount+' prioritas 🚩' : 'setelah screening')+
       statCard('Hasil Lab Siap', hasilLabSiap, 'perlu ditindaklanjuti')+
       statCard('Booking Hari Ini', bookingHariIni.length, 'kontrol terjadwal')+
     '</div>';
@@ -3310,7 +3314,7 @@ function renderMasterPoliTab(){
       '</form></div></div>'+
     '<div class="panel"><div class="panel-head"><h2>Daftar Poli</h2></div><div class="panel-body"><div class="table-wrap"><table><thead><tr><th>Kode</th><th>Nama Poli</th><th>Biaya Konsultasi</th><th>Dokter</th></tr></thead><tbody>'+
       Store.data.poli.map(p=>{
-        const dokter = Store.data.users.filter(u=>u.role==='dokter' && u.poliId===p.id);
+        const dokter = Store.data.users.filter(u=>u.role==='dokter' && samePoli(u.poliId,p.id));
         return '<tr><td class="mono"><span class="poli-tag"><span class="poli-dot" style="background:var(--'+poliColor(p.id)+')"></span>'+p.id+'</span></td><td>'+esc(p.nama)+'</td>'+
         '<td class="mono">'+formatRupiah(p.biaya)+'</td><td style="font-size:13px">'+(dokter.length?dokter.map(d=>esc(d.nama)).join(', '):'<span style="color:var(--ink-soft)">Belum ada</span>')+'</td></tr>';
       }).join('')+'</tbody></table></div></div></div>';

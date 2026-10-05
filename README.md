@@ -268,4 +268,4 @@ Prototype masih menggunakan localStorage sehingga **belum untuk data pasien nyat
 - Kontrol antrean dinamis berlaku untuk semua poli berdasarkan poli akun.
 - Tombol Panggil Berikutnya, Mulai Pemeriksaan, Panggil Ulang, Tunda, dan Selesaikan Pemeriksaan & Panggil Berikutnya.
 - Normalisasi ID poli menjaga akun demo lama tetap terhubung dengan katalog poli resmi.
-- Service worker dinaikkan ke V12.2 agar perubahan tidak tertahan cache.
+- Service worker dinaikkan ke V12.3 agar perubahan tidak tertahan cache.
