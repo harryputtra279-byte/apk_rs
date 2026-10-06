@@ -5,7 +5,7 @@
 const BIAYA_REGISTRASI = 10000;
 const BIAYA_LAB = 75000;
 const LOW_STOCK_THRESHOLD = 15;
-const PROTOTYPE_VERSION = 'v13.8.1';
+const PROTOTYPE_VERSION = 'v14.1';
 const PROTOTYPE_NAME = 'SIMRS PROTOTYPE';
 const PROTOTYPE_MODE = 'Portfolio / Demo';
 const QUEUE_JOURNEY = [
@@ -17,6 +17,40 @@ const QUEUE_JOURNEY = [
   {key:'diperiksa',label:'Sedang dilayani',icon:'👨‍⚕️'},
   {key:'selesai',label:'Pelayanan selesai',icon:'✓'}
 ];
+
+
+const INPATIENT_BED_STATUS = {
+  kosong:{label:'Siap ditempati',cls:'badge-sage'},
+  terisi:{label:'Terisi',cls:'badge-brick'},
+  dipesan:{label:'Dipesan',cls:'badge-amber'},
+  persiapan:{label:'Persiapan / dibersihkan',cls:'badge-amber'},
+  perbaikan:{label:'Perbaikan',cls:'badge-slate'}
+};
+const INPATIENT_JOURNEY = [
+  {key:'admission',label:'Admisi',icon:'🏥'},
+  {key:'bed',label:'Bed / Kamar',icon:'🛏️'},
+  {key:'perawatan',label:'Perawatan',icon:'🩺'},
+  {key:'penunjang',label:'Penunjang',icon:'🔬'},
+  {key:'farmasi',label:'Farmasi',icon:'💊'},
+  {key:'discharge',label:'Pulang',icon:'📋'},
+  {key:'billing',label:'Kasir',icon:'🧾'},
+  {key:'selesai',label:'Selesai',icon:'✓'}
+];
+function inpatientJourneyForAdmission(a){
+  const hasLab=Array.isArray(a.orders) && a.orders.some(function(o){return o.jenis==='lab';});
+  const hasRx=Array.isArray(Store.data.prescriptions) && Store.data.prescriptions.some(function(r){return r.admissionId===a.id;});
+  const source=a.sumberAdmisi||'Admisi';
+  const sourceLabel=source==='IGD'?'IGD → Rawat Inap':source==='Rawat Jalan'?'Rawat Jalan → Admisi → Rawat Inap':source==='Rujukan'?'Rujukan → Admisi → Rawat Inap':'Transfer → Rawat Inap';
+  const steps=[
+    {key:'admission',label:'Admisi',sub:sourceLabel,icon:'🏥'},
+    {key:'bed',label:'Bed / Kamar',icon:'🛏️'},
+    {key:'perawatan',label:'Perawatan',icon:'🩺'}
+  ];
+  if(hasLab) steps.push({key:'penunjang',label:'Laboratorium / Penunjang',icon:'🔬'});
+  if(hasRx) steps.push({key:'farmasi',label:'Farmasi',icon:'💊'});
+  steps.push({key:'discharge',label:'Pulang',icon:'📋'},{key:'billing',label:'Kasir',icon:'🧾'},{key:'selesai',label:'Selesai',icon:'✓'});
+  return steps;
+}
 
 const POLI_COLOR = {UMU:'clinical', GIG:'slate', ANA:'sage', KDG:'plum', MAT:'amber', THT:'brick', JAN:'brick', KUL:'plum', PDL:'slate', SYA:'plum', PAR:'sage'};
 
@@ -333,24 +367,32 @@ function seedData(){
   ];
 
   const wards = [
-    {id:'W-K3', nama:'Bangsal Kelas 3', kelas:'3', tarifPerHari:150000},
-    {id:'W-K2', nama:'Bangsal Kelas 2', kelas:'2', tarifPerHari:300000},
-    {id:'W-K1', nama:'Bangsal Kelas 1', kelas:'1', tarifPerHari:500000},
-    {id:'W-VIP', nama:'Ruang VIP', kelas:'VIP', tarifPerHari:900000},
-    {id:'W-ICU', nama:'ICU', kelas:'ICU', tarifPerHari:1500000}
+    {id:'W-K3', nama:'Mawar Kuning', kelas:'3', tarifPerHari:150000},
+    {id:'W-K3-MMP', nama:'Mawar Merah Putih', kelas:'3', tarifPerHari:150000},
+    {id:'W-K2', nama:'Teratai', kelas:'2', tarifPerHari:300000},
+    {id:'W-K1', nama:'Tulip', kelas:'1', tarifPerHari:500000},
+    {id:'W-VIP', nama:'Graha Delta Husada — VIP', kelas:'VIP', tarifPerHari:900000},
+    {id:'W-ICU', nama:'ICU', kelas:'ICU', tarifPerHari:1500000},
+    {id:'W-ICCU', nama:'ICCU', kelas:'ICCU', tarifPerHari:1500000},
+    {id:'W-HCU', nama:'HCU', kelas:'HCU', tarifPerHari:1200000},
+    {id:'W-PICU', nama:'PICU', kelas:'PICU', tarifPerHari:1200000},
+    {id:'W-NICU', nama:'NICU', kelas:'NICU', tarifPerHari:1200000},
+    {id:'W-ISO', nama:'Ruang Isolasi', kelas:'ISOLASI', tarifPerHari:600000},
+    {id:'W-BERSALIN', nama:'Ruang Bersalin', kelas:'BERSALIN', tarifPerHari:600000}
   ];
-  const bedCounts = {'W-K3':6, 'W-K2':4, 'W-K1':3, 'W-VIP':2, 'W-ICU':2};
+  const bedCounts = {'W-K3':4, 'W-K3-MMP':4, 'W-K2':4, 'W-K1':3, 'W-VIP':2, 'W-ICU':2, 'W-ICCU':2, 'W-HCU':2, 'W-PICU':2, 'W-NICU':2, 'W-ISO':2, 'W-BERSALIN':2};
   const beds = [];
   wards.forEach(function(w){
     const n = bedCounts[w.id] || 2;
     for(let i=1;i<=n;i++){
-      beds.push({id:w.id+'-B'+String(i).padStart(2,'0'), wardId:w.id, noKamar:String(Math.ceil(i/2)).padStart(2,'0'), noBed:(i%2===1?'A':'B'), status:'kosong'});
+      beds.push({id:w.id+'-B'+String(i).padStart(2,'0'), wardId:w.id, noKamar:String(Math.ceil(i/2)).padStart(2,'0'), noBed:(i%2===1?'A':'B'), status:'kosong', updatedAt:nowISO(), reservedFor:null, note:''});
     }
   });
-  beds[6].status = 'terisi'; // W-K2-B01, dipakai admisi demo di bawah
+  const demoBed = beds.find(function(b){return b.wardId==='W-K2' && b.noKamar==='01' && b.noBed==='A';});
+  if(demoBed) demoBed.status = 'terisi'; // Bed demo selalu dicari berdasarkan ward + nomor, bukan indeks array.
   const admissions = [
-    {id:'ADM-DEMO-0001', patientId:'RM-2026-0002', visitId:null, bedId:beds[6].id, wardId:'W-K2',
-      dpjpUserId:'U-DOK1', diagnosisMasuk:'Observasi febris + dehidrasi ringan', jenisBayar:'BPJS', noBpjs:'0009876543210',
+    {id:'ADM-DEMO-0001', patientId:'RM-2026-0002', visitId:null, bedId:demoBed ? demoBed.id : 'W-K2-B01', wardId:'W-K2',
+      dpjpUserId:'U-DOK1', sumberAdmisi:'Rawat Jalan', noRujukan:'RJ-DEMO-2026-0001', kelasPerawatan:'2', tingkatPerawatan:'Bangsal', diagnosisMasuk:'Observasi febris + dehidrasi ringan', jenisBayar:'BPJS', noBpjs:'0009876543210',
       status:'dirawat', tanggalMasuk:daysAgoISO(2),
       cppt:[
         {id:uid('CPPT'), waktu:daysAgoISO(2), profesi:'Dokter', penulisNama:'dr. Andi Wijaya', subjektif:'Demam naik turun 3 hari, mual (-), nafsu makan menurun.', objektif:'TD 110/70, N 92x, S 38.4°C, RR 20x. Turgor kulit sedikit menurun.', asesmen:'Febris ec susp. infeksi virus + dehidrasi ringan', planning:'IVFD RL 20 tpm, Paracetamol infus k/p, cek DL & elektrolit, observasi 24 jam'}
@@ -363,7 +405,7 @@ function seedData(){
         {id:uid('ORD'), waktu:daysAgoISO(2), dokterNama:'dr. Andi Wijaya', jenis:'diet', detail:'Diet lunak, minum ad libitum', status:'aktif'}
       ],
       resumeMedis:null,
-      billing:{biayaObat:0, biayaTindakan:0, statusBayar:'belum_bayar'},
+      billing:{biayaObat:0, biayaTindakan:0, biayaPenunjang:0, statusBayar:'belum_bayar'}, discharge:{status:'belum_direncanakan',rencanaTanggal:null,kondisi:null},
       createdAt:daysAgoISO(2), updatedAt:daysAgoISO(1)}
   ];
 
@@ -385,7 +427,7 @@ function seedData(){
 }
 
 /* ---------------- persistence ---------------- */
-const DB_SCHEMA_VERSION = 17;
+const DB_SCHEMA_VERSION = 19;
 
 function ensureDivisionDemoUsers(data){
   if(!Array.isArray(data.users)) data.users=[];
@@ -542,6 +584,7 @@ function migrateData(data){
     if(v.status==='menunggu_poli' && !v.workflow.screeningAt) v.status='menunggu_screening';
   });
   if(Array.isArray(data.admissions)) data.admissions.forEach(function(a){ if(a.unit===undefined) a.unit='rawat-inap'; });
+  if(Array.isArray(data.admissions)) data.admissions.forEach(function(a){ if(a.sumberAdmisi===undefined) a.sumberAdmisi=a.visitId?'Rawat Jalan':'Rujukan/Admisi'; if(a.kelasPerawatan===undefined){const w=data.wards&&data.wards.find(x=>x.id===a.wardId);a.kelasPerawatan=w?w.kelas:'3';} if(a.tingkatPerawatan===undefined)a.tingkatPerawatan='Bangsal'; if(!a.discharge)a.discharge={status:'belum_direncanakan',rencanaTanggal:null,kondisi:null}; if(a.billing&&a.billing.biayaPenunjang===undefined)a.billing.biayaPenunjang=0; });
   if(!Array.isArray(data.doctorSchedules)) data.doctorSchedules = [];
   const demoSchedules = [
     {id:'SCH-JAN-ANGELA-PAGI', doctorId:'DOC-ANGELA', poliId:'SP-JAN', tanggal:null, hari:1, jamMulai:'08:00', jamSelesai:'12:00', ruang:'Ruang 14', shiftLabel:'Pagi', kuota:null},
@@ -1494,9 +1537,34 @@ function printPatientTicket(bookingId){
   printArea('<div style="max-width:420px;margin:30px auto;text-align:center;font-family:Arial,sans-serif"><h2>SIMRS PROTOTYPE</h2><h3>Tiket Rawat Jalan</h3><div style="font-size:64px;font-weight:800;font-family:monospace">'+esc(booking.noAntrian)+'</div><h3>'+esc(poli.nama)+'</h3><p>'+formatTanggalIndo(booking.tanggalKontrol)+' · '+esc(poli.layanan)+'</p><p>Pasien: '+esc(p.nama)+'</p><div style="margin:20px auto;width:190px">'+renderQrSvg(booking.kodeCheckIn,190)+'</div><p>'+esc(booking.kodeCheckIn)+'</p><p>Tunjukkan QR/barcode ini saat check-in di loket.</p></div>');
 }
 
+function getPatientActiveAdmission(patientId){
+  return Store.data.admissions.filter(function(a){return a.patientId===patientId && ['dirawat','pulang','rujuk_keluar'].includes(a.status);}).sort(function(a,b){return new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt);})[0]||null;
+}
+function patientInpatientJourney(a){
+  if(!a) return '';
+  const bed=Store.data.beds.find(function(b){return b.id===a.bedId;})||{};
+  const ward=Store.data.wards.find(function(w){return w.id===a.wardId;})||{};
+  const steps=inpatientJourneyForAdmission(a);
+  const pendingRx=Store.data.prescriptions.some(function(r){return r.admissionId===a.id && r.status!=='diambil';});
+  const hasLab=steps.some(function(x){return x.key==='penunjang';});
+  const hasRx=steps.some(function(x){return x.key==='farmasi';});
+  function done(k){
+    if(k==='admission') return true;
+    if(k==='bed') return !!a.bedId;
+    if(k==='perawatan') return a.status==='dirawat';
+    if(k==='penunjang') return hasLab && a.orders.some(function(o){return o.jenis==='lab' && o.status==='selesai';});
+    if(k==='farmasi') return hasRx && !pendingRx;
+    if(k==='discharge') return a.status!=='dirawat';
+    if(k==='billing') return a.billing && a.billing.statusBayar==='lunas';
+    if(k==='selesai') return a.status!=='dirawat' && a.billing && a.billing.statusBayar==='lunas';
+    return false;
+  }
+  return '<section class="panel patient-inpatient"><div class="panel-head"><div><h2>🏥 Perjalanan Rawat Inap Anda</h2><div class="hint">Alur mengikuti sumber admisi dan layanan yang benar-benar diberikan kepada pasien.</div></div><span class="badge '+(a.status==='dirawat'?'badge-sage':'badge-slate')+'">'+esc(a.status)+'</span></div><div class="panel-body"><div class="patient-inpatient-info"><strong>'+esc(ward.nama||'Rawat Inap')+'</strong> · Kamar '+esc(bed.noKamar||'-')+esc(bed.noBed||'')+' · DPJP '+esc((getUserById(a.dpjpUserId)||{}).nama||'-')+'<br><span class="hint">Sumber: '+esc(a.sumberAdmisi||'-')+' · Penjamin: '+esc(a.jenisBayar||'-')+(a.kelasPerawatan?' · Kelas '+esc(a.kelasPerawatan):'')+'</span></div><div class="journey-steps">'+steps.map(function(x){return '<div class="journey-step '+(done(x.key)?'done':'')+'"><span>'+x.icon+'</span><strong>'+x.label+'</strong>'+(x.sub?'<small>'+esc(x.sub)+'</small>':'')+'</div>';}).join('')+'</div></div></section>';
+}
+
 function renderPatientDashboard(){
   setPageTitle('Dashboard Pasien');
-  const u=Session.currentUser, p=getPatient(u.patientId), v=getPatientActiveVisit(u.patientId);
+  const u=Session.currentUser, p=getPatient(u.patientId), v=getPatientActiveVisit(u.patientId), a=getPatientActiveAdmission(u.patientId);
   if(!p){ document.getElementById('main-content').innerHTML='<div class="empty">Data pasien tidak ditemukan.</div>'; return; }
   const upcoming=Store.data.bookings.filter(function(b){return b.patientId===u.patientId && b.tanggalKontrol>=todayStr() && ['terjadwal','checked_in'].includes(b.status);}).sort(function(a,b){return a.tanggalKontrol.localeCompare(b.tanggalKontrol)||a.noAntrian.localeCompare(b.noAntrian);})[0];
   const permission=('Notification' in window)?Notification.permission:'unsupported';
@@ -1519,11 +1587,12 @@ function renderPatientDashboard(){
   }
   const ticketHtml=upcoming?'<button type="button" class="patient-ticket patient-ticket-clickable" onclick="openPatientBookingTicket(\''+upcoming.id+'\')"><span>Jadwal Berikutnya · Tap untuk buka tiket</span><strong>'+esc(upcoming.noAntrian)+'</strong><b>'+esc(getPoli(upcoming.poliId).nama)+'</b><small>'+formatTanggalIndo(upcoming.tanggalKontrol)+' · '+esc(upcoming.jenisBayar)+'</small><span class="ticket-reopen-hint">🎫 QR/barcode dapat dibuka kembali kapan saja</span></button>':'<div class="empty"><div class="big">🎫</div>Belum ada booking aktif.</div>';
   const journeyHtml=v?'<section class="panel"><div class="panel-head"><div><h2>📍 Perjalanan Anda</h2><div class="hint">Anda boleh meninggalkan area tunggu sementara, tetapi tetap pantau status ini.</div></div></div><div class="panel-body"><div class="patient-flow">'+patientFlow(v)+'</div></div></section>':'';
+  const inpatientJourney=a?patientInpatientJourney(a):'';
   document.getElementById('main-content').innerHTML=
     '<div class="patient-hero ops-hero"><div><div class="ops-eyebrow">PATIENT EXPERIENCE</div><h2>Halo, '+esc(p.nama)+'</h2><p>RM '+esc(p.id)+' · Dashboard hanya menampilkan informasi pelayanan milik Anda.</p></div><div><span class="badge badge-sage">Privasi Aktif</span></div></div>'+liveHtml+
     '<div class="ops-grid-main"><section class="panel"><div class="panel-head"><div><h2>🎫 Tiket Aktif</h2><div class="hint">Tiket dapat dibuka kembali tanpa screenshot.</div></div></div><div class="panel-body">'+ticketHtml+'</div></section>'+
     '<section class="panel"><div class="panel-head"><div><h2>🔔 Notifikasi Antrean</h2><div class="hint">Pasien diberi tahu saat antrean mendekati nomor Anda.</div></div></div><div class="panel-body"><div class="ops-alert '+(v&&getPatientQueueState(v).ahead<=3?'warning':'')+'"><span class="ops-alert-icon">🔔</span><div><strong>Notifikasi 3 pasien sebelum giliran</strong><div>Ketika nomor Anda dipanggil, indikator akan berubah menjadi hijau agar Anda segera masuk ke poli.</div></div></div><div style="margin-top:12px"><button class="btn btn-primary" id="btn-patient-notif">'+(permission==='granted'?'✓ Notifikasi HP Aktif':'🔔 Aktifkan Notifikasi HP')+'</button></div></div></section></div>'+
-    journeyHtml;
+    journeyHtml+inpatientJourney;
   const nb=document.getElementById('btn-patient-notif'); if(nb) nb.addEventListener('click',enablePatientNotifications);
   maybeNotifyPatientQueue();
   if(window.__patientPoll) clearInterval(window.__patientPoll);
@@ -3387,7 +3456,7 @@ function ranapCardHtml(a){
   return '<div class="panel tr-click" data-buka-admisi="'+a.id+'" style="cursor:pointer"><div class="panel-body">'+
     '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">'+
     '<div><strong>'+esc(p.nama)+'</strong> <span class="mono" style="color:var(--ink-soft)">('+p.id+')</span><br>'+
-    '<span style="font-size:13px;color:var(--ink-soft)">'+esc(ward.nama)+' · Kamar '+bed.noKamar+bed.noBed+' · Hari ke-'+hari+' · DPJP: '+esc(getUserById(a.dpjpUserId).nama)+'</span></div>'+
+    '<span style="font-size:13px;color:var(--ink-soft)">'+esc(ward.nama)+' · Kamar '+bed.noKamar+bed.noBed+' · Kelas '+esc(a.kelasPerawatan||ward.kelas)+' · Hari ke-'+hari+' · DPJP: '+esc(getUserById(a.dpjpUserId).nama)+'</span><br><span class="hint">Sumber: '+esc(a.sumberAdmisi||'Admisi')+' · '+esc(a.jenisBayar)+'</span></div>'+
     news2Badge+'</div>'+
     '<div style="margin-top:6px;font-size:13.5px">'+esc(a.diagnosisMasuk)+'</div></div></div>';
 }
@@ -3401,9 +3470,9 @@ function renderRanapBangsalTab(){
       '<div style="display:flex;flex-wrap:wrap;gap:8px">'+
       bedsInWard.map(function(b){
         const adm = Store.data.admissions.find(a=>a.bedId===b.id && a.status==='dirawat');
-        const cls = b.status==='terisi' ? 'badge-brick' : 'badge-sage';
-        const title = adm ? esc(getPatient(adm.patientId).nama) : 'Kosong';
-        return '<span class="badge '+cls+'" title="'+title+'">'+b.noKamar+b.noBed+(adm?' · '+esc(getPatient(adm.patientId).nama.split(' ')[0]):'')+'</span>';
+        const meta = INPATIENT_BED_STATUS[b.status] || INPATIENT_BED_STATUS.kosong;
+        const title = adm ? esc(getPatient(adm.patientId).nama) : meta.label;
+        return '<span class="badge '+meta.cls+'" title="'+title+'">'+b.noKamar+b.noBed+(adm?' · '+esc(getPatient(adm.patientId).nama.split(' ')[0]):' · '+meta.label)+'</span>';
       }).join('')+'</div></div></div>';
   }).join('');
 }
@@ -3424,11 +3493,11 @@ function renderAdmisiDetail(){
     '<div class="panel"><div class="panel-body">'+
     '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">'+
     '<div><h2>'+esc(p.nama)+'</h2><span style="font-size:13px;color:var(--ink-soft)">No. RM '+p.id+' · '+calcUmur(p.tglLahir)+' th · '+esc(ward.nama)+' Kamar '+bed.noKamar+bed.noBed+' · Hari ke-'+hari+'</span></div>'+
-    '<div>'+badgeStatus(a.status)+'</div></div>'+
+    '<div>'+badgeStatus(a.status)+(a.status==='dirawat'?' <button class="btn btn-outline btn-sm" id="btn-pindah-bed">Pindah Bed</button>':'')+'</div></div>'+
     (p.alergi ? '<div class="allergy-flag" style="margin-top:10px">⚠ Alergi: '+esc(p.alergi)+'</div>' : '')+
     '<p style="margin-top:8px"><strong>Diagnosis masuk:</strong> '+esc(a.diagnosisMasuk)+' &middot; <strong>DPJP:</strong> '+esc(getUserById(a.dpjpUserId).nama)+' &middot; '+esc(a.jenisBayar)+'</p>'+
     '</div></div>'+
-    '<div class="tabs"><button class="tab '+(ranapDetailTab==='cppt'?'active':'')+'" data-dtab="cppt">CPPT</button>'+
+    '<div class="tabs"><button class="tab '+(ranapDetailTab==='ringkasan'?'active':'')+'" data-dtab="ringkasan">Ringkasan</button><button class="tab '+(ranapDetailTab==='cppt'?'active':'')+'" data-dtab="cppt">CPPT</button>'+
     '<button class="tab '+(ranapDetailTab==='vital'?'active':'')+'" data-dtab="vital">Vital &amp; NEWS2</button>'+
     '<button class="tab '+(ranapDetailTab==='order'?'active':'')+'" data-dtab="order">Instruksi</button>'+
     '<button class="tab '+(ranapDetailTab==='pulang'?'active':'')+'" data-dtab="pulang">'+(a.status==='dirawat'?'Rencana Pulang':'Resume Medis')+'</button></div>'+
@@ -3440,7 +3509,8 @@ function renderAdmisiDetail(){
 function renderRanapDetailBody(a){
   const el = document.getElementById('ranap-detail-body');
   if(!el) return;
-  if(ranapDetailTab==='cppt') el.innerHTML = ranapCpptTabHtml(a);
+  if(ranapDetailTab==='ringkasan') el.innerHTML = ranapRingkasanTabHtml(a);
+  else if(ranapDetailTab==='cppt') el.innerHTML = ranapCpptTabHtml(a);
   else if(ranapDetailTab==='vital') el.innerHTML = ranapVitalTabHtml(a);
   else if(ranapDetailTab==='order') el.innerHTML = ranapOrderTabHtml(a);
   else el.innerHTML = ranapPulangTabHtml(a);
@@ -3451,6 +3521,7 @@ function bindRanapDetailEvents(a){
   const v = document.getElementById('btn-tambah-vital'); if(v) v.addEventListener('click', function(){ submitVital(a.id); });
   const o = document.getElementById('btn-tambah-order'); if(o) o.addEventListener('click', function(){ submitOrder(a.id); });
   const pl = document.getElementById('btn-selesaikan-pulang'); if(pl) pl.addEventListener('click', function(){ selesaikanPulang(a.id); });
+  const pb = document.getElementById('btn-pindah-bed'); if(pb) pb.addEventListener('click', function(){ pindahBedRanap(a.id); });
   const ck = document.getElementById('btn-cetak-resume'); if(ck) ck.addEventListener('click', function(){ cetakResumeMedis(a.id); });
   const jenisSel = document.getElementById('ord-jenis');
   if(jenisSel){
@@ -3462,6 +3533,22 @@ function bindRanapDetailEvents(a){
       if(biayaWrap) biayaWrap.classList.toggle('hidden', this.value!=='tindakan');
     });
   }
+}
+
+function ranapRingkasanTabHtml(a){
+  const ward=Store.data.wards.find(w=>w.id===a.wardId), bed=Store.data.beds.find(b=>b.id===a.bedId), p=getPatient(a.patientId);
+  const b=computeBillingRanap(a), last=a.vitalLog[a.vitalLog.length-1], band=last?bandNEWS2(last.news2):null;
+  const pendingOrders=a.orders.filter(o=>o.status==='aktif').length;
+  const pendingRx=Store.data.prescriptions.filter(r=>r.admissionId===a.id && r.status!=='diambil').length;
+  return '<div class="ops-kpi-grid">'+
+    '<div class="ops-kpi"><div class="kpi-label">Status</div><div class="kpi-value" style="font-size:20px">'+esc(a.status)+'</div></div>'+
+    '<div class="ops-kpi"><div class="kpi-label">Hari Rawat</div><div class="kpi-value">'+b.hari+'</div></div>'+ 
+    '<div class="ops-kpi"><div class="kpi-label">Instruksi Aktif</div><div class="kpi-value">'+pendingOrders+'</div></div>'+ 
+    '<div class="ops-kpi"><div class="kpi-label">Resep Belum Selesai</div><div class="kpi-value">'+pendingRx+'</div></div></div>'+ 
+    '<div class="panel"><div class="panel-head"><h2>Patient Journey Rawat Inap</h2><div class="hint">'+esc((a.sumberAdmisi||'Admisi'))+' → Rawat Inap</div></div><div class="panel-body"><div class="journey-steps">'+inpatientJourneyForAdmission(a).map(function(j){
+      const done = (j.key==='admission') || (j.key==='bed' && !!bed) || (j.key==='perawatan' && a.status==='dirawat') || (j.key==='penunjang' && a.orders.some(function(o){return o.jenis==='lab'&&o.status==='selesai';})) || (j.key==='farmasi' && pendingRx===0) || (j.key==='discharge' && a.status!=='dirawat') || (j.key==='billing' && a.billing.statusBayar==='lunas') || (j.key==='selesai' && a.status!=='dirawat' && a.billing.statusBayar==='lunas');
+      return '<div class="journey-step '+(done?'done':'')+'"><span>'+j.icon+'</span><strong>'+j.label+'</strong>'+(j.sub?'<small>'+esc(j.sub)+'</small>':'')+'</div>';}).join('')+'</div></div></div>'+ 
+    '<div class="panel"><div class="panel-head"><h2>Informasi Admisi</h2></div><div class="panel-body"><p><strong>Pasien:</strong> '+esc(p.nama)+' · '+p.id+'</p><p><strong>Sumber:</strong> '+esc(a.sumberAdmisi||'-')+' · <strong>Kelas:</strong> '+esc(a.kelasPerawatan||ward.kelas)+' · <strong>Perawatan:</strong> '+esc(a.tingkatPerawatan||'-')+'</p><p><strong>Ruang:</strong> '+esc(ward.nama)+' · Kamar '+bed.noKamar+bed.noBed+'</p><p><strong>Diagnosis masuk:</strong> '+esc(a.diagnosisMasuk)+'</p>'+(last?'<p><strong>NEWS2 terakhir:</strong> <span class="badge '+band.cls+'">'+last.news2+' — '+band.label+'</span></p>':'<p class="hint">Belum ada tanda vital.</p>')+'</div></div>';
 }
 
 function ranapCpptTabHtml(a){
@@ -3531,18 +3618,19 @@ function computeBillingRanap(a){
   const biayaKamar = hari*ward.tarifPerHari;
   const biayaObat = a.billing.biayaObat||0;
   const biayaTindakan = a.billing.biayaTindakan||0;
-  const subtotal = biayaKamar+biayaObat+biayaTindakan;
+  const biayaPenunjang = a.billing.biayaPenunjang||0;
+  const subtotal = biayaKamar+biayaObat+biayaTindakan+biayaPenunjang;
   let tanggungan = 0;
   if(a.jenisBayar==='BPJS') tanggungan = subtotal;
   else if(a.jenisBayar==='Asuransi') tanggungan = Math.round(subtotal*0.8);
-  return {hari, biayaKamar, biayaObat, biayaTindakan, subtotal, tanggungan, totalBayar: subtotal-tanggungan};
+  return {hari, biayaKamar, biayaObat, biayaTindakan, biayaPenunjang, subtotal, tanggungan, totalBayar: subtotal-tanggungan};
 }
 function ranapPulangTabHtml(a){
   const b = computeBillingRanap(a);
   if(a.status==='dirawat'){
     return '<div class="panel"><div class="panel-head"><h2>Rencana Pulang &amp; Resume Medis</h2></div><div class="panel-body">'+
       '<div class="alert alert-info">Estimasi tagihan sejauh ini ('+b.hari+' hari):<br>'+
-      'Kamar '+formatRupiah(b.biayaKamar)+' + Obat '+formatRupiah(b.biayaObat)+' + Tindakan '+formatRupiah(b.biayaTindakan)+' = <strong>'+formatRupiah(b.subtotal)+'</strong>'+
+      'Kamar '+formatRupiah(b.biayaKamar)+' + Obat '+formatRupiah(b.biayaObat)+' + Penunjang '+formatRupiah(b.biayaPenunjang)+' + Tindakan '+formatRupiah(b.biayaTindakan)+' = <strong>'+formatRupiah(b.subtotal)+'</strong>'+
       (a.jenisBayar!=='Umum' ? ' ('+a.jenisBayar+', akan disesuaikan saat pembayaran)' : '')+'</div>'+
       '<div class="field"><label>Diagnosis Akhir</label><input type="text" id="pl-diagnosis" value="'+esc(a.diagnosisMasuk)+'"></div>'+
       '<div class="field"><label>Ringkasan Perjalanan Penyakit</label><textarea id="pl-ringkasan" placeholder="Ringkasan kondisi selama dirawat…"></textarea></div>'+
@@ -3558,6 +3646,7 @@ function ranapPulangTabHtml(a){
     '<div class="table-wrap" style="margin-top:10px"><table>'+
       '<tr><td>Biaya Kamar ('+b.hari+' hari)</td><td class="mono" style="text-align:right">'+formatRupiah(b.biayaKamar)+'</td></tr>'+
       '<tr><td>Biaya Obat</td><td class="mono" style="text-align:right">'+formatRupiah(b.biayaObat)+'</td></tr>'+
+      '<tr><td>Biaya Penunjang</td><td class="mono" style="text-align:right">'+formatRupiah(b.biayaPenunjang)+'</td></tr>'+
       '<tr><td>Biaya Tindakan</td><td class="mono" style="text-align:right">'+formatRupiah(b.biayaTindakan)+'</td></tr>'+
       '<tr><td><strong>Total Tagihan</strong></td><td class="mono" style="text-align:right"><strong>'+formatRupiah(b.totalBayar)+'</strong></td></tr>'+
     '</table></div>'+
@@ -3658,8 +3747,9 @@ function selesaikanPulang(admissionId){
   };
   a.billing.totalHari = hari;
   a.billing.statusBayar = 'belum_bayar';
+  a.discharge = {status:'selesai_medis',rencanaTanggal:null,kondisi:a.status};
   const bed = Store.data.beds.find(b=>b.id===a.bedId);
-  if(bed) bed.status = 'kosong';
+  if(bed){ bed.status = 'persiapan'; bed.updatedAt=nowISO(); bed.note='Persiapan setelah pasien pulang'; }
   a.updatedAt = nowISO();
   Store.save();
   logAudit('pulang_ranap', esc(getPatient(a.patientId).nama)+' — '+a.status+', '+hari+' hari rawat, tagihan '+formatRupiah(computeBillingRanap(a).totalBayar));
@@ -3673,7 +3763,23 @@ function cetakResumeMedis(admissionId){
     '<p>Nama: '+esc(p.nama)+'<br>No. RM: '+p.id+'<br>Ruang: '+esc(ward.nama)+'<br>Masuk: '+formatTanggalIndo(a.tanggalMasuk)+'<br>Keluar: '+formatTanggalIndo(a.tanggalKeluar)+' ('+b.hari+' hari)</p><hr>'+
     '<p><strong>Diagnosis Masuk:</strong> '+esc(a.diagnosisMasuk)+'<br><strong>Diagnosis Akhir:</strong> '+esc(r.diagnosisAkhir)+'</p>'+
     '<p><strong>Ringkasan:</strong> '+esc(r.ringkasan)+'</p><p><strong>Obat Pulang:</strong> '+esc(r.obatPulang)+'</p><p><strong>Kontrol:</strong> '+esc(r.instruksiKontrol)+'</p><hr>'+
-    '<p>Kamar: '+formatRupiah(b.biayaKamar)+'<br>Obat: '+formatRupiah(b.biayaObat)+'<br>Tindakan: '+formatRupiah(b.biayaTindakan)+'<br><strong>Total: '+formatRupiah(b.totalBayar)+'</strong></p></div>');
+    '<p>Kamar: '+formatRupiah(b.biayaKamar)+'<br>Obat: '+formatRupiah(b.biayaObat)+'<br>Penunjang: '+formatRupiah(b.biayaPenunjang)+'<br>Tindakan: '+formatRupiah(b.biayaTindakan)+'<br><strong>Total: '+formatRupiah(b.totalBayar)+'</strong></p></div>');
+}
+
+function setBedReadyRanap(bedId){
+  const b=Store.data.beds.find(function(x){return x.id===bedId;}); if(!b)return;
+  if(b.status!=='persiapan'){showToast('Bed ini tidak sedang dalam status persiapan','warning');return;}
+  b.status='kosong'; b.updatedAt=nowISO(); b.note='Siap ditempati'; Store.save(); logAudit('bed_ready',b.id+' — bed siap ditempati'); showToast('Bed sekarang siap ditempati','success'); renderRanapBangsalTab();
+}
+
+function pindahBedRanap(admissionId){
+  const a=Store.data.admissions.find(x=>x.id===admissionId); if(!a||a.status!=='dirawat') return;
+  const current=Store.data.beds.find(b=>b.id===a.bedId);
+  const available=Store.data.beds.filter(b=>b.status==='kosong' && b.id!==a.bedId);
+  if(!available.length){showToast('Tidak ada bed kosong untuk pemindahan','warning');return;}
+  openModal('<div class="modal-head"><h2>Pindah Kamar / Bed</h2><button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button></div><div class="modal-body">'+
+    '<p class="hint">Bed saat ini: '+esc(current?current.noKamar+current.noBed:'-')+'</p><div class="field"><label>Bed tujuan</label><select id="transfer-bed">'+available.map(function(b){const w=Store.data.wards.find(x=>x.id===b.wardId);return '<option value="'+b.id+'">'+esc(w.nama)+' · Kamar '+b.noKamar+b.noBed+' · Kelas '+esc(w.kelas)+'</option>';}).join('')+'</select></div><button class="btn btn-primary btn-block" id="btn-transfer-bed">Konfirmasi Pemindahan</button></div>');
+  document.getElementById('btn-transfer-bed').addEventListener('click',function(){const target=Store.data.beds.find(b=>b.id===document.getElementById('transfer-bed').value);if(!target)return; if(current)current.status='kosong';target.status='terisi';a.bedId=target.id;a.wardId=target.wardId;a.updatedAt=nowISO();a.cppt.push({id:uid('CPPT'),waktu:nowISO(),profesi:roleLabel(Session.currentUser.role),penulisNama:Session.currentUser.nama,subjektif:'-',objektif:'-',asesmen:'Transfer kamar/bed',planning:'Pasien dipindahkan ke '+target.noKamar+target.noBed});Store.save();logAudit('transfer_bed',getPatient(a.patientId).nama+' → '+target.noKamar+target.noBed);closeModal();showToast('Pasien berhasil dipindahkan','success');renderAdmisiDetail();});
 }
 
 function openAdmisiBaruSheet(){
@@ -3686,11 +3792,13 @@ function openAdmisiBaruSheet(){
       '<div class="field"><label>Cari Pasien</label><div class="search-row"><input type="text" id="ab-cari" placeholder="NIK/No. RM/Nama…"><button type="button" class="btn btn-outline" id="ab-btn-cari">Cari</button></div><div id="ab-hasil"></div><div id="ab-terpilih" class="hint"></div></div>')+
     '<div class="field"><label>Tempat Tidur Tersedia</label><select id="ab-bed">'+
       (bedKosong.length===0 ? '<option value="">Tidak ada bed kosong</option>' :
-      bedKosong.map(function(b){ const w=Store.data.wards.find(x=>x.id===b.wardId); return '<option value="'+b.id+'">'+esc(w.nama)+' — Kamar '+b.noKamar+b.noBed+' ('+formatRupiah(w.tarifPerHari)+'/hari)</option>'; }).join(''))+
-    '</select></div>'+
+      bedKosong.map(function(b){ const w=Store.data.wards.find(x=>x.id===b.wardId); return '<option value="'+b.id+'" data-kelas="'+esc(w.kelas)+'">'+esc(w.nama)+' — Kamar '+b.noKamar+b.noBed+' ('+esc(w.kelas)+') · '+formatRupiah(w.tarifPerHari)+'/hari</option>'; }).join(''))+
+    '</select><div id="ab-bed-hint" class="hint" style="margin-top:5px">Pilihan bed akan mengikuti penjamin dan tingkat perawatan.</div></div>'+
+    '<div class="field-row"><div class="field"><label>Sumber Admisi</label><select id="ab-sumber"><option>IGD</option><option>Rawat Jalan</option><option>Rujukan</option><option>Transfer Internal</option></select><div id="ab-sumber-hint" class="hint" style="margin-top:5px">IGD dapat langsung menjadi sumber admisi bila dokter memutuskan rawat inap.</div></div><div class="field"><label>Tingkat Perawatan</label><select id="ab-tingkat"><option>Bangsal</option><option>Intensif</option><option>Bersalin</option></select></div></div>'+
     '<div class="field"><label>DPJP (Dokter Penanggung Jawab)</label><select id="ab-dpjp">'+dokterList.map(function(d){ return '<option value="'+d.id+'">'+esc(d.nama)+'</option>'; }).join('')+'</select></div>'+
-    '<div class="field-row"><div class="field"><label>Jenis Pembayaran</label><select id="ab-bayar"><option value="Umum">Umum</option><option value="BPJS">BPJS</option><option value="Asuransi">Asuransi</option></select></div>'+
-    '<div class="field"><label>No. Kartu (jika ada)</label><input type="text" id="ab-nokartu"></div></div>'+
+    '<div class="field-row"><div class="field"><label>Jenis Pembayaran / Penjamin</label><select id="ab-bayar"><option value="Umum">Umum</option><option value="BPJS">BPJS</option><option value="Asuransi">Asuransi</option><option value="KSO">KSO</option></select></div>'+
+    '<div class="field"><label>No. Kartu / Dokumen Penjamin</label><input type="text" id="ab-nokartu" placeholder="BPJS: nomor kartu / rujukan / SEP simulasi"></div></div>'+
+    '<div class="field"><label>No. Rujukan / Surat Permintaan Rawat Inap <span class="hint">(wajib untuk BPJS dari Rawat Jalan/Rujukan pada prototype)</span></label><input type="text" id="ab-rujukan" placeholder="Contoh: RJ/2026/000123"></div>'+
     '<div class="field"><label>Diagnosis Masuk</label><input type="text" id="ab-diagnosis" placeholder="mis: Observasi febris + dehidrasi ringan"></div>'+
     '<button class="btn btn-primary btn-block" id="btn-simpan-admisi" '+(bedKosong.length===0?'disabled':'')+'>Admisikan Pasien</button>'+
     '</div>'
@@ -3709,23 +3817,52 @@ function openAdmisiBaruSheet(){
     });
   }
   document.getElementById('btn-simpan-admisi').addEventListener('click', submitAdmisiBaru);
+  const srcSel=document.getElementById('ab-sumber'), paySel=document.getElementById('ab-bayar'), bedSel=document.getElementById('ab-bed');
+  function refreshAdmissionRules(){
+    const src=srcSel.value, pay=paySel.value;
+    const isBpjs=pay==='BPJS', directIgd=src==='IGD';
+    document.getElementById('ab-sumber-hint').textContent = directIgd ? 'IGD dapat langsung menjadi sumber admisi bila dokter memutuskan rawat inap; tidak memerlukan rujukan rawat jalan.' : 'Untuk BPJS dari Rawat Jalan/Rujukan, nomor rujukan atau surat permintaan rawat inap harus dicatat.';
+    document.getElementById('ab-rujukan').required = isBpjs && !directIgd;
+    Array.from(bedSel.options).forEach(function(opt){
+      const k=opt.dataset.kelas||'';
+      const allowed = !isBpjs || ['1','2','3'].includes(k);
+      opt.hidden=!allowed;
+    });
+    const current=bedSel.options[bedSel.selectedIndex];
+    if(current && current.hidden){ const next=Array.from(bedSel.options).find(function(o){return !o.hidden;}); if(next) bedSel.value=next.value; }
+    document.getElementById('ab-bed-hint').textContent = isBpjs ? 'BPJS: pilihan kelas rawat inap reguler dibatasi Kelas III, II, atau I. Ketersediaan dan hak perawatan tetap mengikuti ketentuan penjamin/rumah sakit.' : 'Penjamin non-BPJS dapat memakai kelas/ruang sesuai kebijakan rumah sakit dan ketersediaan bed.';
+  }
+  srcSel.addEventListener('change',refreshAdmissionRules); paySel.addEventListener('change',refreshAdmissionRules); refreshAdmissionRules();
 }
 function submitAdmisiBaru(){
   if(!admisiBaruState.patientId){ showToast('Pilih pasien terlebih dahulu', 'danger'); return; }
   const bedId = document.getElementById('ab-bed').value;
   if(!bedId){ showToast('Tidak ada tempat tidur tersedia', 'danger'); return; }
   const diagnosisMasuk = document.getElementById('ab-diagnosis').value.trim();
+  const sumberAdmisi = document.getElementById('ab-sumber').value;
+  const jenisBayar = document.getElementById('ab-bayar').value;
+  const noKartu = document.getElementById('ab-nokartu').value.trim();
+  const noRujukan = document.getElementById('ab-rujukan').value.trim();
   if(!diagnosisMasuk){ showToast('Isi diagnosis masuk', 'danger'); return; }
+  if(jenisBayar==='BPJS' && sumberAdmisi!=='IGD' && !noRujukan){ showToast('BPJS dari Rawat Jalan/Rujukan membutuhkan nomor rujukan atau surat permintaan rawat inap.', 'danger'); return; }
   const bed = Store.data.beds.find(b=>b.id===bedId);
+  const ward = bed ? Store.data.wards.find(w=>w.id===bed.wardId) : null;
+  if(!bed || !ward){ showToast('Bed atau ruangan tidak valid', 'danger'); return; }
+  if(jenisBayar==='BPJS' && !['1','2','3'].includes(ward.kelas)){ showToast('Pasien BPJS reguler hanya dapat diarahkan ke Kelas I, II, atau III pada prototype.', 'danger'); return; }
   const admission = {
     id: uid('ADM'), patientId: admisiBaruState.patientId, visitId: admisiBaruState.visitId, bedId, wardId:bed.wardId,
     dpjpUserId: document.getElementById('ab-dpjp').value, diagnosisMasuk,
-    jenisBayar: document.getElementById('ab-bayar').value, noBpjs: document.getElementById('ab-nokartu').value.trim(),
+    sumberAdmisi, jenisBayar, noBpjs:noKartu, noRujukan,
+    kelasPerawatan:ward.kelas, tingkatPerawatan:document.getElementById('ab-tingkat').value,
     status:'dirawat', tanggalMasuk: nowISO(), cppt:[], vitalLog:[], orders:[], resumeMedis:null,
-    billing:{biayaObat:0, biayaTindakan:0, statusBayar:'belum_bayar'}, createdAt: nowISO(), updatedAt: nowISO()
+    billing:{biayaObat:0, biayaTindakan:0, biayaPenunjang:0, statusBayar:'belum_bayar'}, discharge:{status:'belum_direncanakan',rencanaTanggal:null,kondisi:null}, createdAt: nowISO(), updatedAt: nowISO()
   };
   Store.data.admissions.push(admission);
   bed.status = 'terisi';
+  if(admisiBaruState.visitId){
+    const srcVisit=Store.data.visits.find(function(v){return v.id===admisiBaruState.visitId;});
+    if(srcVisit){ srcVisit.admissionId=admission.id; srcVisit.status='dirawat'; srcVisit.nextStep='Rawat Inap'; srcVisit.updatedAt=nowISO(); }
+  }
   Store.save();
   logAudit('admisi_baru', esc(getPatient(admisiBaruState.patientId).nama)+' — '+diagnosisMasuk);
   closeModal();
@@ -3877,7 +4014,7 @@ function renderMasterDoctorsTab(){
   document.getElementById('form-schedule-master').addEventListener('submit',function(e){e.preventDefault();const s={id:'SCH-'+Date.now().toString(36),doctorId:document.getElementById('sc-dokter').value,poliId:canonicalPoliId(document.getElementById('sc-poli').value),tanggal:null,hari:Number(document.getElementById('sc-hari').value),jamMulai:document.getElementById('sc-mulai').value,jamSelesai:document.getElementById('sc-selesai').value,ruang:document.getElementById('sc-ruang').value.trim()||'Belum dipetakan',shiftLabel:'Manual Admin',kuota:Number(document.getElementById('sc-kuota').value)||null,source:'Admin',needsConfirmation:false,createdAt:nowISO(),updatedAt:nowISO()};Store.data.doctorSchedules.push(s);Store.save();logAudit('jadwal_dokter_baru',doctorDisplayName(s.doctorId)+' — '+getPoli(s.poliId).nama);renderMasterDoctorsTab();showToast('Jadwal ditambahkan','success');});
   el.querySelectorAll('[data-edit-doc]').forEach(function(b){b.addEventListener('click',function(){const d=doctorMasterById(b.dataset.editDoc);if(!d)return;const nama=prompt('Nama dokter',d.nama);if(nama===null)return;const sp=prompt('Spesialisasi',d.spesialis||'');if(sp===null)return;d.nama=nama.trim()||d.nama;d.spesialis=sp.trim()||d.spesialis;d.updatedAt=nowISO();Store.save();logAudit('dokter_master_edit',d.nama);renderMasterDoctorsTab();showToast('Master dokter diperbarui','success');});});
   el.querySelectorAll('[data-del-sc]').forEach(function(b){b.addEventListener('click',function(){if(!confirm('Hapus jadwal ini?'))return;Store.data.doctorSchedules=Store.data.doctorSchedules.filter(function(s){return s.id!==b.dataset.delSc;});Store.save();logAudit('jadwal_dokter_hapus',b.dataset.delSc);renderMasterDoctorsTab();});});
-  document.getElementById('btn-export-master').addEventListener('click',function(){const payload={version:'15.0',exportedAt:nowISO(),doctors:Store.data.doctors||[],doctorSchedules:Store.data.doctorSchedules||[],poli:Store.data.poli||[]};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='master-simrs-prototype-v13.8.json';a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},500);});
+  document.getElementById('btn-export-master').addEventListener('click',function(){const payload={version:'14.0',exportedAt:nowISO(),doctors:Store.data.doctors||[],doctorSchedules:Store.data.doctorSchedules||[],poli:Store.data.poli||[]};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='master-simrs-prototype-v14.0.json';a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},500);});
   document.getElementById('btn-import-master').addEventListener('click',function(){document.getElementById('master-file').click();});
   document.getElementById('master-file').addEventListener('change',function(e){const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=function(){try{const x=JSON.parse(rd.result);if(!Array.isArray(x.doctors)||!Array.isArray(x.doctorSchedules))throw new Error('Format master tidak valid');Store.data.doctors=x.doctors;Store.data.doctorSchedules=x.doctorSchedules;Store.save();logAudit('master_dokter_impor','Master dokter dan jadwal diperbarui dari JSON');renderMasterDoctorsTab();showToast('Master berhasil diimpor','success');}catch(err){showToast('Import gagal: '+err.message,'danger');}};rd.readAsText(f);});
 }
@@ -4052,15 +4189,19 @@ function runSystemAudit(){
   check('journey','Kunjungan memiliki workflow',Store.data.visits.filter(function(v){return v.unit==='rawat-jalan';}).every(function(v){return v.workflow&&Object.prototype.hasOwnProperty.call(v.workflow,'checkinAt');}), 'Workflow check-in dan tahapan layanan tersedia.');
   check('arrival','Booking memiliki estimasi jendela kedatangan',Store.data.bookings.filter(function(b){return ['terjadwal','checked_in'].includes(b.status);}).every(function(b){return b.arrivalWindowStart&&b.arrivalWindowEnd;}), 'Jam kedatangan disimpan sebagai estimasi, bukan janji medis.');
   check('qr','Booking memiliki kode check-in unik',(function(){const s=new Set();return Store.data.bookings.every(function(b){if(!b.kodeCheckIn)return false;if(s.has(b.kodeCheckIn))return false;s.add(b.kodeCheckIn);return true;});})(), 'Kode QR/barcode tidak boleh duplikat.');
+  check('ranap-bed-status','Status bed rawat inap valid',Store.data.beds.every(function(b){return !!INPATIENT_BED_STATUS[b.status];}),'Bed memakai status siap, terisi, dipesan, persiapan, atau perbaikan.');
+  check('ranap-admission','Admisi memiliki sumber dan kelas perawatan',Store.data.admissions.every(function(a){return !!a.sumberAdmisi&&!!a.kelasPerawatan&&!!a.wardId&&!!a.bedId;}),'Sumber admisi, kelas, ward, dan bed wajib tersedia.');
+  check('ranap-billing','Billing rawat inap memiliki komponen penunjang',Store.data.admissions.every(function(a){return a.billing&&Object.prototype.hasOwnProperty.call(a.billing,'biayaPenunjang');}),'Kamar, obat, penunjang, dan tindakan dipisahkan.');
+  check('ranap-users','Role rawat inap tersedia',['dokter_ranap','perawat_ranap'].every(function(r){return Store.data.users.some(function(u){return u.role===r;});}),'Dokter dan perawat rawat inap tersedia.');
   check('demo-data','Tidak ada identitas pasien nyata pada akun demo',Store.data.patients.filter(function(p){return String(p.id).startsWith('RM-DEMO-');}).every(function(p){return String(p.alamat||'').includes('bukan data pasien nyata')||String(p.nik||'').startsWith('DEMO');}), 'Akun demo menggunakan data fiktif.');
   return checks;
 }
 function renderAuditSistem(){
   setPageTitle('Audit Sistem');
   const checks=runSystemAudit(), pass=checks.filter(function(x){return x.pass;}).length;
-  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V13.8 untuk memastikan jalur utama, data demo, antrean, QR, dan batas prototype tetap konsisten.')+
+  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V14.0 untuk memastikan jalur utama, data demo, antrean, QR, dan batas prototype tetap konsisten.')+
     '<div class="ops-kpi-grid"><div class="ops-kpi"><div class="kpi-label">Lulus</div><div class="kpi-value">'+pass+'</div></div><div class="ops-kpi"><div class="kpi-label">Diperiksa</div><div class="kpi-value">'+checks.length+'</div></div><div class="ops-kpi"><div class="kpi-label">Status</div><div class="kpi-value" style="font-size:20px">'+(pass===checks.length?'SIAP':'PERLU REVIEW')+'</div></div></div>'+
-    '<div class="panel"><div class="panel-head"><div><h2>🧪 Self-Test V13.8</h2><div class="hint">Ini adalah audit data/aturan sisi client, bukan pengganti pengujian keamanan backend.</div></div><button class="btn btn-outline btn-sm" onclick="renderAuditSistem()">↻ Jalankan Lagi</button></div><div class="panel-body">'+
+    '<div class="panel"><div class="panel-head"><div><h2>🧪 Self-Test V14.0</h2><div class="hint">Ini adalah audit data/aturan sisi client, bukan pengganti pengujian keamanan backend.</div></div><button class="btn btn-outline btn-sm" onclick="renderAuditSistem()">↻ Jalankan Lagi</button></div><div class="panel-body">'+
     '<div class="table-wrap"><table><thead><tr><th>Status</th><th>Pemeriksaan</th><th>Detail</th></tr></thead><tbody>'+checks.map(function(c){return '<tr><td>'+(c.pass?'<span class="badge badge-sage">✓ LULUS</span>':'<span class="badge badge-brick">✕ GAGAL</span>')+'</td><td><strong>'+esc(c.label)+'</strong></td><td>'+esc(c.detail)+'</td></tr>';}).join('')+'</tbody></table></div></div></div>'+
     '<div class="alert alert-warning"><strong>Batas prototype:</strong> localStorage hanya untuk simulasi. Untuk produksi dibutuhkan backend, database terpusat, autentikasi server, otorisasi server, audit trail terpusat, enkripsi, backup, dan integrasi resmi.</div>';
 }

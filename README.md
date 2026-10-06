@@ -1,187 +1,71 @@
-# SIMRS PROTOTYPE — v13.8.1
 
-**Versi portfolio:** v13.8 — **Feature Freeze + Quality Audit**  
-**Patch:** v13.8.1 — **Dynamic Patient Journey**
+## V14.1 — Real-Life Flow Rawat Inap
 
-SIMRS PROTOTYPE adalah **prototype/portfolio aplikasi sistem informasi manajemen rumah sakit**, bukan sistem resmi rumah sakit dan bukan sistem produksi. Fokus v13.8 adalah mematangkan alur **Rawat Jalan end-to-end** dari sisi pasien sampai pelayanan poli.
+V14.1 memperkuat Rawat Inap agar sumber admisi dan perjalanan pasien tidak diperlakukan sama. Jalur yang didukung:
 
-> **Status:** Portfolio / Demo. Data pasien, akun, jadwal, dan transaksi yang ditampilkan adalah data simulasi/fiktif. Data baseline layanan digunakan sebagai contoh dan tetap dapat diubah melalui Master Data.
+- **IGD → keputusan rawat inap → Admisi → Bed → Rawat Inap**.
+- **Rawat Jalan → indikasi rawat inap → rujukan/permintaan rawat inap → Admisi → Bed → Rawat Inap**.
+- **Rujukan → Admisi → Bed → Rawat Inap**.
+- **Transfer Internal → Admisi → Bed → Rawat Inap**.
 
-## Fokus v13.8
+Untuk skenario prototype **BPJS**, pilihan kelas reguler dibatasi pada **Kelas III, II, dan I**. Jika sumbernya Rawat Jalan/Rujukan, nomor rujukan atau surat permintaan rawat inap wajib dicatat. Sumber IGD dapat langsung menjadi admission ketika dokter menetapkan rawat inap. Ini adalah simulasi alur bisnis, bukan klaim bahwa seluruh kasus BPJS wajib melalui IGD.
 
-1. **Audit alur end-to-end**: Pendaftaran → Booking → QR → Check-in → Antrean → Dokter → Selesai.
-2. **Perjalanan pasien** mempunyai status yang konsisten dan ditampilkan pada Dashboard/Tiket.
-3. **Estimasi waktu kedatangan** disimpan pada tiket sebagai jendela waktu estimasi, bukan janji waktu pelayanan.
-4. **Master data dipisahkan dari business logic** sehingga dokter, jadwal, poli, kapasitas, dan fasilitas dapat dikelola tanpa mengubah source code utama.
-5. **Aturan antrean dijelaskan transparan** pada tiket pasien: Reguler menggunakan konteks poli+tanggal; Eksekutif memiliki konteks dokter/sesi/appointment sendiri.
-6. **Branding netral**: aplikasi menggunakan nama SIMRS PROTOTYPE dan tidak mengklaim sebagai aplikasi resmi institusi tertentu.
-7. **Batas prototype vs produksi dijelaskan** secara eksplisit. Penggunaan produksi membutuhkan backend, database terpusat, autentikasi/otorisasi server, audit trail, backup, keamanan, dan integrasi resmi.
+Master ruang menggunakan nama referensi yang dipublikasikan RSUD R.T. Notopuro seperti **Tulip, Teratai, Mawar Kuning, Mawar Merah Putih, dan Graha Delta Husada**, serta unit intensif seperti ICU/ICCU/HCU/PICU/NICU. Data kamar pada prototype tetap bersifat simulasi dan harus diverifikasi sebelum penggunaan nyata.
 
-## Navigasi pasien
+### Patient Journey Rawat Inap
 
-Sisi pasien menggunakan tepat **5 tombol**:
+Sisi pasien menampilkan **Perjalanan Rawat Inap Anda** secara dinamis. Sumber admission ditampilkan secara eksplisit, misalnya `IGD → Rawat Inap` atau `Rawat Jalan → Admisi → Rawat Inap`. Tahap Laboratorium/Penunjang dan Farmasi hanya muncul jika benar-benar ada order/resep pada admission. Setelah pulang, alur berlanjut ke Kasir dan Selesai.
 
-1. Dashboard
-2. Monitor
-3. Rawat Jalan
-4. Booking Saya
-5. Riwayat
+# SIMRS PROTOTYPE — v14.1
 
-Tidak ada menu **Lainnya** pada bottom navigation pasien.
+**Versi portfolio:** v14.1 — **Rawat Inap Terintegrasi**  
+**Baseline:** V13.8.1 Dynamic Patient Journey Rawat Jalan
 
-## Alur Rawat Jalan
+SIMRS PROTOTYPE adalah **prototype/portfolio aplikasi sistem informasi manajemen rumah sakit**, bukan sistem resmi rumah sakit dan bukan sistem produksi. V14 memulai modul **Rawat Inap** dengan alur admisi sampai pemulangan dan tetap menjaga koneksi dengan Rawat Jalan, IGD, Farmasi, Laboratorium, Radiologi, dan Kasir sebagai modul yang akan terus dikembangkan.
 
-### Reguler / Spesialis
+## Dasar desain Rawat Inap
 
-```text
-Pasien
-  ↓
-Pilih Poli Reguler
-  ↓
-Pilih Klinik + Tanggal + Dokter
-  ↓
-Sistem menentukan sesi & kapasitas
-  ↓
-Nomor antrean
-  ↓
-Tiket + QR/barcode
-  ↓
-Check-in hari-H
-  ↓
-Menunggu verifikasi/screening
-  ↓
-Menunggu dokter
-  ↓
-Dipanggil
-  ↓
-Sedang diperiksa
-  ↓
-Pelayanan selesai
-```
+Desain V14 menggunakan referensi publik RSUD R.T. Notopuro: rumah sakit menyediakan layanan rawat inap 24 jam dan publikasi ketersediaan tempat tidur membedakan jenis layanan seperti VVIP, VIP, Kelas I–III, ICU, ICCU, PICU, NICU, HCU, isolasi, ruang bersalin, serta IGD. Status bed pada sistem informasi kamar juga dibedakan antara terisi, persiapan, dipesan, perbaikan, dan siap ditempati. Data tersebut dipakai sebagai **referensi desain**, bukan koneksi data real-time RSUD.
 
-### Eksekutif
+## Alur V14
 
-```text
-Pasien
-  ↓
-Pilih Poli Eksekutif
-  ↓
-Pilih Klinik + Dokter + Tanggal
-  ↓
-Pilih slot/janji yang tersedia
-  ↓
-Nomor/tiket Eksekutif
-  ↓
-QR + Check-in
-  ↓
-Monitor antrean
-  ↓
-Dokter
-  ↓
-Selesai
-```
+**Rawat Jalan / IGD / Rujukan** → **Keputusan Rawat Inap** → **Admisi** → **Pilih kelas & bed** → **Perawatan di bangsal** → **CPPT + vital/NEWS2 + instruksi dokter** → **Lab/Radiologi/Farmasi bila diperlukan** → **Rencana pulang** → **Resume medis** → **Administrasi/Kasir** → **Bed masuk status persiapan** → **Bed kembali siap**.
 
-Reguler dan Eksekutif tidak digabung dalam konteks layanan, sesi, appointment, dan kapasitas.
+Tidak semua pasien melewati semua unit. Penunjang dan Farmasi muncul berdasarkan order/resep yang benar-benar dibuat selama admission.
 
-## Status perjalanan pasien — v13.8.1
+## Fitur Rawat Inap V14
 
-Perjalanan pasien pada sisi pasien **tidak lagi dipatok hanya 5 tahap**. Sistem membentuk perjalanan secara dinamis berdasarkan layanan yang benar-benar terjadi pada kunjungan tersebut.
+- **Admisi baru:** pasien dapat masuk dari Rawat Jalan, IGD, rujukan, atau transfer internal.
+- **Kelas dan tingkat perawatan:** Bangsal, Intensif, Bersalin; kelas perawatan berasal dari master bed/ward.
+- **Bed management:** tersedia, terisi, dipesan, persiapan/dibersihkan, dan perbaikan.
+- **Transfer bed:** pasien dapat dipindahkan antar-bed yang tersedia dan perpindahan dicatat pada CPPT/audit.
+- **CPPT:** catatan S/O/A/P dengan profesi dan waktu pencatatan.
+- **Vital & NEWS2:** simulasi pencatatan tanda vital dan perhitungan skor untuk monitoring prototype.
+- **Instruksi dokter:** obat, tindakan, diet, dan pemeriksaan laboratorium. Instruksi obat membuat resep Rawat Inap yang terhubung ke Farmasi.
+- **Patient Journey Rawat Inap:** status perjalanan admission ditampilkan dari admisi sampai selesai.
+- **Rencana pulang & resume medis:** diagnosis akhir, ringkasan, obat pulang, kontrol, dan kondisi pulang.
+- **Billing:** kamar, obat, penunjang, dan tindakan dipisahkan.
+- **Bed release:** setelah pasien pulang, bed masuk status persiapan terlebih dahulu; petugas kemudian dapat mengembalikannya menjadi siap ditempati.
+- **Audit sistem:** self-test ditambah pemeriksaan khusus admission, bed, billing, dan role Rawat Inap.
 
-Tahap dasar:
+## Integrasi yang disiapkan
 
-**Pendaftaran → Check-in → Verifikasi → Dokter**
+1. **Rawat Jalan → Rawat Inap:** keputusan admisi dapat membawa `patientId` dan `visitId`.
+2. **IGD → Rawat Inap:** sumber admisi dapat dicatat sebagai IGD.
+3. **Rawat Inap → Farmasi:** order obat menjadi resep dengan `admissionId`.
+4. **Rawat Inap → Laboratorium/Radiologi:** order penunjang disimpan sebagai bagian dari perjalanan admission dan menjadi dasar modul penunjang berikutnya.
+5. **Rawat Inap → Kasir:** billing admission dipisahkan dari transaksi Rawat Jalan.
+6. **Rawat Inap → Rekam Medis:** CPPT dan resume medis menjadi bagian dari riwayat pasien.
 
-Kemudian sistem hanya menampilkan tahap lanjutan yang benar-benar dibutuhkan:
+## Catatan penting
 
-- **Laboratorium** jika dokter membuat permintaan laboratorium.
-- **Review Dokter** setelah hasil laboratorium tersedia.
-- **Farmasi — Siapkan Obat** jika dokter membuat resep.
-- **Kasir** sesuai alur billing kunjungan.
-- **Farmasi — Ambil Obat** setelah pembayaran jika pasien memiliki resep.
-- **Selesai** setelah seluruh kebutuhan kunjungan terpenuhi.
+- V14 **bukan replika database atau SOP internal RSUD**. Detail ruangan, tarif, hak kelas, alur BPJS, formularium, DPJP, dan aturan discharge harus dikonfigurasi sesuai kebijakan rumah sakit yang benar-benar menggunakan sistem.
+- NEWS2 di sini adalah simulasi prototype dan **bukan alat keputusan klinis**.
+- `localStorage` hanya untuk demo. Produksi memerlukan backend/database terpusat, autentikasi server, RBAC server-side, audit terpusat, backup, enkripsi, dan integrasi resmi.
 
-Contoh tanpa resep:
+---
 
-**Pendaftaran → Check-in → Verifikasi → Dokter → Kasir → Selesai**
-
-Contoh dengan resep:
-
-**Pendaftaran → Check-in → Verifikasi → Dokter → Farmasi (Siapkan) → Kasir → Farmasi (Ambil) → Selesai**
-
-Contoh dengan laboratorium dan resep:
-
-**Pendaftaran → Check-in → Verifikasi → Dokter → Laboratorium → Review Dokter → Farmasi (Siapkan) → Kasir → Farmasi (Ambil) → Selesai**
-
-Dengan pendekatan ini, pasien tidak melihat menu/tahap yang tidak relevan dengan kunjungannya. Jalur pasien mengikuti data visit aktual dan keputusan pelayanan dokter.
-
-## Estimasi waktu kedatangan
-
-Setiap booking dapat memiliki:
-
-- `arrivalWindowStart`
-- `arrivalWindowEnd`
-- `suggestedArrivalAt`
-
-Estimasi dihitung dari sesi dokter, nomor antrean, dan rata-rata waktu tunggu konfigurasi prototype. Nilai tersebut **bukan jaminan waktu pelayanan medis**.
-
-## Aturan antrean
-
-- Nomor antrean Reguler menggunakan identitas **poli + tanggal**.
-- Dokter/sesi merupakan alokasi pelayanan, bukan identitas nomor antrean.
-- Kapasitas dihitung dari sesi dokter dan konfigurasi kuota.
-- Eksekutif mempunyai konteks layanan terpisah dan dapat menggunakan appointment/slot waktu.
-- Nomor antrean yang sudah pernah diterbitkan tidak dipakai ulang ketika booking dibatalkan.
-- Booking dan check-in membawa `jenisLayanan`, `dokterId`, `sessionId`, `noAntrian`, dan `kodeCheckIn` agar konteks kunjungan tidak hilang.
-
-## QR / Check-in
-
-QR/barcode adalah identitas check-in prototype. Kamera menggunakan API browser bila tersedia; input kode manual menjadi fallback.
-
-Setelah check-in:
-
-```text
-Booking.status = checked_in
-        ↓
-Visit dibuat
-        ↓
-Visit.workflow.checkinAt diisi
-        ↓
-Pasien masuk antrean aktif
-```
-
-## Master Data
-
-Admin dapat mengelola baseline:
-
-- Master dokter
-- Jadwal dokter
-- Poli/klinik
-- Fasilitas
-- Hak akses demo
-- Export/import master dokter dan jadwal
-
-Data publik/baseline diberi status yang dapat diedit dan tidak dianggap sebagai data operasional rumah sakit produksi.
-
-## Audit Sistem v13.8
-
-Admin mempunyai menu **Audit Sistem** untuk menjalankan self-test terhadap:
-
-- keberadaan database demo
-- role utama
-- 5 navigasi pasien
-- pemisahan Reguler/Eksekutif
-- konsistensi nomor antrean demo
-- workflow kunjungan
-- estimasi kedatangan
-- keunikan kode QR/check-in
-- data pasien demo
-
-Self-test ini merupakan **pemeriksaan sisi client**, bukan pengganti penetration test, security audit, atau integration test produksi.
-
-## Akun demo
-
-| Peran | Username | Password |
-|---|---|---|
+|---|---|
 | Admin | `admin` | `admin123` |
 | Pendaftaran/Loket | `loket` | `loket123` |
 | Rawat Jalan | `rawatjalan` | `rawatjalan123` |
@@ -265,4 +149,4 @@ Proyek ini dibuat untuk menunjukkan kemampuan dalam:
 - dokumentasi sistem
 - quality audit dan self-test
 
-**SIMRS PROTOTYPE v13.8 — Portfolio / Demo**
+**SIMRS PROTOTYPE v14.1 — Portfolio / Demo**
