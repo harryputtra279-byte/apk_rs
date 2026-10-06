@@ -302,6 +302,37 @@ body.kiosk-on .content{max-width:1100px;margin:0 auto;padding-top:32px}
   .ticket .num{font-size:42px}
 }
 
+
+/* ---------- tiket rawat jalan compact V14.5 ---------- */
+.ticket-modal-compact{padding:10px 16px 10px}
+.ticket-modal-compact .patient-ticket{max-width:390px;margin:0 auto;padding:8px 10px 7px;border-radius:18px}
+.ticket-modal-compact .patient-ticket strong{font-size:32px;margin:3px}
+.ticket-modal-compact .patient-ticket b{font-size:13px;line-height:1.25}
+.ticket-modal-compact .patient-ticket small{font-size:10.5px;line-height:1.35}
+.ticket-doctor{margin-top:5px!important}
+.ticket-arrival{max-width:300px;margin:5px auto 0;padding:5px 8px;border-radius:13px;background:rgba(58,90,120,.08);border:1px solid rgba(58,90,120,.16);text-align:center}
+.ticket-arrival span{font-size:9.5px!important;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em}
+.ticket-arrival strong{display:block;font:900 18px/1.05 var(--font-mono);margin:1px 0!important;color:var(--ink)}
+.ticket-arrival small{display:block;margin-top:2px!important;color:var(--ink-soft)}
+.ticket-qr{display:flex;justify-content:center;margin:4px auto 2px}
+.ticket-qr svg{display:block;width:110px;height:110px;max-width:110px}
+.ticket-code{display:block!important;font-size:10px!important;margin-top:2px!important}
+.ticket-modal-compact .badge{display:inline-flex;margin-top:3px;font-size:9px}
+.ticket-note{text-align:center;margin:4px auto 0;max-width:390px;font-size:11px;color:var(--ink-soft)}
+.ticket-rule-hint{max-width:390px;margin:4px auto 0;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.35);border:1px solid var(--ink-hair);font-size:10px;line-height:1.4;color:var(--ink-soft);text-align:center}
+.ticket-compact{max-width:420px;margin-left:auto;margin-right:auto;padding:16px!important}
+.ticket-compact .num{font-size:44px}
+.ticket-compact .ticket-arrival{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.22);color:#fff}
+.ticket-compact .ticket-arrival span,.ticket-compact .ticket-arrival small{color:rgba(255,255,255,.72)}
+.ticket-compact .ticket-arrival strong{color:#fff}
+@media(max-width:520px){
+  .ticket-modal-compact{padding:8px 10px 8px}
+  .ticket-modal-compact .patient-ticket{padding:12px 10px}
+  .ticket-modal-compact .patient-ticket strong{font-size:32px}
+  .ticket-qr svg{width:132px;height:132px;max-width:132px}
+  .ticket-arrival{max-width:280px}
+}
+
 /* ---------- print ---------- */
 .print-only{display:none}
 @media print{
