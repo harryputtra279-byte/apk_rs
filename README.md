@@ -1,7 +1,7 @@
 # SIMRS PROTOTYPE — Portfolio / Demo
 
-**Versi:** V14.6.0  
-**Baseline pengembangan:** V14.5.2  
+**Versi:** V14.6.1  
+**Baseline pengembangan:** V14.6.1  
 **Platform:** PWA / Web  
 **Status:** Prototype portfolio, bukan SIMRS produksi
 
@@ -11,7 +11,7 @@ SIMRS PROTOTYPE adalah proyek portfolio untuk memperlihatkan kemampuan analisis 
 
 ## 1. Baseline pengembangan
 
-Mulai V14.6.0, **V14.5.2 adalah baseline resmi terakhir** yang digunakan sebagai sumber perubahan.
+Mulai V14.6.1, **V14.6.1 adalah baseline resmi terakhir** yang digunakan sebagai sumber perubahan.
 
 Aturan pengembangan proyek:
 
@@ -299,9 +299,10 @@ Proyek ini dibuat untuk menunjukkan kemampuan dalam:
 | Versi | Fokus |
 |---|---|
 | V14.5.2 | Rawat Jalan, UI Penunjang, alokasi dokter klinik reguler |
+| V14.6.1 | Penyempurnaan UI tombol hasil Lab/Radiologi dan posisi tombol Menu Admin |
 | **V14.6.0** | **UI Navbar Admin dan pemindahan Menu Lainnya ke tombol kiri atas** |
 
-**Baseline aktif untuk pengembangan berikutnya: V14.6.0**
+**Baseline aktif untuk pengembangan berikutnya: V14.6.1**
 
 ---
 
