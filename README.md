@@ -1,6 +1,7 @@
-# SIMRS PROTOTYPE — v13.8
+# SIMRS PROTOTYPE — v13.8.1
 
-**Versi portfolio:** v13.8 — **Feature Freeze + Quality Audit**
+**Versi portfolio:** v13.8 — **Feature Freeze + Quality Audit**  
+**Patch:** v13.8.1 — **Dynamic Patient Journey**
 
 SIMRS PROTOTYPE adalah **prototype/portfolio aplikasi sistem informasi manajemen rumah sakit**, bukan sistem resmi rumah sakit dan bukan sistem produksi. Fokus v13.8 adalah mematangkan alur **Rawat Jalan end-to-end** dari sisi pasien sampai pelayanan poli.
 
@@ -82,13 +83,36 @@ Selesai
 
 Reguler dan Eksekutif tidak digabung dalam konteks layanan, sesi, appointment, dan kapasitas.
 
-## Status perjalanan pasien
+## Status perjalanan pasien — v13.8.1
 
-Prototype menggunakan tahapan berikut:
+Perjalanan pasien pada sisi pasien **tidak lagi dipatok hanya 5 tahap**. Sistem membentuk perjalanan secara dinamis berdasarkan layanan yang benar-benar terjadi pada kunjungan tersebut.
 
-**Booking dibuat → Check-in → Menunggu verifikasi → Menunggu dipanggil → Dipanggil → Sedang dilayani → Pelayanan selesai.**
+Tahap dasar:
 
-Tahap klinis tambahan seperti laboratorium, farmasi, pembayaran, atau tindak lanjut tetap dapat berada di tengah alur sesuai modul yang aktif.
+**Pendaftaran → Check-in → Verifikasi → Dokter**
+
+Kemudian sistem hanya menampilkan tahap lanjutan yang benar-benar dibutuhkan:
+
+- **Laboratorium** jika dokter membuat permintaan laboratorium.
+- **Review Dokter** setelah hasil laboratorium tersedia.
+- **Farmasi — Siapkan Obat** jika dokter membuat resep.
+- **Kasir** sesuai alur billing kunjungan.
+- **Farmasi — Ambil Obat** setelah pembayaran jika pasien memiliki resep.
+- **Selesai** setelah seluruh kebutuhan kunjungan terpenuhi.
+
+Contoh tanpa resep:
+
+**Pendaftaran → Check-in → Verifikasi → Dokter → Kasir → Selesai**
+
+Contoh dengan resep:
+
+**Pendaftaran → Check-in → Verifikasi → Dokter → Farmasi (Siapkan) → Kasir → Farmasi (Ambil) → Selesai**
+
+Contoh dengan laboratorium dan resep:
+
+**Pendaftaran → Check-in → Verifikasi → Dokter → Laboratorium → Review Dokter → Farmasi (Siapkan) → Kasir → Farmasi (Ambil) → Selesai**
+
+Dengan pendekatan ini, pasien tidak melihat menu/tahap yang tidak relevan dengan kunjungannya. Jalur pasien mengikuti data visit aktual dan keputusan pelayanan dokter.
 
 ## Estimasi waktu kedatangan
 

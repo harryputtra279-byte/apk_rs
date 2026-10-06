@@ -5,7 +5,7 @@
 const BIAYA_REGISTRASI = 10000;
 const BIAYA_LAB = 75000;
 const LOW_STOCK_THRESHOLD = 15;
-const PROTOTYPE_VERSION = 'v13.8';
+const PROTOTYPE_VERSION = 'v13.8.1';
 const PROTOTYPE_NAME = 'SIMRS PROTOTYPE';
 const PROTOTYPE_MODE = 'Portfolio / Demo';
 const QUEUE_JOURNEY = [
@@ -1464,7 +1464,7 @@ function openPatientBookingTicket(bookingId, fresh){
     (booking.appointmentTime?'<small style="margin-top:6px">Janji: '+esc(booking.appointmentTime)+'</small>':'')+
     (aw?'<div class="alert alert-info" style="margin-top:12px"><strong>Disarankan datang:</strong> '+esc(aw.text)+'<br><span class="hint">Estimasi berbasis sesi dan waktu tunggu prototype, bukan janji waktu pelayanan.</span></div>':'')+
     '<div style="margin-top:14px">'+renderQrSvg(booking.kodeCheckIn,190)+'</div><small style="margin-top:8px">Tunjukkan QR/barcode ini saat check-in. Kode: <span class="mono">'+esc(booking.kodeCheckIn)+'</span></small>'+
-    queueRuleExplanation(booking)+journeyHtml(booking.status,true)+
+    queueRuleExplanation(booking)+(booking.visitId && getVisit(booking.visitId) ? '<div class="patient-flow ticket-journey">'+patientFlow(getVisit(booking.visitId))+'</div>' : journeyHtml(booking.status,true))+
     '<div class="ticket-actions"><button class="btn btn-primary" onclick="downloadPatientTicket(\''+booking.id+'\')">⬇️ Download Tiket</button><button class="btn btn-outline" onclick="printPatientTicket(\''+booking.id+'\')">🖨️ Cetak / Simpan PDF</button></div></div></div>');
 }
 function downloadPatientTicket(bookingId){
@@ -1532,11 +1532,59 @@ function renderPatientDashboard(){
 
 }
 function kpiPatient(icon,label,value,sub){ return '<div class="ops-kpi"><div class="ops-kpi-icon">'+icon+'</div><div><div class="ops-kpi-label">'+label+'</div><div class="ops-kpi-value">'+value+'</div><div class="ops-kpi-sub">'+sub+'</div></div></div>'; }
-function patientFlow(v){
-  const steps=[['BOOKED','Booking'],['CHECKED','Check-in'],['SCREEN','Screening'],['DOCTOR','Dokter'],['NEXT','Tindak lanjut']];
-  const idx=v.status==='menunggu_screening'?2:v.status==='screening'?2:['menunggu_dokter','dipanggil','diperiksa'].includes(v.status)?3:['menunggu_penunjang','menunggu_review','menunggu_farmasi','menunggu_bayar','obat_siap'].includes(v.status)?4:v.status==='selesai'?4:1;
-  return steps.map(function(s,i){return '<div class="patient-flow-step '+(i<idx?'done ':i===idx?'active ':'')+'"><span>'+(i<idx?'✓':i+1)+'</span><div><strong>'+s[1]+'</strong><small>'+s[0]+'</small></div></div>';}).join('');
+function patientJourneyDefinition(v){
+  // Patient Journey bersifat dinamis: unit yang tidak dibutuhkan pasien tidak ditampilkan.
+  // Jalur aktual ditentukan oleh tindakan/permintaan dokter, bukan sekadar poli.
+  const hasLab=!!(v && v.labRequest);
+  const hasRx=!!(v && v.resepId);
+  const steps=[
+    {key:'booking',label:'Pendaftaran',icon:'📅'},
+    {key:'checkin',label:'Check-in',icon:'✓'},
+    {key:'screening',label:'Verifikasi',icon:'🩺'},
+    {key:'doctor',label:'Dokter',icon:'👨‍⚕️'}
+  ];
+  if(hasLab){
+    steps.push({key:'lab',label:'Laboratorium',icon:'🧪'});
+    steps.push({key:'review',label:'Review Dokter',icon:'📋'});
+  }
+  if(hasRx){
+    steps.push({key:'pharmacy_prepare',label:'Farmasi',sub:'Siapkan obat',icon:'💊'});
+  }
+  steps.push({key:'payment',label:'Kasir',icon:'💳'});
+  if(hasRx){
+    steps.push({key:'pharmacy_pickup',label:'Farmasi',sub:'Ambil obat',icon:'💊'});
+  }
+  steps.push({key:'done',label:'Selesai',icon:'✓'});
+  return steps;
 }
+function patientJourneyIndex(v,steps){
+  if(!v) return 0;
+  const status=v.status;
+  const key= status==='terjadwal' ? 'booking' :
+    status==='checked_in' ? 'checkin' :
+    ['menunggu_screening','screening'].includes(status) ? 'screening' :
+    ['menunggu_dokter','dipanggil','diperiksa'].includes(status) ? 'doctor' :
+    status==='menunggu_lab' ? 'lab' :
+    status==='menunggu_review' ? 'review' :
+    status==='menunggu_farmasi' ? 'pharmacy_prepare' :
+    status==='menunggu_bayar' ? 'payment' :
+    status==='obat_siap' ? 'pharmacy_pickup' :
+    status==='selesai' ? 'done' : 'checkin';
+  const idx=steps.findIndex(function(x){return x.key===key;});
+  return idx>=0?idx:Math.min(steps.length-1,1);
+}
+function patientFlow(v){
+  const steps=patientJourneyDefinition(v);
+  const idx=patientJourneyIndex(v,steps);
+  const completed=v && v.status==='selesai' ? steps.length : idx;
+  return steps.map(function(s,i){
+    const isDone=i<completed || (v && v.status==='selesai');
+    const isActive=!isDone && i===idx;
+    const sub=s.sub?'<small>'+esc(s.sub)+'</small>':'<small>'+esc(s.key.toUpperCase())+'</small>';
+    return '<div class="patient-flow-step '+(isDone?'done ':'')+(isActive?'active ':'')+'"><span>'+(isDone?'✓':s.icon)+'</span><div><strong>'+esc(s.label)+'</strong>'+sub+'</div></div>';
+  }).join('');
+}
+
 function enablePatientNotifications(){
   if(!('Notification' in window)){ showToast('Browser ini tidak mendukung notifikasi sistem','warning'); return; }
   Notification.requestPermission().then(function(permission){ if(permission==='granted'){ showToast('Notifikasi HP aktif','success'); maybeNotifyPatientQueue(); renderPatientDashboard(); } else showToast('Izin notifikasi belum diberikan','warning'); });
