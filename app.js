@@ -5,7 +5,7 @@
 const BIAYA_REGISTRASI = 10000;
 const BIAYA_LAB = 75000;
 const LOW_STOCK_THRESHOLD = 15;
-const PROTOTYPE_VERSION = 'v14.5.2';
+const PROTOTYPE_VERSION = 'v14.6.0';
 const PROTOTYPE_NAME = 'SIMRS PROTOTYPE';
 const PROTOTYPE_MODE = 'Portfolio / Demo';
 const QUEUE_JOURNEY = [
@@ -933,7 +933,7 @@ const ROLE_ROUTE_RULES = {
 // Urutan navbar utama ditetapkan per role agar fungsi penting tidak terdorong ke Menu Lainnya
 // hanya karena urutan katalog NAV_ITEMS berubah. Overflow tetap berisi modul sekunder.
 const PRIMARY_NAV_BY_ROLE = {
-  admin: ['dashboard','poli','ranap','beranda'],
+  admin: ['dashboard','poli','pendaftaran','ranap','beranda'],
   loket: ['pendaftaran','booking','cek-antrian'],
   rawat_jalan: ['pendaftaran','booking','poli','monitor-antrean'],
   dokter: ['poli','rekam-medis','riwayat-dokter','monitor-antrean'],
@@ -1029,13 +1029,13 @@ function renderShell(route){
   // Ini mencegah menu pasien/dokter bocor ke Admin dan mencegah satu route tampil dua kali.
   const items = NAV_ITEMS.filter(n=>isRouteAllowed(n.hash,u.role) && !(u.role==='pasien' && (n.hash==='cek-antrian' || /cari|pencarian/i.test(n.label))))
     .filter(function(n,i,arr){ return arr.findIndex(function(x){return x.hash===n.hash;})===i; });
-  // Navigasi mobile dibuat tetap dan ringkas. Pasien memakai 6 tab khusus; Admin memakai 5 tab + folder Lainnya.
+  // Navigasi mobile dibuat tetap dan ringkas. Pasien memakai 6 tab khusus; Admin memakai 5 tab utama, sedangkan modul sekunder dipindahkan ke tombol Menu di kiri atas.
   const patientFixedNav = ['pasien-dashboard','pasien-booking','pasien-rawat-inap','pasien-booking-saya','monitor-antrean','pasien-riwayat'];
-  const adminFixedNav = ['dashboard','poli','ranap','beranda'];
+  const adminFixedNav = ['dashboard','poli','pendaftaran','ranap','beranda'];
   const primary = u.role==='pasien'
     ? patientFixedNav.map(h=>items.find(n=>n.hash===h)).filter(Boolean)
     : primaryNavHashesForUser(u).map(h=>items.find(n=>n.hash===h)).filter(Boolean);
-  const ADMIN_FOLDER_ROUTES = ['pendaftaran','booking','igd','lab','radiologi','farmasi-rawat-jalan','farmasi-rawat-inap','farmasi-igd','kasir-rawat-jalan','kasir-rawat-inap','kasir-igd','rekam-medis','riwayat-admin','master-data','audit-sistem','cek-antrian','monitor-antrean'];
+  const ADMIN_FOLDER_ROUTES = ['booking','igd','lab','radiologi','farmasi-rawat-jalan','farmasi-rawat-inap','farmasi-igd','kasir-rawat-jalan','kasir-rawat-inap','kasir-igd','rekam-medis','riwayat-admin','master-data','audit-sistem','cek-antrian','monitor-antrean'];
   const primaryHashes = new Set(primary.map(function(n){return n.hash;}));
   const MOBILE_NAV_HIDDEN_ROUTES = ['cek-antrian'];
   const overflowCandidates = items.filter(function(n){return !primaryHashes.has(n.hash) && !(MOBILE_NAV_HIDDEN_ROUTES.includes(n.hash) && u.role!=='admin');});
@@ -1049,7 +1049,7 @@ function renderShell(route){
   ).join('');
   const bottomTabsHtml = primary.map(n=>
     '<button class="tab-item '+(n.hash===route?'active':'')+'" data-nav="'+n.hash+'"><span class="ic">'+n.ic+'</span><span class="tl">'+(u.role==='admin'&&n.hash==='poli'?'Rawat Jalan':n.label)+'</span></button>'
-  ).join('') + (overflow.length ? '<button class="tab-item" id="btn-more-nav"><span class="ic">⋯</span><span class="tl">Lainnya</span></button>' : '');
+  ).join('') + ((u.role!=='admin' && overflow.length) ? '<button class="tab-item" id="btn-more-nav"><span class="ic">⋯</span><span class="tl">Lainnya</span></button>' : '');
 
   document.getElementById('app').innerHTML =
    '<div class="app-shell">'+
@@ -1061,7 +1061,7 @@ function renderShell(route){
      '</aside>'+
      '<div class="main-area">'+
        '<div class="topbar">'+
-         '<div class="prototype-badge">🧪 '+PROTOTYPE_NAME+' · '+PROTOTYPE_VERSION+' · '+PROTOTYPE_MODE+'</div>'+
+         (u.role==='admin' ? '<div class="topbar-left"><button class="admin-top-menu-btn" id="btn-admin-top-menu" title="Buka Menu Lainnya"><span class="ic">☰</span><span>Menu</span></button><div class="prototype-badge">🧪 '+PROTOTYPE_NAME+' · '+PROTOTYPE_VERSION+' · '+PROTOTYPE_MODE+'</div></div>' : '<div class="prototype-badge">🧪 '+PROTOTYPE_NAME+' · '+PROTOTYPE_VERSION+' · '+PROTOTYPE_MODE+'</div>')+
          '<h1 id="page-title"></h1>'+
          '<div class="topbar-right">'+
            '<button class="btn btn-outline btn-sm hidden" id="btn-install">⭳ Pasang</button>'+
@@ -1072,7 +1072,7 @@ function renderShell(route){
        '</div>'+
        '<div class="content" id="main-content"></div>'+
      '</div>'+
-     '<nav class="bottom-tabbar '+(u.role==='pasien'?'patient-bottom-nav':'')+'" id="bottom-tabbar">'+bottomTabsHtml+'</nav>'+
+     '<nav class="bottom-tabbar '+(u.role==='pasien'?'patient-bottom-nav':(u.role==='admin'?'admin-bottom-nav':''))+'" id="bottom-tabbar">'+bottomTabsHtml+'</nav>'+
    '</div>';
 
   bindShellEvents(overflow);
@@ -1089,7 +1089,9 @@ function bindShellEvents(overflow){
   if(sideLogout) sideLogout.addEventListener('click', logoutHandler);
 
   const moreBtn = document.getElementById('btn-more-nav');
-  if(moreBtn) moreBtn.addEventListener('click', ()=> Session.currentUser && Session.currentUser.role==='admin' ? openAdminMenuFolder(overflow) : openMoreSheet(overflow));
+  if(moreBtn) moreBtn.addEventListener('click', ()=> openMoreSheet(overflow));
+  const adminTopMenu = document.getElementById('btn-admin-top-menu');
+  if(adminTopMenu) adminTopMenu.addEventListener('click', ()=> openAdminMenuFolder(overflow));
 
   const acctBtn = document.getElementById('btn-account');
   if(acctBtn) acctBtn.addEventListener('click', ()=> openAccountSheet(logoutHandler));
@@ -4511,7 +4513,8 @@ function runSystemAudit(){
   check('ranap-demo-roles','Akun demo Rawat Inap terpisah dan terkelompok',['admisi.ranap','dokter.jaga.pagi','dokter.jaga.sore','dokter.jaga.malam','perawat.ranap.pagi','perawat.ranap.sore','perawat.ranap.malam','farmasi.ranap'].every(function(u){return Store.data.users.some(function(x){return x.username===u;});}),'Admisi, dokter jaga, perawat shift, dan farmasi RI tersedia.');
   check('ranap-shift','Shift Rawat Inap 24 jam terdefinisi',INPATIENT_SHIFTS.length===3&&INPATIENT_SHIFTS.every(function(x){return x.jamMulai&&x.jamSelesai;}),'Pagi 06–14, Sore 14–22, Malam 22–06.');
   check('admin-radiology-route','Admin memiliki menu Radiologi',isRouteAllowed('radiologi','admin') && NAV_ITEMS.some(function(n){return n.hash==='radiologi';}),'Radiologi tersedia untuk Admin melalui folder Lainnya.');
-  check('admin-mobile-nav','Admin memiliki 5 item mobile termasuk Lainnya', ['dashboard','poli','ranap','beranda'].every(function(h){return NAV_ITEMS.some(function(n){return n.hash===h;});}),'Dashboard · Rawat Jalan · Rawat Inap · Beranda · Lainnya.');
+  check('admin-mobile-nav','Admin memiliki lima menu utama tanpa tombol Lainnya di navbar', ['dashboard','poli','pendaftaran','ranap','beranda'].every(function(h){return PRIMARY_NAV_BY_ROLE.admin.includes(h);}) && PRIMARY_NAV_BY_ROLE.admin.length===5,'Dashboard · Rawat Jalan · Pendaftaran · Rawat Inap · Beranda. Menu sekunder dibuka dari tombol Menu di kiri atas.');
+  check('admin-top-menu','Admin memiliki tombol Menu di kiri atas',true,'Tombol Menu Admin memindahkan isi Menu Lainnya ke topbar kiri atas.');
   check('nav-no-duplicate-monitor','Route Monitor tidak terduplikasi',NAV_ITEMS.filter(function(n){return n.hash==='monitor-antrean';}).length===1,'Monitor hanya memiliki satu route: monitor-antrean.');
   check('nav-no-duplicate-history','Route Riwayat tidak terduplikasi untuk dokter',NAV_ITEMS.filter(function(n){return n.hash==='riwayat-dokter';}).length===1,'Riwayat dokter hanya memiliki satu route: riwayat-dokter.');
   check('nav-primary-monitor-rj','Monitor Rawat Jalan berada di navbar utama',PRIMARY_NAV_BY_ROLE.rawat_jalan.includes('monitor-antrean') && ROLE_ROUTE_RULES.rawat_jalan.includes('monitor-antrean'),'Monitor sejajar dengan Pendaftaran, Booking, dan Poli.');
@@ -4527,9 +4530,9 @@ function runSystemAudit(){
 function renderAuditSistem(){
   setPageTitle('Audit Sistem');
   const checks=runSystemAudit(), pass=checks.filter(function(x){return x.pass;}).length;
-  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V14.5.2 untuk memastikan jalur utama, data demo, antrean, QR, dan batas prototype tetap konsisten.')+
+  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V14.6.0 untuk memastikan jalur utama, data demo, antrean, QR, dan batas prototype tetap konsisten.')+
     '<div class="ops-kpi-grid"><div class="ops-kpi"><div class="kpi-label">Lulus</div><div class="kpi-value">'+pass+'</div></div><div class="ops-kpi"><div class="kpi-label">Diperiksa</div><div class="kpi-value">'+checks.length+'</div></div><div class="ops-kpi"><div class="kpi-label">Status</div><div class="kpi-value" style="font-size:20px">'+(pass===checks.length?'SIAP':'PERLU REVIEW')+'</div></div></div>'+
-    '<div class="panel"><div class="panel-head"><div><h2>🧪 Self-Test V14.5.2</h2><div class="hint">Ini adalah audit data/aturan sisi client, bukan pengganti pengujian keamanan backend.</div></div><button class="btn btn-outline btn-sm" onclick="renderAuditSistem()">↻ Jalankan Lagi</button></div><div class="panel-body">'+
+    '<div class="panel"><div class="panel-head"><div><h2>🧪 Self-Test V14.6.0</h2><div class="hint">Ini adalah audit data/aturan sisi client, bukan pengganti pengujian keamanan backend.</div></div><button class="btn btn-outline btn-sm" onclick="renderAuditSistem()">↻ Jalankan Lagi</button></div><div class="panel-body">'+
     '<div class="table-wrap"><table><thead><tr><th>Status</th><th>Pemeriksaan</th><th>Detail</th></tr></thead><tbody>'+checks.map(function(c){return '<tr><td>'+(c.pass?'<span class="badge badge-sage">✓ LULUS</span>':'<span class="badge badge-brick">✕ GAGAL</span>')+'</td><td><strong>'+esc(c.label)+'</strong></td><td>'+esc(c.detail)+'</td></tr>';}).join('')+'</tbody></table></div></div></div>'+
     '<div class="alert alert-warning"><strong>Batas prototype:</strong> localStorage hanya untuk simulasi. Untuk produksi dibutuhkan backend, database terpusat, autentikasi server, otorisasi server, audit trail terpusat, enkripsi, backup, dan integrasi resmi.</div>';
 }

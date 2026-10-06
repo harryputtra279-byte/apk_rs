@@ -1,195 +1,309 @@
+# SIMRS PROTOTYPE — Portfolio / Demo
 
-## V14.5.2 — Rawat Jalan & Penunjang UI Fix
-- V14.5.2 dibangun langsung dari baseline V14.5.1.
-- Poli Reguler: pasien/petugas tidak memilih dokter; sistem mengalokasikan dokter/sesi otomatis berdasarkan jadwal dan kapasitas. Pilihan dokter hanya untuk Poli Eksekutif.
-- Tombol `Kirim Hasil` Laboratorium/Radiologi dikunci sebagai tombol inline agar tidak melebar memenuhi kartu pada layar mobile.
-- Service Worker dan cache-busting dinaikkan ke V14.5.2 agar perubahan CSS/JS tidak tertahan cache versi sebelumnya.
+**Versi:** V14.6.0  
+**Baseline pengembangan:** V14.5.2  
+**Platform:** PWA / Web  
+**Status:** Prototype portfolio, bukan SIMRS produksi
 
-## V14.3 — Rawat Inap End-to-End, Penunjang, eMAR & RBAC
+SIMRS PROTOTYPE adalah proyek portfolio untuk memperlihatkan kemampuan analisis kebutuhan, perancangan alur pelayanan rumah sakit, UI/UX, RBAC (hak akses berbasis peran), PWA, penyimpanan lokal, simulasi antrean, serta integrasi antar-modul pelayanan.
 
-V14.3 adalah penyempurnaan dari V14.2. Fokusnya adalah membuat Rawat Inap terlihat sebagai alur layanan yang utuh: admisi, bed, DPJP, dokter jaga, perawat per shift, handover, farmasi, penunjang, discharge, serta perjalanan pasien.
+> **Penting:** aplikasi ini adalah prototype/demo. Bukan sistem resmi RSUD R.T. Notopuro, bukan pengganti SIMRS rumah sakit, dan bukan SOP resmi. Data demo bersifat fiktif. Implementasi produksi membutuhkan backend, database terpusat, autentikasi dan otorisasi server, audit terpusat, enkripsi, backup, monitoring, serta integrasi resmi.
 
-### Perubahan utama
-- Pasien memiliki **6 bottom navigation**: Beranda, Rawat Jalan, Rawat Inap, Booking Saya, Monitor, Riwayat.
-- Ditambahkan **5 akun pasien Rawat Inap** dengan skenario berbeda: IGD, Rawat Jalan, Rujukan, penunjang, dan rencana pulang.
-- Menu akun demo pada login dikelompokkan berdasarkan kategori agar mudah diuji.
-- DPJP dipisahkan dari dokter jaga. Dokter jaga mengikuti shift 24 jam.
-- Perawat Rawat Inap memiliki akun demo shift Pagi, Sore, dan Malam.
-- Ditambahkan akun **Admisi Rawat Inap**.
-- Ditambahkan modul **Handover Shift** pada Rawat Inap.
-- Perjalanan Rawat Inap pasien bersifat dinamis dan menampilkan dokter/DPJP, dokter jaga, kamar/bed, serta aktivitas yang relevan.
-- Data demo tetap fiktif dan tidak menggunakan data pasien nyata.
+## 1. Baseline pengembangan
 
-> **Catatan:** Ini adalah prototype portfolio berbasis client/localStorage, bukan SIMRS produksi dan bukan SOP resmi RSUD R.T. Notopuro. Implementasi produksi memerlukan backend, database terpusat, autentikasi/otorisasi server, audit trail terpusat, enkripsi, backup, dan integrasi resmi.
+Mulai V14.6.0, **V14.5.2 adalah baseline resmi terakhir** yang digunakan sebagai sumber perubahan.
 
+Aturan pengembangan proyek:
 
-### Perbaikan penting v14.4
+1. Versi terbaru yang sudah dikirim dan disepakati menjadi baseline berikutnya.
+2. Perubahan baru selalu dibuat dari baseline terakhir, bukan dari versi lama.
+3. Fitur yang sudah benar harus dipertahankan.
+4. Setiap perubahan harus melalui pemeriksaan syntax, UI, navigasi, role/RBAC, alur utama, dan regresi fitur sebelum ZIP diberikan.
+5. README hanya diperbarui setelah fungsi aplikasi cukup stabil untuk didokumentasikan.
 
-### Perbaikan v14.4.2 — Demo Account Navigation & History Fix
-- Menghapus duplikasi route `Monitor` pada katalog navigasi.
-- `Monitor` hanya ditampilkan pada role yang memang membutuhkan monitor antrean; akun Laboratorium/Radiologi tidak lagi mendapat menu Monitor yang tidak relevan.
-- Menghapus akses `Riwayat Pemeriksaan Dokter` dari menu Admin; histori aktivitas Admin tetap melalui Audit Sistem.
-- Memperbaiki bug `Riwayat Pemeriksaan Dokter` yang sebelumnya berhenti karena referensi variabel `medOrders`/`canAdminMed` tidak terdefinisi.
-- Menambahkan de-duplicator route pada shell agar satu hash hanya dirender sekali walaupun katalog menu berubah di masa depan.
-- Service Worker/cache dinaikkan ke v14.4.2.
+## 2. Perubahan V14.6.0 — UI Navbar Admin & Menu Sekunder
 
-- Order Rawat Inap terhubung ke Laboratorium dan Radiologi sampai hasil kembali ke episode pasien.
-- Order obat Rawat Inap: dokter → farmasi → diserahkan ke perawat → dicatat diberikan oleh perawat (eMAR simulasi).
-- DPJP dan dokter yang sedang login dicatat terpisah pada instruksi klinis.
-- Hak akses diperketat: admisi, dokter, perawat, farmasi, lab, radiologi, dan kasir memiliki tindakan sesuai perannya.
-- Rencana pulang medis hanya dapat diselesaikan oleh Dokter Rawat Inap/administrator.
-- Handover shift dikonfirmasi oleh perawat shift.
-- Ditambahkan akun demo Radiologi dan migrasi data untuk instalasi versi lama.
-- Patient Journey membedakan tahap Laboratorium, Radiologi, Farmasi, Pulang, dan Kasir berdasarkan aktivitas yang benar-benar ada.
+### Navbar Admin Super User
 
-## V14.3 — Real-Life Flow Rawat Inap
+Navbar utama Admin sekarang terdiri dari **tepat lima menu** dan tidak lagi memiliki tombol `Lainnya` di bottom navbar:
 
-V14.3 memperkuat Rawat Inap agar sumber admisi dan perjalanan pasien tidak diperlakukan sama. Jalur yang didukung:
+**Dashboard | Rawat Jalan | Pendaftaran | Rawat Inap | Beranda**
 
-- **IGD → keputusan rawat inap → Admisi → Bed → Rawat Inap**.
-- **Rawat Jalan → indikasi rawat inap → rujukan/permintaan rawat inap → Admisi → Bed → Rawat Inap**.
-- **Rujukan → Admisi → Bed → Rawat Inap**.
-- **Transfer Internal → Admisi → Bed → Rawat Inap**.
+Posisi dirancang dengan prinsip:
 
-Untuk skenario prototype **BPJS**, pilihan kelas reguler dibatasi pada **Kelas III, II, dan I**. Jika sumbernya Rawat Jalan/Rujukan, nomor rujukan atau surat permintaan rawat inap wajib dicatat. Sumber IGD dapat langsung menjadi admission ketika dokter menetapkan rawat inap. Ini adalah simulasi alur bisnis, bukan klaim bahwa seluruh kasus BPJS wajib melalui IGD.
+- Dashboard di sisi kiri.
+- Beranda di sisi kanan.
+- Pendaftaran berada di bagian tengah.
+- Rawat Jalan dan Rawat Inap menjadi dua menu pelayanan utama di antara keduanya.
 
-Master ruang menggunakan nama referensi yang dipublikasikan RSUD R.T. Notopuro seperti **Tulip, Teratai, Mawar Kuning, Mawar Merah Putih, dan Graha Delta Husada**, serta unit intensif seperti ICU/ICCU/HCU/PICU/NICU. Data kamar pada prototype tetap bersifat simulasi dan harus diverifikasi sebelum penggunaan nyata.
+### Menu sekunder Admin
 
-### Patient Journey Rawat Inap
+Menu yang sebelumnya berada di `Lainnya` tidak dihapus. Aksesnya dipindahkan ke **tombol `☰ Menu` di kiri atas topbar Admin**.
 
-Sisi pasien menampilkan **Perjalanan Rawat Inap Anda** secara dinamis. Sumber admission ditampilkan secara eksplisit, misalnya `IGD → Rawat Inap` atau `Rawat Jalan → Admisi → Rawat Inap`. Tahap Laboratorium/Penunjang dan Farmasi hanya muncul jika benar-benar ada order/resep pada admission. Setelah pulang, alur berlanjut ke Kasir dan Selesai.
+Tombol tersebut membuka folder glass berisi modul sekunder, antara lain:
 
-# SIMRS PROTOTYPE — v14.4
+- Booking
+- IGD
+- Laboratorium
+- Radiologi
+- Farmasi Rawat Jalan
+- Farmasi Rawat Inap
+- Farmasi IGD
+- Kasir Rawat Jalan
+- Kasir Rawat Inap
+- Kasir IGD
+- Rekam Medis
+- Riwayat Aktivitas Sistem
+- Master Data
+- Audit Sistem
+- Cek Antrian
+- Monitor
 
-**Versi portfolio:** v14.4 — **Rawat Inap Terintegrasi**  
-**Baseline:** V13.8.1 Dynamic Patient Journey Rawat Jalan
+`Pendaftaran` sengaja tidak lagi berada di folder tersebut karena sudah menjadi menu utama Admin.
 
-SIMRS PROTOTYPE adalah **prototype/portfolio aplikasi sistem informasi manajemen rumah sakit**, bukan sistem resmi rumah sakit dan bukan sistem produksi. V14 memulai modul **Rawat Inap** dengan alur admisi sampai pemulangan dan tetap menjaga koneksi dengan Rawat Jalan, IGD, Farmasi, Laboratorium, Radiologi, dan Kasir sebagai modul yang akan terus dikembangkan.
+### Prinsip UI
 
-## Dasar desain Rawat Inap
+Menu utama digunakan untuk fungsi yang paling sering dipakai, sedangkan modul sekunder tetap tersedia melalui tombol Menu. Dengan demikian navbar tidak penuh, tetapi fungsi Admin tetap lengkap.
 
-Desain V14 menggunakan referensi publik RSUD R.T. Notopuro: rumah sakit menyediakan layanan rawat inap 24 jam dan publikasi ketersediaan tempat tidur membedakan jenis layanan seperti VVIP, VIP, Kelas I–III, ICU, ICCU, PICU, NICU, HCU, isolasi, ruang bersalin, serta IGD. Status bed pada sistem informasi kamar juga dibedakan antara terisi, persiapan, dipesan, perbaikan, dan siap ditempati. Data tersebut dipakai sebagai **referensi desain**, bukan koneksi data real-time RSUD.
+## 3. Modul yang tersedia
 
-## Alur V14
+### Rawat Jalan
 
-**Rawat Jalan / IGD / Rujukan** → **Keputusan Rawat Inap** → **Admisi** → **Pilih kelas & bed** → **Perawatan di bangsal** → **CPPT + vital/NEWS2 + instruksi dokter** → **Lab/Radiologi/Farmasi bila diperlukan** → **Rencana pulang** → **Resume medis** → **Administrasi/Kasir** → **Bed masuk status persiapan** → **Bed kembali siap**.
+- Pendaftaran pasien
+- Booking / antrean
+- Klinik reguler dan eksekutif
+- Alokasi dokter otomatis untuk klinik reguler
+- Pemilihan dokter hanya untuk klinik eksekutif
+- QR/barcode tiket antrean
+- Check-in pasien
+- Monitor antrean
+- Rekam medis
+- Riwayat pemeriksaan dokter
 
-Tidak semua pasien melewati semua unit. Penunjang dan Farmasi muncul berdasarkan order/resep yang benar-benar dibuat selama admission.
+### Rawat Inap
 
-## Fitur Rawat Inap V14
+- Admisi
+- Sumber admisi: IGD, Rawat Jalan, Rujukan, Transfer Internal
+- Kelas perawatan
+- Bed management
+- Status bed
+- Transfer pasien
+- CPPT
+- Tanda vital dan simulasi NEWS2
+- DPJP dan dokter jaga
+- Perawat berdasarkan shift
+- Handover shift
+- Laboratorium dan Radiologi berdasarkan order
+- Farmasi dan simulasi eMAR
+- Rencana pulang
+- Resume medis
+- Billing dan pelepasan bed
+- Patient Journey Rawat Inap
 
-- **Admisi baru:** pasien dapat masuk dari Rawat Jalan, IGD, rujukan, atau transfer internal.
-- **Kelas dan tingkat perawatan:** Bangsal, Intensif, Bersalin; kelas perawatan berasal dari master bed/ward.
-- **Bed management:** tersedia, terisi, dipesan, persiapan/dibersihkan, dan perbaikan.
-- **Transfer bed:** pasien dapat dipindahkan antar-bed yang tersedia dan perpindahan dicatat pada CPPT/audit.
-- **CPPT:** catatan S/O/A/P dengan profesi dan waktu pencatatan.
-- **Vital & NEWS2:** simulasi pencatatan tanda vital dan perhitungan skor untuk monitoring prototype.
-- **Instruksi dokter:** obat, tindakan, diet, dan pemeriksaan laboratorium. Instruksi obat membuat resep Rawat Inap yang terhubung ke Farmasi.
-- **Patient Journey Rawat Inap:** status perjalanan admission ditampilkan dari admisi sampai selesai.
-- **Rencana pulang & resume medis:** diagnosis akhir, ringkasan, obat pulang, kontrol, dan kondisi pulang.
-- **Billing:** kamar, obat, penunjang, dan tindakan dipisahkan.
-- **Bed release:** setelah pasien pulang, bed masuk status persiapan terlebih dahulu; petugas kemudian dapat mengembalikannya menjadi siap ditempati.
-- **Audit sistem:** self-test ditambah pemeriksaan khusus admission, bed, billing, dan role Rawat Inap.
+### Penunjang
 
-## Integrasi yang disiapkan
+- Laboratorium
+- Radiologi
+- Pengiriman hasil pemeriksaan
+- Integrasi hasil dengan perjalanan pasien
 
-1. **Rawat Jalan → Rawat Inap:** keputusan admisi dapat membawa `patientId` dan `visitId`.
-2. **IGD → Rawat Inap:** sumber admisi dapat dicatat sebagai IGD.
-3. **Rawat Inap → Farmasi:** order obat menjadi resep dengan `admissionId`.
-4. **Rawat Inap → Laboratorium/Radiologi:** order penunjang disimpan sebagai bagian dari perjalanan admission dan menjadi dasar modul penunjang berikutnya.
-5. **Rawat Inap → Kasir:** billing admission dipisahkan dari transaksi Rawat Jalan.
-6. **Rawat Inap → Rekam Medis:** CPPT dan resume medis menjadi bagian dari riwayat pasien.
+### Administrasi
 
-## Catatan penting
+- Pendaftaran
+- Booking
+- Kasir Rawat Jalan
+- Kasir Rawat Inap
+- Kasir IGD
+- Master Data
+- Audit Sistem
+- Monitor antrean
 
-- V14 **bukan replika database atau SOP internal RSUD**. Detail ruangan, tarif, hak kelas, alur BPJS, formularium, DPJP, dan aturan discharge harus dikonfigurasi sesuai kebijakan rumah sakit yang benar-benar menggunakan sistem.
-- NEWS2 di sini adalah simulasi prototype dan **bukan alat keputusan klinis**.
-- `localStorage` hanya untuk demo. Produksi memerlukan backend/database terpusat, autentikasi server, RBAC server-side, audit terpusat, backup, enkripsi, dan integrasi resmi.
+## 4. Navigasi berdasarkan role
 
----
+### Admin Super User
 
-|---|---|
+**Dashboard | Rawat Jalan | Pendaftaran | Rawat Inap | Beranda**
+
+Modul sekunder dibuka melalui **☰ Menu** di kiri atas.
+
+### Petugas Rawat Jalan
+
+**Pendaftaran | Booking | Poli | Monitor**
+
+### Dokter Rawat Jalan
+
+**Poli | Rekam Medis | Riwayat | Monitor**
+
+### Dokter IGD
+
+**IGD | Rekam Medis | Riwayat | Monitor**
+
+### Dokter Rawat Inap
+
+**Rawat Inap | Rekam Medis | Riwayat | Monitor**
+
+### Perawat Rawat Jalan
+
+**Beranda | Poli | Rekam Medis | Monitor**
+
+### Perawat IGD
+
+**IGD | Rekam Medis | Monitor**
+
+### Perawat Rawat Inap
+
+**Rawat Inap | Rekam Medis | Monitor**
+
+### Laboratorium
+
+**Beranda | Laboratorium**
+
+### Radiologi
+
+**Beranda | Radiologi**
+
+### Farmasi / Kasir
+
+Menu utama menyesuaikan unit kerja akun, sehingga modul yang tidak relevan tidak dipaksakan masuk ke `Lainnya`.
+
+### Pasien
+
+**Beranda | Rawat Jalan | Rawat Inap | Booking Saya | Monitor | Riwayat**
+
+## 5. Akun demo utama
+
+| Role | Username | Password |
+|---|---|---|
 | Admin | `admin` | `admin123` |
-| Pendaftaran/Loket | `loket` | `loket123` |
-| Rawat Jalan | `rawatjalan` | `rawatjalan123` |
+| Loket | `loket` | `loket123` |
+| Petugas Rawat Jalan | `rawatjalan` | `rawatjalan123` |
 | Dokter Umum | `dokter.umum` | `dokter123` |
-| Dokter Anak | `dokter.anak` | `dokter123` |
-| Dokter Gigi | `dokter.gigi` | `dokter123` |
 | Dokter Jantung | `dokter.jantung` | `dokter123` |
-| Dokter Penyakit Dalam | `dokter.penyakitdalam` | `dokter123` |
+| Perawat Rawat Jalan | `perawat` | `perawat123` |
+| Laboratorium | `lab` | `lab123` |
+| Radiologi | `radiologi` | `rad123` |
+| Farmasi Rawat Jalan | `farmasi.rajal` | `farmasi123` |
+| Kasir Rawat Jalan | `kasir.rajal` | `kasir123` |
+| Admisi Rawat Inap | `admisi.ranap` | `admisi123` |
+| Dokter Rawat Inap | `dokter.ranap` | `dokter123` |
+| Perawat Rawat Inap | `perawat.ranap` | `perawat123` |
 | Pasien Demo | `pasien.demo` | `pasien123` |
 
-Akun tambahan tersedia untuk Farmasi, Kasir, Laboratorium, Perawat, IGD, dan Rawat Inap.
+Akun tambahan tersedia untuk dokter/perawat per unit, dokter jaga dan perawat per shift, Farmasi/Kasir IGD, Farmasi/Kasir Rawat Inap, serta pasien demo Rawat Inap.
 
-## Teknologi
+## 6. Teknologi
 
 - HTML5
 - CSS3
 - JavaScript ES6+
-- PWA
+- Progressive Web App (PWA)
 - Service Worker
 - localStorage
 - BroadcastChannel
 - QR generator lokal
 - Browser Barcode Detection API sebagai opsi kamera
 
-Tidak menggunakan framework frontend besar agar prototype mudah dibaca recruiter dan mudah dijalankan.
+Prototype sengaja dibuat tanpa framework frontend besar agar source mudah dibaca, dipelajari, dan dipresentasikan sebagai portfolio.
 
-## Penyimpanan
+## 7. Arsitektur prototype
 
-Versi ini masih menggunakan `localStorage` browser. Artinya data antar perangkat **tidak benar-benar tersinkron**.
+```text
+PWA / Browser
+      │
+      ├── UI / Role-based Navigation
+      ├── Business Logic
+      ├── Queue & Booking Simulation
+      ├── Patient Journey
+      └── localStorage
+```
 
 Untuk implementasi produksi, arsitektur yang disarankan:
 
 ```text
-PWA / Web / Mobile
-       ↓
+Web / PWA / Mobile
+        ↓
 API Gateway / Backend
-       ↓
+        ↓
 Authentication + Authorization
-       ↓
-Business Logic / Queue Engine
-       ↓
+        ↓
+Business Logic
+        ↓
 Database Terpusat
-       ↓
+        ↓
 Audit Log + Backup + Monitoring
 ```
 
-## Batasan penting
+## 8. Penyimpanan dan keamanan prototype
 
-Prototype ini **tidak boleh** digunakan untuk menyimpan data kesehatan nyata atau NIK nyata. Jangan memasukkan API key, password produksi, private key, atau kredensial sistem rumah sakit ke repository publik.
+Prototype masih menggunakan `localStorage`, sehingga data hanya berada di browser/perangkat yang digunakan. Tidak ada sinkronisasi database pusat.
 
-Integrasi BPJS/Mobile JKN, SIMRS eksternal, rekam medis elektronik produksi, pembayaran nyata, notifikasi resmi, dan data klinis produksi memerlukan integrasi serta otorisasi resmi.
+Jangan memasukkan:
 
-## Cara menjalankan
+- data pasien nyata
+- NIK nyata
+- password produksi
+- API key
+- private key
+- kredensial rumah sakit
 
-```bash
-npx serve .
-```
+ke repository publik.
 
-atau:
+Untuk produksi diperlukan autentikasi server-side, RBAC server-side, session management, enkripsi, audit trail terpusat, backup, pemulihan bencana, logging, monitoring, serta kontrol akses database.
+
+## 9. Batasan klinis
+
+NEWS2 pada prototype hanya digunakan untuk simulasi monitoring dan **bukan alat diagnosis atau keputusan klinis**.
+
+CPPT, resep, farmasi, laboratorium, radiologi, billing, BPJS, tarif, formularium, bed, DPJP, discharge, dan seluruh aturan pelayanan masih merupakan simulasi yang harus dikonfigurasi serta divalidasi terhadap kebijakan resmi ketika masuk tahap produksi.
+
+## 10. Cara menjalankan
+
+Dengan server lokal:
 
 ```bash
 python3 -m http.server 8080
 ```
 
-Kemudian buka alamat lokal tersebut. Untuk PWA dan akses kamera QR, gunakan HTTPS atau localhost.
+atau:
 
-## Tujuan portfolio
+```bash
+npx serve .
+```
+
+Kemudian buka alamat localhost yang diberikan server.
+
+Untuk fitur PWA dan akses kamera, gunakan HTTPS atau localhost.
+
+## 11. Tujuan portfolio
 
 Proyek ini dibuat untuk menunjukkan kemampuan dalam:
 
 - analisis kebutuhan sistem
-- pemodelan alur bisnis
-- RBAC
+- analisis alur bisnis rumah sakit
 - desain UI/UX
-- business logic antrean
-- pemisahan master data dan transaksi
+- RBAC dan pemisahan role
+- sistem antrean
+- booking dan check-in QR/barcode
+- Rawat Jalan
+- Rawat Inap
+- Patient Journey
+- integrasi Farmasi, Laboratorium, Radiologi, dan Kasir
 - PWA
-- local persistence
-- QR/check-in
-- simulasi integrasi antar-modul
-- dokumentasi sistem
-- quality audit dan self-test
+- penyimpanan lokal
+- dokumentasi teknis
+- pengujian dan self-test
+- perancangan sistem yang dapat dikembangkan menuju arsitektur backend terpusat
 
-**SIMRS PROTOTYPE v14.4 — Portfolio / Demo**
+## 12. Status versi
+
+| Versi | Fokus |
+|---|---|
+| V14.5.2 | Rawat Jalan, UI Penunjang, alokasi dokter klinik reguler |
+| **V14.6.0** | **UI Navbar Admin dan pemindahan Menu Lainnya ke tombol kiri atas** |
+
+**Baseline aktif untuk pengembangan berikutnya: V14.6.0**
+
+---
+
+**SIMRS PROTOTYPE — Portfolio / Demo**  
+Dibuat sebagai proyek portfolio Sistem Informasi untuk menunjukkan kemampuan analisis, desain, implementasi frontend, business logic, RBAC, PWA, dan pengujian alur aplikasi.
