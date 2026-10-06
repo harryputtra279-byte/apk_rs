@@ -1,7 +1,34 @@
+## V14.3 — Rawat Inap End-to-End, Penunjang, eMAR & RBAC
 
-## V14.1 — Real-Life Flow Rawat Inap
+V14.3 adalah penyempurnaan dari V14.2. Fokusnya adalah membuat Rawat Inap terlihat sebagai alur layanan yang utuh: admisi, bed, DPJP, dokter jaga, perawat per shift, handover, farmasi, penunjang, discharge, serta perjalanan pasien.
 
-V14.1 memperkuat Rawat Inap agar sumber admisi dan perjalanan pasien tidak diperlakukan sama. Jalur yang didukung:
+### Perubahan utama
+- Pasien memiliki **6 bottom navigation**: Beranda, Rawat Jalan, Rawat Inap, Booking Saya, Monitor, Riwayat.
+- Ditambahkan **5 akun pasien Rawat Inap** dengan skenario berbeda: IGD, Rawat Jalan, Rujukan, penunjang, dan rencana pulang.
+- Menu akun demo pada login dikelompokkan berdasarkan kategori agar mudah diuji.
+- DPJP dipisahkan dari dokter jaga. Dokter jaga mengikuti shift 24 jam.
+- Perawat Rawat Inap memiliki akun demo shift Pagi, Sore, dan Malam.
+- Ditambahkan akun **Admisi Rawat Inap**.
+- Ditambahkan modul **Handover Shift** pada Rawat Inap.
+- Perjalanan Rawat Inap pasien bersifat dinamis dan menampilkan dokter/DPJP, dokter jaga, kamar/bed, serta aktivitas yang relevan.
+- Data demo tetap fiktif dan tidak menggunakan data pasien nyata.
+
+> **Catatan:** Ini adalah prototype portfolio berbasis client/localStorage, bukan SIMRS produksi dan bukan SOP resmi RSUD R.T. Notopuro. Implementasi produksi memerlukan backend, database terpusat, autentikasi/otorisasi server, audit trail terpusat, enkripsi, backup, dan integrasi resmi.
+
+
+### Perbaikan penting v14.3
+- Order Rawat Inap terhubung ke Laboratorium dan Radiologi sampai hasil kembali ke episode pasien.
+- Order obat Rawat Inap: dokter → farmasi → diserahkan ke perawat → dicatat diberikan oleh perawat (eMAR simulasi).
+- DPJP dan dokter yang sedang login dicatat terpisah pada instruksi klinis.
+- Hak akses diperketat: admisi, dokter, perawat, farmasi, lab, radiologi, dan kasir memiliki tindakan sesuai perannya.
+- Rencana pulang medis hanya dapat diselesaikan oleh Dokter Rawat Inap/administrator.
+- Handover shift dikonfirmasi oleh perawat shift.
+- Ditambahkan akun demo Radiologi dan migrasi data untuk instalasi versi lama.
+- Patient Journey membedakan tahap Laboratorium, Radiologi, Farmasi, Pulang, dan Kasir berdasarkan aktivitas yang benar-benar ada.
+
+## V14.3 — Real-Life Flow Rawat Inap
+
+V14.3 memperkuat Rawat Inap agar sumber admisi dan perjalanan pasien tidak diperlakukan sama. Jalur yang didukung:
 
 - **IGD → keputusan rawat inap → Admisi → Bed → Rawat Inap**.
 - **Rawat Jalan → indikasi rawat inap → rujukan/permintaan rawat inap → Admisi → Bed → Rawat Inap**.
@@ -16,9 +43,9 @@ Master ruang menggunakan nama referensi yang dipublikasikan RSUD R.T. Notopuro s
 
 Sisi pasien menampilkan **Perjalanan Rawat Inap Anda** secara dinamis. Sumber admission ditampilkan secara eksplisit, misalnya `IGD → Rawat Inap` atau `Rawat Jalan → Admisi → Rawat Inap`. Tahap Laboratorium/Penunjang dan Farmasi hanya muncul jika benar-benar ada order/resep pada admission. Setelah pulang, alur berlanjut ke Kasir dan Selesai.
 
-# SIMRS PROTOTYPE — v14.1
+# SIMRS PROTOTYPE — v14.3
 
-**Versi portfolio:** v14.1 — **Rawat Inap Terintegrasi**  
+**Versi portfolio:** v14.3 — **Rawat Inap Terintegrasi**  
 **Baseline:** V13.8.1 Dynamic Patient Journey Rawat Jalan
 
 SIMRS PROTOTYPE adalah **prototype/portfolio aplikasi sistem informasi manajemen rumah sakit**, bukan sistem resmi rumah sakit dan bukan sistem produksi. V14 memulai modul **Rawat Inap** dengan alur admisi sampai pemulangan dan tetap menjaga koneksi dengan Rawat Jalan, IGD, Farmasi, Laboratorium, Radiologi, dan Kasir sebagai modul yang akan terus dikembangkan.
@@ -149,4 +176,4 @@ Proyek ini dibuat untuk menunjukkan kemampuan dalam:
 - dokumentasi sistem
 - quality audit dan self-test
 
-**SIMRS PROTOTYPE v14.1 — Portfolio / Demo**
+**SIMRS PROTOTYPE v14.3 — Portfolio / Demo**

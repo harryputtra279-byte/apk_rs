@@ -531,3 +531,15 @@ body.kiosk-on .content{max-width:1100px;margin:0 auto;padding-top:32px}
 .journey-step span{font-size:22px}.journey-step strong{font-size:12px}.journey-step.done{border-color:rgba(14,92,86,.35);background:rgba(14,92,86,.06);color:var(--ink)}
 
 .patient-inpatient-info{margin-bottom:12px;font-size:13.5px}
+
+/* V14.2 — patient 6-tab navigation + inpatient shift/handover */
+.patient-bottom-nav{width:calc(100% - 20px);max-width:720px;justify-content:stretch;gap:2px;padding:5px}
+.patient-bottom-nav .tab-item{flex:1;min-width:0;padding:7px 3px;font-size:9px;white-space:nowrap}
+.patient-bottom-nav .tab-item .ic{font-size:17px}
+.patient-inpatient-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.patient-inpatient-grid>div{padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.patient-inpatient-grid span,.patient-inpatient-grid small{display:block;color:var(--ink-soft);font-size:11px}
+.patient-inpatient-grid strong{display:block;margin:4px 0;font-size:13px;line-height:1.35}
+.handover-card{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}
+.handover-card:last-child{border-bottom:0}
+@media(max-width:600px){.patient-bottom-nav{bottom:10px;width:calc(100% - 10px)}.patient-bottom-nav .tab-item{padding:7px 1px;font-size:8px}.patient-bottom-nav .tab-item .ic{font-size:16px}.patient-inpatient-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.handover-card{align-items:flex-start;flex-direction:column}.handover-card .btn{width:100%}}
