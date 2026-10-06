@@ -16,7 +16,7 @@ V14.3 adalah penyempurnaan dari V14.2. Fokusnya adalah membuat Rawat Inap terlih
 > **Catatan:** Ini adalah prototype portfolio berbasis client/localStorage, bukan SIMRS produksi dan bukan SOP resmi RSUD R.T. Notopuro. Implementasi produksi memerlukan backend, database terpusat, autentikasi/otorisasi server, audit trail terpusat, enkripsi, backup, dan integrasi resmi.
 
 
-### Perbaikan penting v14.3
+### Perbaikan penting v14.4
 - Order Rawat Inap terhubung ke Laboratorium dan Radiologi sampai hasil kembali ke episode pasien.
 - Order obat Rawat Inap: dokter → farmasi → diserahkan ke perawat → dicatat diberikan oleh perawat (eMAR simulasi).
 - DPJP dan dokter yang sedang login dicatat terpisah pada instruksi klinis.
@@ -43,9 +43,9 @@ Master ruang menggunakan nama referensi yang dipublikasikan RSUD R.T. Notopuro s
 
 Sisi pasien menampilkan **Perjalanan Rawat Inap Anda** secara dinamis. Sumber admission ditampilkan secara eksplisit, misalnya `IGD → Rawat Inap` atau `Rawat Jalan → Admisi → Rawat Inap`. Tahap Laboratorium/Penunjang dan Farmasi hanya muncul jika benar-benar ada order/resep pada admission. Setelah pulang, alur berlanjut ke Kasir dan Selesai.
 
-# SIMRS PROTOTYPE — v14.3
+# SIMRS PROTOTYPE — v14.4
 
-**Versi portfolio:** v14.3 — **Rawat Inap Terintegrasi**  
+**Versi portfolio:** v14.4 — **Rawat Inap Terintegrasi**  
 **Baseline:** V13.8.1 Dynamic Patient Journey Rawat Jalan
 
 SIMRS PROTOTYPE adalah **prototype/portfolio aplikasi sistem informasi manajemen rumah sakit**, bukan sistem resmi rumah sakit dan bukan sistem produksi. V14 memulai modul **Rawat Inap** dengan alur admisi sampai pemulangan dan tetap menjaga koneksi dengan Rawat Jalan, IGD, Farmasi, Laboratorium, Radiologi, dan Kasir sebagai modul yang akan terus dikembangkan.
@@ -176,4 +176,4 @@ Proyek ini dibuat untuk menunjukkan kemampuan dalam:
 - dokumentasi sistem
 - quality audit dan self-test
 
-**SIMRS PROTOTYPE v14.3 — Portfolio / Demo**
+**SIMRS PROTOTYPE v14.4 — Portfolio / Demo**
