@@ -305,3 +305,15 @@ Prototype masih menggunakan localStorage sehingga **belum untuk data pasien nyat
 - Slot waktu Eksekutif yang sudah dipesan tidak ditampilkan kembali sebagai slot tersedia.
 - Tiket pasien menampilkan jenis layanan, dokter, tanggal, penjamin, nomor antrean, dan QR/barcode check-in.
 - Alur ini merupakan simulasi portfolio; tidak terhubung langsung ke Santri RS, Mobile JKN, BPJS, atau sistem produksi RSUD.
+
+## Navigasi Pasien V13.7
+
+Bottom navigation akun pasien dibuat tetap menjadi **5 tombol**:
+
+1. **Dashboard**
+2. **Monitor** — melihat monitor antrean
+3. **Rawat Jalan** — pendaftaran Reguler/Spesialis atau Eksekutif
+4. **Booking Saya**
+5. **Riwayat**
+
+Menu **Lainnya** tidak digunakan pada akun pasien agar navigasi utama tetap sederhana dan langsung.

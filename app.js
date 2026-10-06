@@ -723,17 +723,18 @@ const NAV_ITEMS = [
   {hash:'riwayat-dokter',label:'Riwayat',ic:'🕘'},
   {hash:'master-data',label:'Master Data',ic:'⚙️'},
   {hash:'cek-antrian',label:'Cek Antrian',ic:'📺'},
-  {hash:'monitor-antrean',label:'Monitor Poli',ic:'🖥️'},
+  {hash:'monitor-antrean',label:'Monitor',ic:'🖥️'},
   {hash:'pasien-dashboard',label:'Dashboard',ic:'⌂'},
+  {hash:'monitor-antrean',label:'Monitor',ic:'🖥️'},
   {hash:'pasien-booking',label:'Rawat Jalan',ic:'📅'},
   {hash:'pasien-booking-saya',label:'Booking Saya',ic:'🎫'},
-  {hash:'pasien-riwayat',label:'Riwayat Kontrol',ic:'📋'}
+  {hash:'pasien-riwayat',label:'Riwayat',ic:'🕘'}
 ];
 
 const ROLE_ROUTE_RULES = {
   admin: ['*'],
   monitor_public: ['monitor-antrean'],
-  pasien: ['pasien-dashboard','pasien-booking','pasien-booking-saya','pasien-riwayat'],
+  pasien: ['pasien-dashboard','monitor-antrean','pasien-booking','pasien-booking-saya','pasien-riwayat'],
   loket: ['pendaftaran','booking','cek-antrian'],
   rawat_jalan: ['pendaftaran','booking','poli','cek-antrian'],
   // Dokter poli: hanya Beranda, Poli, Rekam Medis, dan Riwayat.
@@ -818,8 +819,13 @@ function renderShell(route){
   const u = Session.currentUser;
   const visibleNotifications=getVisibleNotifications();
   const items = NAV_ITEMS.filter(n=>isRouteAllowed(n.hash,u.role) && !(u.role==='pasien' && (n.hash==='cek-antrian' || /cari|pencarian/i.test(n.label))));
-  const primary = items.slice(0,4);
-  const overflow = items.slice(4);
+  // Pasien memiliki bottom navigation tetap 5 tombol: Dashboard, Monitor,
+  // Rawat Jalan, Booking Saya, dan Riwayat. Tidak ada menu "Lainnya".
+  const patientFixedNav = ['pasien-dashboard','monitor-antrean','pasien-booking','pasien-booking-saya','pasien-riwayat'];
+  const primary = u.role==='pasien'
+    ? patientFixedNav.map(h=>items.find(n=>n.hash===h)).filter(Boolean)
+    : items.slice(0,4);
+  const overflow = u.role==='pasien' ? [] : items.slice(4);
   const initial = (u.nama||'?').trim().charAt(0).toUpperCase();
 
   const sidebarNavHtml = items.map(n=>
