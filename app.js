@@ -5,7 +5,7 @@
 const BIAYA_REGISTRASI = 10000;
 const BIAYA_LAB = 75000;
 const LOW_STOCK_THRESHOLD = 15;
-const PROTOTYPE_VERSION = 'v14.5.1';
+const PROTOTYPE_VERSION = 'v14.5.2';
 const PROTOTYPE_NAME = 'SIMRS PROTOTYPE';
 const PROTOTYPE_MODE = 'Portfolio / Demo';
 const QUEUE_JOURNEY = [
@@ -966,7 +966,7 @@ function isRouteAllowed(route, role){
   if(!allowed.includes(route)) return false;
 
   // Akun pasien hanya boleh berada di ruang pasien.
-  if(role==='pasien') return route.indexOf('pasien-')===0;
+  if(role==='pasien') return route.indexOf('pasien-')===0 || route==='monitor-antrean';
 
   const ctx = routeContext(route);
   if(ctx && u.unit && u.unit!==ctx) return false;
@@ -1510,13 +1510,13 @@ function renderPatientBooking(){
     '<div class="service-choice-grid patient-service-choice"><button type="button" class="service-choice active" data-pb-service="Poliklinik Spesialis"><strong>🩺 Poli Reguler</strong><span>Poliklinik Spesialis · antrean reguler</span></button><button type="button" class="service-choice" data-pb-service="Poliklinik Eksekutif"><strong>⭐ Poli Eksekutif</strong><span>Pilih dokter dan waktu/janji</span></button></div>'+ 
     '<div class="field"><label>Poli / Klinik</label><select id="pb-poli" required></select></div>'+ 
     '<div class="field"><label>Tanggal Kunjungan</label><input type="date" id="pb-tanggal" min="'+min+'" max="'+max+'" value="'+min+'" required><div class="hint" id="pb-window-hint"></div></div>'+ 
-    '<div class="field"><label>Pilih Dokter</label><select id="pb-dokter" required></select><div class="hint">Klinik reguler maupun eksekutif sama-sama menyediakan pilihan dokter sesuai jadwal klinik.</div></div>'+ 
+    '<div class="field hidden" id="pb-dokter-wrap"><label>Pilih Dokter</label><select id="pb-dokter"></select><div class="hint">Pilihan dokter hanya tersedia untuk Poli Eksekutif. Poli Reguler menggunakan alokasi dokter/sesi otomatis.</div></div>'+ 
     '<div class="field hidden" id="pb-waktu-wrap"><label>Waktu / Janji Eksekutif</label><select id="pb-waktu"><option value="">Pilih waktu tersedia</option></select><div class="hint">Waktu merupakan slot prototype berdasarkan sesi dokter yang masih memiliki kapasitas.</div></div>'+ 
     '<div class="field"><label>Penjamin</label><select id="pb-penjamin"><option value="BPJS">JKN / BPJS</option><option value="Umum">Umum</option><option value="Asuransi">Asuransi</option></select></div>'+ 
     '<div id="pb-asuransi" class="field hidden"><label>Nama Asuransi</label><input id="pb-asuransi-name" placeholder="Masukkan nama perusahaan asuransi"></div>'+ 
     '<div id="pb-service-note" class="alert alert-info"></div>'+ 
     '<button class="btn btn-primary btn-block" type="submit">Buat Pendaftaran &amp; Tiket</button></form></div></div>';
-  const layananButtons=document.querySelectorAll('[data-pb-service]'), poli=document.getElementById('pb-poli'), tanggal=document.getElementById('pb-tanggal'), dokter=document.getElementById('pb-dokter'), waktuWrap=document.getElementById('pb-waktu-wrap'), waktu=document.getElementById('pb-waktu'), pen=document.getElementById('pb-penjamin'), as=document.getElementById('pb-asuransi'), hint=document.getElementById('pb-window-hint'), note=document.getElementById('pb-service-note');
+  const layananButtons=document.querySelectorAll('[data-pb-service]'), poli=document.getElementById('pb-poli'), tanggal=document.getElementById('pb-tanggal'), dokter=document.getElementById('pb-dokter'), dokterWrap=document.getElementById('pb-dokter-wrap'), waktuWrap=document.getElementById('pb-waktu-wrap'), waktu=document.getElementById('pb-waktu'), pen=document.getElementById('pb-penjamin'), as=document.getElementById('pb-asuransi'), hint=document.getElementById('pb-window-hint'), note=document.getElementById('pb-service-note');
   let layanan='Poliklinik Spesialis';
   function refreshPoli(){
     const options=Store.data.poli.filter(function(x){return x.official===true && (layanan==='Poliklinik Spesialis' ? (x.layanan==='Poliklinik Spesialis' || x.layanan==='Rawat Jalan') : x.layanan===layanan);}).sort(function(a,b){return a.nama.localeCompare(b.nama);});
@@ -1524,15 +1524,23 @@ function renderPatientBooking(){
     refreshDoctors();
   }
   function refreshDoctors(){
+    const isEx=layanan==='Poliklinik Eksekutif';
+    dokterWrap.classList.toggle('hidden',!isEx);
+    dokter.required=isEx;
     const list=getDoctorSchedulesForDate(poli.value,tanggal.value);
     const byDoctor={};
     list.forEach(function(sc){const did=scheduleDoctorUserId(sc);if(did&&!byDoctor[did])byDoctor[did]=sc;});
     const ids=Object.keys(byDoctor);
-    dokter.innerHTML=ids.length?'<option value="">Pilih dokter</option>'+ids.map(function(did){const d=doctorMasterForSchedule(byDoctor[did]);return '<option value="'+esc(did)+'">'+esc(d?d.nama:did)+'</option>';}).join(''):'<option value="">Tidak ada jadwal dokter pada tanggal ini</option>';
-    waktuWrap.classList.toggle('hidden',layanan!=='Poliklinik Eksekutif');
+    if(isEx){
+      dokter.innerHTML=ids.length?'<option value="">Pilih dokter</option>'+ids.map(function(did){const d=doctorMasterForSchedule(byDoctor[did]);return '<option value="'+esc(did)+'">'+esc(d?d.nama:did)+'</option>';}).join(''):'<option value="">Tidak ada jadwal dokter pada tanggal ini</option>';
+    }else{
+      dokter.innerHTML='<option value="AUTO">⚡ Sistem memilih dokter/sesi otomatis</option>';
+    }
+    if(!isEx) dokter.value='AUTO';
+    waktuWrap.classList.toggle('hidden',!isEx);
     refreshTimes();
     hint.textContent=patientBookingWindowHint(layanan);
-    note.innerHTML=layanan==='Poliklinik Eksekutif'?'<strong>Alur Eksekutif:</strong> pasien memilih klinik, dokter, serta waktu/janji yang tersedia. Pendaftaran dan antrean Eksekutif dipisahkan dari Reguler.':'<strong>Alur Reguler:</strong> pasien memilih klinik, tanggal, dan dokter. Sistem mengalokasikan pasien ke sesi dokter yang tersedia pada klinik tersebut.';
+    note.innerHTML=isEx?'<strong>Alur Eksekutif:</strong> pasien memilih klinik, dokter, serta waktu/janji yang tersedia. Pendaftaran dan antrean Eksekutif dipisahkan dari Reguler.':'<strong>Alur Reguler:</strong> pasien memilih klinik dan tanggal. Dokter/sesi ditentukan otomatis oleh sistem berdasarkan jadwal dan kapasitas.';
   }
   function refreshTimes(){
     if(layanan!=='Poliklinik Eksekutif'){waktu.innerHTML='<option value="">Tidak diperlukan</option>';return;}
@@ -1577,7 +1585,7 @@ function submitPatientBooking(){
   const regularService = layanan==='Poliklinik Spesialis' && poli && (poli.layanan==='Poliklinik Spesialis' || poli.layanan==='Rawat Jalan');
   if(!poli || !(regularService || poli.layanan===layanan)){showToast('Poli tidak sesuai dengan jenis layanan yang dipilih.','danger');return;}
   if(!patientBookingWindowValid(tanggal,layanan)){showToast('Tanggal pendaftaran harus berada pada rentang pendaftaran yang tersedia.','danger');return;}
-  if(!doctorId){showToast('Dokter wajib dipilih.','warning');return;}
+  if(layanan==='Poliklinik Eksekutif' && !doctorId){showToast('Dokter wajib dipilih untuk Poli Eksekutif.','warning');return;}
   if(penjamin==='Asuransi'&&!asuransi){showToast('Nama asuransi wajib diisi.','danger');return;}
   const existing=Store.data.bookings.find(function(b){return b.patientId===patientId&&samePoli(b.poliId,poliId)&&b.tanggalKontrol===tanggal&&['terjadwal','checked_in'].includes(b.status);});
   if(existing){showToast('Anda sudah memiliki booking aktif pada poli dan tanggal tersebut.','warning');return;}
@@ -1592,8 +1600,8 @@ function submitPatientBooking(){
     allocation={schedule:sc,doctorId:scheduleDoctorUserId(sc),reason:'executive_appointment'};
     appointmentTime=parts[0];
   }else{
-    allocation=allocateVisitSession(poliId,tanggal,doctorId);
-    if(!allocation){showToast('Sesi dokter yang dipilih tidak tersedia. Silakan pilih dokter atau tanggal lain.','danger');return;}
+    allocation=allocateVisitSession(poliId,tanggal,null);
+    if(!allocation){showToast('Seluruh sesi dokter pada poli tersebut sudah penuh. Silakan pilih tanggal lain.','danger');return;}
   }
   const noAntrian=generateNoAntrian(poliId,tanggal);
   const booking={id:uid('BK'),patientId:patientId,poliId:poliId,tanggalKontrol:tanggal,jenisLayanan:layanan,jenisBayar:penjamin,sumber:'Aplikasi Pasien SIMRS PROTOTYPE — Demo',noBpjs:'',noAntrian:noAntrian,dokterId:allocation.doctorId,sessionId:allocation.schedule&&allocation.schedule.id||null,allocationMode:allocation.reason,appointmentTime:appointmentTime,kodeCheckIn:'CHK'+Date.now().toString(36).toUpperCase().slice(-8),status:'terjadwal',asuransiNama:penjamin==='Asuransi'?asuransi:'',confirmedAt:null,arrivalWindowStart:null,arrivalWindowEnd:null,suggestedArrivalAt:null,journeyVersion:1,createdAt:nowISO(),updatedAt:nowISO()};
@@ -2181,17 +2189,17 @@ function pilihPasienUntukKunjungan(patientId){
       (patient.alergi ? '<div class="allergy-flag">⚠ Riwayat alergi: '+esc(patient.alergi)+'</div>' : '')+
       '<form id="form-kunjungan"><div class="service-choice-grid"><button type="button" class="service-choice active" data-kj-service="Poliklinik Spesialis"><strong>🩺 Poli Reguler</strong><span>Poliklinik Spesialis · alur reguler</span></button><button type="button" class="service-choice" data-kj-service="Poliklinik Eksekutif"><strong>⭐ Poli Eksekutif</strong><span>Layanan eksekutif · jadwal khusus</span></button></div>'+
       '<div class="field-row"><div class="field"><label>Poli Tujuan</label><select id="kj-poli" required></select></div>'+
-        '<div class="field"><label>Pilih Dokter / Sesi Praktik</label><select id="kj-dokter" required></select><div class="hint">Dokter dapat dipilih pada klinik reguler maupun eksekutif berdasarkan jadwal yang tersedia.</div></div>'+
+        '<div class="field hidden" id="kj-dokter-wrap"><label>Pilih Dokter / Sesi Praktik</label><select id="kj-dokter"></select><div class="hint">Pilihan dokter hanya untuk Poli Eksekutif. Poli Reguler menggunakan alokasi dokter/sesi otomatis.</div></div>'+
         '<div class="field"><label>Jenis Pembayaran</label><select id="kj-bayar" required><option value="Umum">Umum (Bayar Sendiri)</option><option value="BPJS">BPJS Kesehatan</option><option value="Asuransi">Asuransi Swasta</option></select></div>'+
       '</div><div id="kj-service-note" class="alert alert-info" style="margin-top:10px"></div><div class="field"><label>Keluhan Utama</label><textarea id="kj-keluhan" required placeholder="contoh: Demam sejak 2 hari, batuk pilek"></textarea></div>'+
       '<div class="field checkbox-row"><input type="checkbox" id="kj-prioritas"><label for="kj-prioritas" style="margin:0">🚩 Tandai prioritas / kondisi gawat darurat (didahulukan di antrian)</label></div>'+
       '<button type="submit" class="btn btn-primary">Daftarkan &amp; Ambil Nomor Antrian</button> <button type="button" class="btn btn-ghost" id="btn-batal-kunjungan">Batal</button></form>'+
       '<div id="tiket-area"></div></div></div>';
   document.getElementById('form-kunjungan').addEventListener('submit', submitKunjungan);
-  const kjPoli=document.getElementById('kj-poli'), kjDok=document.getElementById('kj-dokter');
+  const kjPoli=document.getElementById('kj-poli'), kjDok=document.getElementById('kj-dokter'), kjDokWrap=document.getElementById('kj-dokter-wrap');
   let kjService='Poliklinik Spesialis';
   function refreshKjPoli(){const options=Store.data.poli.filter(p=>p.official && (kjService==='Poliklinik Spesialis' ? (p.layanan==='Poliklinik Spesialis' || p.layanan==='Rawat Jalan') : p.layanan===kjService)).sort((a,b)=>a.nama.localeCompare(b.nama)); kjPoli.innerHTML=options.map(p=>'<option value="'+p.id+'">'+esc(p.nama)+'</option>').join(''); refreshKjDoctors();}
-  function refreshKjDoctors(){const list=getDoctorSchedulesForDate(kjPoli.value,todayStr()); kjDok.innerHTML='<option value="AUTO">⚡ Otomatis — sistem memilih sesi yang masih tersedia</option>'+list.map(sc=>{const d=Store.data.users.find(u=>u.doctorMasterId===sc.doctorId)||Store.data.users.find(u=>u.id===sc.doctorId)||doctorMasterById(sc.doctorId);return d?'<option value="'+(d.id||sc.doctorId)+'">'+esc(d.nama)+' · '+esc(sc.jamMulai)+'–'+esc(sc.jamSelesai)+' · '+esc(sc.ruang||'')+'</option>':'';}).join(''); const note=document.getElementById('kj-service-note'); if(note){note.innerHTML=kjService==='Poliklinik Eksekutif'?'<strong>Alur Eksekutif:</strong> pasien masuk antrean khusus klinik eksekutif dan hanya dapat dialokasikan ke sesi dokter Eksekutif pada tanggal yang dipilih.':'<strong>Alur Reguler:</strong> pasien masuk antrean Poliklinik Spesialis dan sistem dapat mengalihkan alokasi ke sesi dokter berikutnya dalam poli yang sama bila kuota sesi sebelumnya penuh.';}}
+  function refreshKjDoctors(){const isEx=kjService==='Poliklinik Eksekutif'; kjDokWrap.classList.toggle('hidden',!isEx); kjDok.required=isEx; const list=getDoctorSchedulesForDate(kjPoli.value,todayStr()); if(isEx){kjDok.innerHTML='<option value="AUTO">⚡ Otomatis — sistem memilih sesi yang masih tersedia</option>'+list.map(sc=>{const d=Store.data.users.find(u=>u.doctorMasterId===sc.doctorId)||Store.data.users.find(u=>u.id===sc.doctorId)||doctorMasterById(sc.doctorId);return d?'<option value="'+(d.id||sc.doctorId)+'">'+esc(d.nama)+' · '+esc(sc.jamMulai)+'–'+esc(sc.jamSelesai)+' · '+esc(sc.ruang||'')+'</option>':'';}).join('');}else{kjDok.innerHTML='<option value="AUTO">⚡ Sistem memilih dokter/sesi otomatis</option>';} kjDok.value='AUTO'; const note=document.getElementById('kj-service-note'); if(note){note.innerHTML=isEx?'<strong>Alur Eksekutif:</strong> pasien masuk antrean khusus klinik eksekutif dan hanya dapat dialokasikan ke sesi dokter Eksekutif pada tanggal yang dipilih.':'<strong>Alur Reguler:</strong> pasien masuk antrean Poliklinik Spesialis dan sistem dapat mengalihkan alokasi ke sesi dokter berikutnya dalam poli yang sama bila kuota sesi sebelumnya penuh.';}}
   document.querySelectorAll('[data-kj-service]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-kj-service]').forEach(x=>x.classList.remove('active'));btn.classList.add('active');kjService=btn.dataset.kjService;refreshKjPoli();}));
   kjPoli.addEventListener('change',refreshKjDoctors); refreshKjPoli();
   document.getElementById('btn-batal-kunjungan').addEventListener('click', ()=>{ area.innerHTML=''; pendaftaranState.pasienTerpilih=null; });
@@ -2417,7 +2425,7 @@ function bookingFormHtml(jenisBayar){
     '<div class="service-choice-grid"><button type="button" class="service-choice active" data-bk-service="Poliklinik Spesialis"><strong>🩺 Poli Reguler</strong><span>Poliklinik Spesialis</span></button><button type="button" class="service-choice" data-bk-service="Poliklinik Eksekutif"><strong>⭐ Poli Eksekutif</strong><span>Jadwal & ketentuan khusus</span></button></div>'+
     '<div class="field-row">'+
       '<div class="field"><label>Poli Tujuan</label><select id="bk-poli" required></select></div>'+
-      '<div class="field"><label>Dokter / Sesi Praktik</label><select id="bk-dokter" required></select></div>'+
+      '<div class="field hidden" id="bk-dokter-wrap"><label>Dokter / Sesi Praktik</label><select id="bk-dokter"></select><div class="hint">Pilihan dokter hanya untuk Poli Eksekutif. Poli Reguler menggunakan alokasi dokter/sesi otomatis.</div></div>'+
       '<div class="field"><label>Tanggal Kontrol</label><input type="date" id="bk-tanggal" min="'+dateOffset(0)+'" max="'+dateOffset(7)+'" value="'+dateOffset(1)+'" required></div>'+
     '</div><div id="bk-service-note" class="alert alert-info"></div>'+
     (isBpjs ? '<div class="field"><label>No. Kartu BPJS</label><input type="text" id="bk-nobpjs" placeholder="0001234567890" required></div>' : '')+
@@ -2466,10 +2474,10 @@ function bindBookingFormEvents(jenisBayar){
       });
     });
   });
-  const bkPoli=document.getElementById('bk-poli'), bkDate=document.getElementById('bk-tanggal'), bkDok=document.getElementById('bk-dokter');
+  const bkPoli=document.getElementById('bk-poli'), bkDate=document.getElementById('bk-tanggal'), bkDok=document.getElementById('bk-dokter'), bkDokWrap=document.getElementById('bk-dokter-wrap');
   let bkService='Poliklinik Spesialis';
   function refreshBkPoli(){const opts=Store.data.poli.filter(p=>p.official&&p.layanan===bkService).sort((a,b)=>a.nama.localeCompare(b.nama));bkPoli.innerHTML=opts.map(p=>'<option value="'+p.id+'">'+esc(p.nama)+'</option>').join('');refreshBkDoctors();}
-  function refreshBkDoctors(){const list=getDoctorSchedulesForDate(bkPoli.value,bkDate.value); bkDok.innerHTML='<option value="AUTO">⚡ Otomatis — sistem memilih dokter/sesi yang masih tersedia</option>'+list.map(sc=>{const d=Store.data.users.find(u=>u.doctorMasterId===sc.doctorId)||Store.data.users.find(u=>u.id===sc.doctorId)||doctorMasterById(sc.doctorId);return d?'<option value="'+(d.id||sc.doctorId)+'">'+esc(d.nama)+' · '+esc(sc.jamMulai)+'–'+esc(sc.jamSelesai)+' · '+esc(sc.ruang||'')+'</option>':'';}).join('');const note=document.getElementById('bk-service-note');if(note)note.innerHTML=bkService==='Poliklinik Eksekutif'?'<strong>Eksekutif:</strong> booking dibatasi H-1 atau hari H sesuai jendela sesi dokter; pasien tidak digabung dengan antrean Reguler.':'<strong>Reguler:</strong> booking masuk antrean Poliklinik Spesialis dan nomor antrean tetap satu urutan per poli + tanggal.';}
+  function refreshBkDoctors(){const isEx=bkService==='Poliklinik Eksekutif';bkDokWrap.classList.toggle('hidden',!isEx);bkDok.required=isEx;const list=getDoctorSchedulesForDate(bkPoli.value,bkDate.value);if(isEx){bkDok.innerHTML='<option value="AUTO">⚡ Otomatis — sistem memilih dokter/sesi yang masih tersedia</option>'+list.map(sc=>{const d=Store.data.users.find(u=>u.doctorMasterId===sc.doctorId)||Store.data.users.find(u=>u.id===sc.doctorId)||doctorMasterById(sc.doctorId);return d?'<option value="'+(d.id||sc.doctorId)+'">'+esc(d.nama)+' · '+esc(sc.jamMulai)+'–'+esc(sc.jamSelesai)+' · '+esc(sc.ruang||'')+'</option>':'';}).join('');}else{bkDok.innerHTML='<option value="AUTO">⚡ Sistem memilih dokter/sesi otomatis</option>';}bkDok.value='AUTO';const note=document.getElementById('bk-service-note');if(note)note.innerHTML=isEx?'<strong>Eksekutif:</strong> booking dibatasi H-1 atau hari H sesuai jendela sesi dokter; pasien tidak digabung dengan antrean Reguler.':'<strong>Reguler:</strong> booking masuk antrean Poliklinik Spesialis dan dokter/sesi ditentukan otomatis berdasarkan jadwal dan kapasitas.';}
   document.querySelectorAll('[data-bk-service]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-bk-service]').forEach(x=>x.classList.remove('active'));btn.classList.add('active');bkService=btn.dataset.bkService;refreshBkPoli();}));
   bkPoli.addEventListener('change',refreshBkDoctors); bkDate.addEventListener('change',refreshBkDoctors); refreshBkPoli();
   document.getElementById('form-booking').addEventListener('submit', function(e){ e.preventDefault(); submitBooking(jenisBayar); });
@@ -2499,7 +2507,7 @@ function submitBooking(jenisBayar){
   const kuota = totalCapacityForPoliDate(poliId, tanggalKontrol);
   const terjadwal = Store.data.bookings.filter(function(b){ return samePoli(b.poliId,poliId) && b.tanggalKontrol===tanggalKontrol && ['terjadwal','checked_in'].includes(b.status); }).length;
   if(terjadwal >= kuota){ showToast('Seluruh kapasitas sesi dokter pada poli dan tanggal tersebut sudah penuh ('+kuota+' pasien)', 'danger'); return; }
-  const preferredDoctorId = dokterId && dokterId!=='AUTO' ? dokterId : null;
+  const preferredDoctorId = isExecutivePoli(poliId) && dokterId && dokterId!=='AUTO' ? dokterId : null;
   const allocation=allocateVisitSession(poliId,tanggalKontrol,preferredDoctorId);
   if(!allocation){showToast('Seluruh sesi dokter pada poli ini sudah penuh untuk tanggal tersebut. Silakan pilih tanggal lain.','danger');return;}
   const schedule = allocation.schedule;
@@ -4489,7 +4497,7 @@ function runSystemAudit(){
   function check(id,label,pass,detail){checks.push({id,label,pass,detail});}
   check('db','Database demo dapat dimuat',!!Store.data&&Array.isArray(Store.data.users)&&Array.isArray(Store.data.bookings), 'Store.data tersedia dan memiliki users + bookings.');
   check('roles','Role utama tersedia',['admin','loket','rawat_jalan','dokter','pasien'].every(function(r){return Store.data.users.some(function(u){return u.role===r;});}), 'Admin, Loket, Rawat Jalan, Dokter, Pasien.');
-  check('patient-nav','Navigasi pasien memiliki 6 menu utama',['pasien-dashboard','pasien-booking','pasien-rawat-inap','pasien-booking-saya','monitor-antrean','pasien-riwayat'].every(function(r){return ROLE_ROUTE_RULES.pasien.includes(r);}), 'Beranda · Rawat Jalan · Rawat Inap · Booking Saya · Monitor · Riwayat.');
+  check('patient-nav','Navigasi pasien memiliki 6 menu utama',['pasien-dashboard','pasien-booking','pasien-rawat-inap','pasien-booking-saya','monitor-antrean','pasien-riwayat'].every(function(r){return ROLE_ROUTE_RULES.pasien.includes(r);}) && isRouteAllowed('monitor-antrean','pasien'), 'Beranda · Rawat Jalan · Rawat Inap · Booking Saya · Monitor · Riwayat.');
   check('catalog','Master poli memiliki Reguler dan Eksekutif',Store.data.poli.some(function(x){return x.layanan==='Poliklinik Spesialis';})&&Store.data.poli.some(function(x){return x.layanan==='Poliklinik Eksekutif';}), 'Konteks layanan tidak dicampur.');
   check('queue','Nomor antrean konsisten per poli+tanggal',(function(){const s=new Map();let ok=true;Store.data.bookings.forEach(function(x){if(!x.noAntrian)return;const k=x.poliId+'|'+(x.tanggalKontrol||'')+'|'+x.noAntrian;if(s.has(k))ok=false;s.set(k,x.id);});Store.data.visits.forEach(function(x){if(!x.noAntrian)return;const k=x.poliId+'|'+(x.tanggal||'')+'|'+x.noAntrian;const booking=x.bookingId?Store.data.bookings.find(function(b){return b.id===x.bookingId;}):null;if(s.has(k)&&!(booking&&s.get(k)===booking.id))ok=false;if(!s.has(k))s.set(k,x.id);});return ok;})(), 'Booking dan visit boleh berbagi nomor jika visit berasal dari booking yang sama.');
   check('journey','Kunjungan memiliki workflow',Store.data.visits.filter(function(v){return v.unit==='rawat-jalan';}).every(function(v){return v.workflow&&Object.prototype.hasOwnProperty.call(v.workflow,'checkinAt');}), 'Workflow check-in dan tahapan layanan tersedia.');
@@ -4519,9 +4527,9 @@ function runSystemAudit(){
 function renderAuditSistem(){
   setPageTitle('Audit Sistem');
   const checks=runSystemAudit(), pass=checks.filter(function(x){return x.pass;}).length;
-  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V14.5 untuk memastikan jalur utama, data demo, antrean, QR, dan batas prototype tetap konsisten.')+
+  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V14.5.2 untuk memastikan jalur utama, data demo, antrean, QR, dan batas prototype tetap konsisten.')+
     '<div class="ops-kpi-grid"><div class="ops-kpi"><div class="kpi-label">Lulus</div><div class="kpi-value">'+pass+'</div></div><div class="ops-kpi"><div class="kpi-label">Diperiksa</div><div class="kpi-value">'+checks.length+'</div></div><div class="ops-kpi"><div class="kpi-label">Status</div><div class="kpi-value" style="font-size:20px">'+(pass===checks.length?'SIAP':'PERLU REVIEW')+'</div></div></div>'+
-    '<div class="panel"><div class="panel-head"><div><h2>🧪 Self-Test V14.5</h2><div class="hint">Ini adalah audit data/aturan sisi client, bukan pengganti pengujian keamanan backend.</div></div><button class="btn btn-outline btn-sm" onclick="renderAuditSistem()">↻ Jalankan Lagi</button></div><div class="panel-body">'+
+    '<div class="panel"><div class="panel-head"><div><h2>🧪 Self-Test V14.5.2</h2><div class="hint">Ini adalah audit data/aturan sisi client, bukan pengganti pengujian keamanan backend.</div></div><button class="btn btn-outline btn-sm" onclick="renderAuditSistem()">↻ Jalankan Lagi</button></div><div class="panel-body">'+
     '<div class="table-wrap"><table><thead><tr><th>Status</th><th>Pemeriksaan</th><th>Detail</th></tr></thead><tbody>'+checks.map(function(c){return '<tr><td>'+(c.pass?'<span class="badge badge-sage">✓ LULUS</span>':'<span class="badge badge-brick">✕ GAGAL</span>')+'</td><td><strong>'+esc(c.label)+'</strong></td><td>'+esc(c.detail)+'</td></tr>';}).join('')+'</tbody></table></div></div></div>'+
     '<div class="alert alert-warning"><strong>Batas prototype:</strong> localStorage hanya untuk simulasi. Untuk produksi dibutuhkan backend, database terpusat, autentikasi server, otorisasi server, audit trail terpusat, enkripsi, backup, dan integrasi resmi.</div>';
 }

@@ -1,3 +1,10 @@
+
+## V14.5.2 — Rawat Jalan & Penunjang UI Fix
+- V14.5.2 dibangun langsung dari baseline V14.5.1.
+- Poli Reguler: pasien/petugas tidak memilih dokter; sistem mengalokasikan dokter/sesi otomatis berdasarkan jadwal dan kapasitas. Pilihan dokter hanya untuk Poli Eksekutif.
+- Tombol `Kirim Hasil` Laboratorium/Radiologi dikunci sebagai tombol inline agar tidak melebar memenuhi kartu pada layar mobile.
+- Service Worker dan cache-busting dinaikkan ke V14.5.2 agar perubahan CSS/JS tidak tertahan cache versi sebelumnya.
+
 ## V14.3 — Rawat Inap End-to-End, Penunjang, eMAR & RBAC
 
 V14.3 adalah penyempurnaan dari V14.2. Fokusnya adalah membuat Rawat Inap terlihat sebagai alur layanan yang utuh: admisi, bed, DPJP, dokter jaga, perawat per shift, handover, farmasi, penunjang, discharge, serta perjalanan pasien.
