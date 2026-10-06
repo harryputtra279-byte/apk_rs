@@ -346,7 +346,7 @@ body.kiosk-on .content{max-width:1100px;margin:0 auto;padding-top:32px}
 @media(max-width:700px){.ops-hero{flex-direction:column}.ops-kpi-grid{grid-template-columns:1fr 1fr}.ops-queue-grid{grid-template-columns:1fr}.flow-status-grid{grid-template-columns:repeat(2,1fr)}.ops-audit-row{grid-template-columns:48px 1fr}.ops-audit-row span:last-child{grid-column:2}.facility-node{grid-template-columns:1fr}.ops-doctor-row{grid-template-columns:1fr}.ops-wait{text-align:left}}
 
 
-/* ---------- Notopuro operational dashboard ---------- */
+/* ---------- SIMRS PROTOTYPE operational dashboard ---------- */
 .ops-clinic-table table{min-width:980px}.ops-clinic-table th,.ops-clinic-table td{vertical-align:middle}.ops-clinic-table .hint{font-size:9.5px;margin-top:2px}.pharmacy-sla{display:inline-flex;padding:4px 7px;border-radius:9px;background:rgba(14,92,86,.08);font:800 10px var(--font-mono)}.pharmacy-sla.over{background:rgba(154,51,36,.10);color:var(--brick)}.pharmacy-monitor-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.pharmacy-monitor{padding:13px;border-radius:16px;background:rgba(255,255,255,.34);border:1px solid var(--glass-border-soft)}.pharmacy-monitor span,.pharmacy-monitor small{display:block;color:var(--ink-soft);font-size:10.5px}.pharmacy-monitor strong{display:block;font-size:24px;margin:3px 0}.pharmacy-monitor.danger{border-color:rgba(154,51,36,.35)}.pharmacy-monitor.danger strong{color:var(--brick)}.service-tree{display:flex;flex-direction:column;gap:9px}.service-tree>div{padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.34);border:1px solid var(--glass-border-soft)}.service-tree strong{display:block;font-size:12px}.service-tree span{display:block;margin-top:3px;font-size:10.5px;color:var(--ink-soft)}
 @media(max-width:900px){.pharmacy-monitor-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.pharmacy-monitor-grid{grid-template-columns:1fr}.ops-clinic-table{overflow-x:auto}}
@@ -513,3 +513,13 @@ body.kiosk-on .content{max-width:1100px;margin:0 auto;padding-top:32px}
 .booking-tabs-grid .tab{position:static!important;flex:none!important;min-width:0!important;width:100%!important;transform:none!important}
 .tabs.booking-tabs-grid{overflow:visible!important}
 @media(max-width:520px){.service-choice-grid{grid-template-columns:1fr}.booking-tabs-grid{grid-template-columns:1fr 1fr!important}.booking-tabs-grid .tab{font-size:11px;padding:10px 7px}}
+
+/* ================================================================
+   V13.8 — prototype identity + patient journey
+   ================================================================ */
+.prototype-badge{position:absolute;left:50%;top:8px;transform:translateX(-50%);font-size:10px;font-weight:800;letter-spacing:.04em;padding:5px 9px;border:1px solid var(--glass-border);border-radius:999px;background:var(--glass-bg);color:var(--ink-soft);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);white-space:nowrap;z-index:2}
+.journey{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;margin-top:12px}
+.journey-step{min-height:72px;padding:8px;border:1px solid var(--glass-border);border-radius:12px;background:var(--glass-bg);opacity:.55;display:flex;flex-direction:column;gap:5px}
+.journey-step span{font-size:17px}.journey-step strong{font-size:11px;line-height:1.25}.journey-step.done,.journey-step.active{opacity:1}.journey-step.done{border-color:rgba(37,125,104,.35)}.journey-step.active{border-color:rgba(14,92,86,.55);box-shadow:var(--shadow-float);transform:translateY(-1px)}
+.journey-compact{grid-template-columns:repeat(4,minmax(0,1fr))}.journey-compact .journey-step{min-height:58px}
+@media(max-width:760px){.prototype-badge{display:none}.journey{grid-template-columns:repeat(2,minmax(0,1fr))}.journey-compact{grid-template-columns:repeat(2,minmax(0,1fr))}}

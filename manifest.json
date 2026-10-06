@@ -1,7 +1,7 @@
 {
-  "name": "SIMRS Terpadu — RSUD R.T. Notopuro",
-  "short_name": "SIMRS Terpadu",
-  "description": "Sistem informasi manajemen rumah sakit terintegrasi: pendaftaran, poli, laboratorium, farmasi, kasir, dan rekam medis dalam satu alur.",
+  "name": "SIMRS PROTOTYPE",
+  "short_name": "SIMRS PROTOTYPE",
+  "description": "Prototype sistem informasi manajemen rumah sakit terintegrasi: pendaftaran, poli, laboratorium, farmasi, kasir, dan rekam medis dalam satu alur.",
   "start_url": "./index.html",
   "scope": "./",
   "id": "./index.html",

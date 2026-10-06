@@ -1,10 +1,22 @@
 "use strict";
 /* =================================================================
-   SIMRS TERPADU — konstanta, util, seed data, penyimpanan (Store)
+   SIMRS PROTOTYPE — konstanta, util, seed data, penyimpanan (Store)
    ================================================================= */
 const BIAYA_REGISTRASI = 10000;
 const BIAYA_LAB = 75000;
 const LOW_STOCK_THRESHOLD = 15;
+const PROTOTYPE_VERSION = 'v13.8';
+const PROTOTYPE_NAME = 'SIMRS PROTOTYPE';
+const PROTOTYPE_MODE = 'Portfolio / Demo';
+const QUEUE_JOURNEY = [
+  {key:'terjadwal',label:'Booking dibuat',icon:'📅'},
+  {key:'checked_in',label:'Sudah check-in',icon:'✓'},
+  {key:'menunggu_screening',label:'Menunggu verifikasi',icon:'🩺'},
+  {key:'menunggu_dokter',label:'Menunggu dipanggil',icon:'⏳'},
+  {key:'dipanggil',label:'Dipanggil',icon:'🔔'},
+  {key:'diperiksa',label:'Sedang dilayani',icon:'👨‍⚕️'},
+  {key:'selesai',label:'Pelayanan selesai',icon:'✓'}
+];
 
 const POLI_COLOR = {UMU:'clinical', GIG:'slate', ANA:'sage', KDG:'plum', MAT:'amber', THT:'brick', JAN:'brick', KUL:'plum', PDL:'slate', SYA:'plum', PAR:'sage'};
 
@@ -12,7 +24,7 @@ function poliColor(id){ return POLI_COLOR[id] || 'clinical'; }
 
 
 /* ================================================================
-   KATALOG LAYANAN RSUD R.T. NOTOPURO — sumber nama layanan publik
+   KATALOG LAYANAN SIMRS PROTOTYPE — sumber nama layanan publik
    Dashboard memakai ID yang stabil; detail lantai/ruang tidak diasumsikan.
    ================================================================ */
 const OFFICIAL_POLI_CATALOG = [
@@ -21,43 +33,43 @@ const OFFICIAL_POLI_CATALOG = [
   ['EX-EST','Klinik Estetika','Poliklinik Eksekutif'],['EX-KUL','Klinik Kulit dan Kelamin','Poliklinik Eksekutif'],['EX-BUM','Klinik Bedah Umum','Poliklinik Eksekutif'],['EX-BUR','Klinik Bedah Urologi','Poliklinik Eksekutif'],['EX-BSR','Klinik Bedah Saraf','Poliklinik Eksekutif'],['EX-BOR','Klinik Bedah Orthopedi','Poliklinik Eksekutif'],['EX-BDI','Klinik Bedah Digestif','Poliklinik Eksekutif'],['EX-BTKV','Klinik Bedah TKV','Poliklinik Eksekutif'],['EX-BONK','Klinik Bedah Onkologi','Poliklinik Eksekutif'],['EX-PDL','Klinik Penyakit Dalam','Poliklinik Eksekutif'],['EX-AKU','Klinik Akupuntur','Poliklinik Eksekutif'],['EX-JAN','Klinik Jantung','Poliklinik Eksekutif'],['EX-SAR','Klinik Saraf','Poliklinik Eksekutif'],['EX-PAR','Klinik Paru','Poliklinik Eksekutif'],['EX-HKB','Klinik Hamil/KB','Poliklinik Eksekutif'],['EX-KDG','Klinik Kandungan','Poliklinik Eksekutif'],['EX-AND','Klinik Andrologi','Poliklinik Eksekutif'],['EX-PSI','Klinik Psikologi','Poliklinik Eksekutif'],['EX-PSK','Klinik Psikiatri','Poliklinik Eksekutif'],['EX-REH','Klinik Rehabilitasi Medik','Poliklinik Eksekutif'],['EX-ANA','Klinik Anak','Poliklinik Eksekutif'],['EX-TBK','Klinik Tumbuh Kembang','Poliklinik Eksekutif'],['EX-GIG','Klinik Gigi dan Mulut','Poliklinik Eksekutif'],['EX-THT','Klinik THT','Poliklinik Eksekutif'],['EX-MAT','Klinik Mata','Poliklinik Eksekutif'],['EX-GIZ','Klinik Gizi','Poliklinik Eksekutif'],['EX-RAD','Klinik Radioterapi','Poliklinik Eksekutif']
 ];
 
-const NOTOPURO_FACILITY_STRUCTURE = [
-  {id:'GED-RAWAT-JALAN',type:'gedung',nama:'Pelayanan Rawat Jalan',parentId:null,source:'website'},
-  {id:'UNIT-POLI-SPESIALIS',type:'unit',nama:'Poliklinik Spesialis',parentId:'GED-RAWAT-JALAN',source:'website'},
-  {id:'UNIT-POLI-EKSEKUTIF',type:'unit',nama:'Poliklinik Eksekutif',parentId:'GED-RAWAT-JALAN',source:'website'},
-  {id:'GED-IGD',type:'unit',nama:'Instalasi Gawat Darurat (IGD)',parentId:null,source:'website'},
-  {id:'IGD-ZONA-MERAH',type:'zona',nama:'Zona Merah',parentId:'GED-IGD',source:'website'},
-  {id:'IGD-ZONA-KUNING',type:'zona',nama:'Zona Kuning',parentId:'GED-IGD',source:'website'},
-  {id:'GED-RAWAT-INAP',type:'gedung',nama:'Pelayanan Rawat Inap',parentId:null,source:'website'},
-  {id:'RI-TULIP',type:'unit',nama:'Rawat Inap Tulip',parentId:'GED-RAWAT-INAP',source:'website'},
-  {id:'RI-TERATAI',type:'unit',nama:'Rawat Inap Teratai',parentId:'GED-RAWAT-INAP',source:'website'},
-  {id:'RI-MAWAR-KUNING',type:'unit',nama:'Rawat Inap Mawar Kuning',parentId:'GED-RAWAT-INAP',source:'website'},
-  {id:'RI-MAWAR-MP',type:'unit',nama:'Rawat Inap Mawar Merah Putih',parentId:'GED-RAWAT-INAP',source:'website'},
-  {id:'RI-GDH',type:'unit',nama:'Rawat Inap Graha Delta Husada',parentId:'GED-RAWAT-INAP',source:'website'},
-  {id:'RI-INTENSIF',type:'unit',nama:'Rawat Intensif Terpadu',parentId:'GED-RAWAT-INAP',source:'website'},
-  {id:'RI-ICU',type:'unit',nama:'ICU',parentId:'RI-INTENSIF',source:'website'},
-  {id:'RI-ICCU',type:'unit',nama:'ICCU',parentId:'RI-INTENSIF',source:'website'},
-  {id:'RI-PICU',type:'unit',nama:'PICU',parentId:'RI-INTENSIF',source:'website'},
-  {id:'RI-NICU',type:'unit',nama:'NICU',parentId:'RI-INTENSIF',source:'website'},
-  {id:'RI-HCU',type:'unit',nama:'HCU',parentId:'RI-INTENSIF',source:'website'},
-  {id:'RI-BERSALIN',type:'unit',nama:'Ruang Bersalin',parentId:'GED-RAWAT-INAP',source:'website'},
-  {id:'FAR-RAJAL',type:'unit',nama:'Farmasi Rawat Jalan',parentId:null,source:'simrs'},
-  {id:'FAR-RANAP',type:'unit',nama:'Farmasi Rawat Inap',parentId:null,source:'simrs'},
-  {id:'LAB-PK',type:'unit',nama:'Laboratorium Patologi Klinik',parentId:null,source:'website'},
-  {id:'LAB-PA',type:'unit',nama:'Laboratorium Patologi Anatomi',parentId:null,source:'website'},
-  {id:'LAB-MIKRO',type:'unit',nama:'Laboratorium Mikrobiologi Klinik dan Biomolekuler',parentId:null,source:'website'},
-  {id:'RAD',type:'unit',nama:'Radiologi',parentId:null,source:'website'},
-  {id:'IPKT',type:'unit',nama:'Instalasi Pelayanan Kanker Terpadu (IPKT)',parentId:null,source:'website'},
-  {id:'HD',type:'unit',nama:'Hemodialisis',parentId:null,source:'website'},
-  {id:'KARDIO',type:'unit',nama:'Diagnostik dan Intervensi Kardiovaskuler',parentId:null,source:'website'},
-  {id:'CSSD',type:'unit',nama:'Sterilisasi Sentral',parentId:null,source:'website'}
+const PROTOTYPE_FACILITY_STRUCTURE = [
+  {id:'GED-RAWAT-JALAN',type:'gedung',nama:'Pelayanan Rawat Jalan',parentId:null,source:'baseline-prototype'},
+  {id:'UNIT-POLI-SPESIALIS',type:'unit',nama:'Poliklinik Spesialis',parentId:'GED-RAWAT-JALAN',source:'baseline-prototype'},
+  {id:'UNIT-POLI-EKSEKUTIF',type:'unit',nama:'Poliklinik Eksekutif',parentId:'GED-RAWAT-JALAN',source:'baseline-prototype'},
+  {id:'GED-IGD',type:'unit',nama:'Instalasi Gawat Darurat (IGD)',parentId:null,source:'baseline-prototype'},
+  {id:'IGD-ZONA-MERAH',type:'zona',nama:'Zona Merah',parentId:'GED-IGD',source:'baseline-prototype'},
+  {id:'IGD-ZONA-KUNING',type:'zona',nama:'Zona Kuning',parentId:'GED-IGD',source:'baseline-prototype'},
+  {id:'GED-RAWAT-INAP',type:'gedung',nama:'Pelayanan Rawat Inap',parentId:null,source:'baseline-prototype'},
+  {id:'RI-TULIP',type:'unit',nama:'Rawat Inap Tulip',parentId:'GED-RAWAT-INAP',source:'baseline-prototype'},
+  {id:'RI-TERATAI',type:'unit',nama:'Rawat Inap Teratai',parentId:'GED-RAWAT-INAP',source:'baseline-prototype'},
+  {id:'RI-MAWAR-KUNING',type:'unit',nama:'Rawat Inap Mawar Kuning',parentId:'GED-RAWAT-INAP',source:'baseline-prototype'},
+  {id:'RI-MAWAR-MP',type:'unit',nama:'Rawat Inap Mawar Merah Putih',parentId:'GED-RAWAT-INAP',source:'baseline-prototype'},
+  {id:'RI-GDH',type:'unit',nama:'Rawat Inap Graha Delta Husada',parentId:'GED-RAWAT-INAP',source:'baseline-prototype'},
+  {id:'RI-INTENSIF',type:'unit',nama:'Rawat Intensif Terpadu',parentId:'GED-RAWAT-INAP',source:'baseline-prototype'},
+  {id:'RI-ICU',type:'unit',nama:'ICU',parentId:'RI-INTENSIF',source:'baseline-prototype'},
+  {id:'RI-ICCU',type:'unit',nama:'ICCU',parentId:'RI-INTENSIF',source:'baseline-prototype'},
+  {id:'RI-PICU',type:'unit',nama:'PICU',parentId:'RI-INTENSIF',source:'baseline-prototype'},
+  {id:'RI-NICU',type:'unit',nama:'NICU',parentId:'RI-INTENSIF',source:'baseline-prototype'},
+  {id:'RI-HCU',type:'unit',nama:'HCU',parentId:'RI-INTENSIF',source:'baseline-prototype'},
+  {id:'RI-BERSALIN',type:'unit',nama:'Ruang Bersalin',parentId:'GED-RAWAT-INAP',source:'baseline-prototype'},
+  {id:'FAR-RAJAL',type:'unit',nama:'Farmasi Rawat Jalan',parentId:null,source:'baseline-prototype'},
+  {id:'FAR-RANAP',type:'unit',nama:'Farmasi Rawat Inap',parentId:null,source:'baseline-prototype'},
+  {id:'LAB-PK',type:'unit',nama:'Laboratorium Patologi Klinik',parentId:null,source:'baseline-prototype'},
+  {id:'LAB-PA',type:'unit',nama:'Laboratorium Patologi Anatomi',parentId:null,source:'baseline-prototype'},
+  {id:'LAB-MIKRO',type:'unit',nama:'Laboratorium Mikrobiologi Klinik dan Biomolekuler',parentId:null,source:'baseline-prototype'},
+  {id:'RAD',type:'unit',nama:'Radiologi',parentId:null,source:'baseline-prototype'},
+  {id:'IPKT',type:'unit',nama:'Instalasi Pelayanan Kanker Terpadu (IPKT)',parentId:null,source:'baseline-prototype'},
+  {id:'HD',type:'unit',nama:'Hemodialisis',parentId:null,source:'baseline-prototype'},
+  {id:'KARDIO',type:'unit',nama:'Diagnostik dan Intervensi Kardiovaskuler',parentId:null,source:'baseline-prototype'},
+  {id:'CSSD',type:'unit',nama:'Sterilisasi Sentral',parentId:null,source:'baseline-prototype'}
 ];
 
 
 /* ================================================================
-   MASTER DOKTER & JADWAL NOTOPURO V15
-   Data publik dipakai sebagai baseline demo dan SELALU editable Admin.
-   Status sumber sengaja diberi needs_confirmation karena website resmi
+   MASTER DOKTER & JADWAL PROTOTYPE V13.8
+   Data baseline demo dipakai sebagai contoh dan SELALU editable Admin.
+   Status sumber sengaja diberi needs_confirmation karena data baseline
    sendiri menandai sebagian data dokter sebagai "Data Belum Diperbarui".
    ================================================================ */
 const OFFICIAL_DOCTOR_MASTER = [
@@ -121,16 +133,16 @@ const OFFICIAL_SCHEDULE_SEED = [
 ];
 function ensureOfficialDoctorMaster(data){
   if(!Array.isArray(data.doctors)) data.doctors=[];
-  OFFICIAL_DOCTOR_MASTER.forEach(function(d){if(!data.doctors.some(function(x){return x.id===d.id;}))data.doctors.push(Object.assign({},d,{source:'RSUD R.T. Notopuro — Dokter Kami',editable:true,updatedAt:nowISO()}));});
+  OFFICIAL_DOCTOR_MASTER.forEach(function(d){if(!data.doctors.some(function(x){return x.id===d.id;}))data.doctors.push(Object.assign({},d,{source:'SIMRS PROTOTYPE — Dokter Kami',editable:true,updatedAt:nowISO()}));});
   if(!Array.isArray(data.doctorSchedules)) data.doctorSchedules=[];
-  OFFICIAL_SCHEDULE_SEED.forEach(function(x){if(!data.doctorSchedules.some(function(s){return s.id===x[0];}))data.doctorSchedules.push({id:x[0],doctorId:x[1],poliId:x[2],tanggal:null,hari:x[3],jamMulai:x[4],jamSelesai:x[5],ruang:'Belum dipetakan',shiftLabel:'Sesuai jadwal resmi',kuota:null,source:'RSUD R.T. Notopuro — publik',needsConfirmation:true,createdAt:nowISO(),updatedAt:nowISO()});});
+  OFFICIAL_SCHEDULE_SEED.forEach(function(x){if(!data.doctorSchedules.some(function(s){return s.id===x[0];}))data.doctorSchedules.push({id:x[0],doctorId:x[1],poliId:x[2],tanggal:null,hari:x[3],jamMulai:x[4],jamSelesai:x[5],ruang:'Belum dipetakan',shiftLabel:'Sesuai jadwal resmi',kuota:null,source:'SIMRS PROTOTYPE — publik',needsConfirmation:true,createdAt:nowISO(),updatedAt:nowISO()});});
   const extraOfficialSchedules = [
     ['SCH-FITA-SP1','DOC-FITA','SP-ANA',1,'08:00','12:30'],['SCH-FITA-SP2','DOC-FITA','SP-ANA',2,'08:00','12:30'],['SCH-FITA-SP3','DOC-FITA','SP-ANA',3,'08:00','12:30'],['SCH-FITA-SP4','DOC-FITA','SP-ANA',4,'08:00','12:30'],['SCH-FITA-SP5','DOC-FITA','SP-ANA',5,'08:00','10:30'],['SCH-FITA-SP6','DOC-FITA','SP-ANA',6,'08:00','12:00'],
     ['SCH-FITA-EX1','DOC-FITA','EX-ANA',1,'07:30','08:30'],['SCH-FITA-EX3','DOC-FITA','EX-ANA',3,'07:30','08:30'],['SCH-FITA-EX5','DOC-FITA','EX-ANA',5,'07:30','08:30'],
     ['SCH-BARN-SP2','DOC-BARNABAS','SP-GIG',2,'09:00','14:00'],['SCH-BARN-SP3','DOC-BARNABAS','SP-GIG',3,'11:00','14:00'],['SCH-BARN-SP4','DOC-BARNABAS','SP-GIG',4,'09:00','14:00'],
     ['SCH-BARN-EX2','DOC-BARNABAS','EX-GIG',2,'13:00','15:00'],['SCH-BARN-EX4','DOC-BARNABAS','EX-GIG',4,'13:00','15:00']
   ];
-  extraOfficialSchedules.forEach(function(x){if(!data.doctorSchedules.some(function(sc){return sc.id===x[0];}))data.doctorSchedules.push({id:x[0],doctorId:x[1],poliId:x[2],tanggal:null,hari:x[3],jamMulai:x[4],jamSelesai:x[5],ruang:'Belum dipetakan',shiftLabel:'Sesuai jadwal resmi',kuota:null,source:'RSUD R.T. Notopuro — publik',needsConfirmation:true,createdAt:nowISO(),updatedAt:nowISO()});});
+  extraOfficialSchedules.forEach(function(x){if(!data.doctorSchedules.some(function(sc){return sc.id===x[0];}))data.doctorSchedules.push({id:x[0],doctorId:x[1],poliId:x[2],tanggal:null,hari:x[3],jamMulai:x[4],jamSelesai:x[5],ruang:'Belum dipetakan',shiftLabel:'Sesuai jadwal resmi',kuota:null,source:'SIMRS PROTOTYPE — publik',needsConfirmation:true,createdAt:nowISO(),updatedAt:nowISO()});});
   return data;
 }
 function doctorMasterById(id){return (Store.data&&Array.isArray(Store.data.doctors)?Store.data.doctors:[]).find(function(d){return d.id===id;})||null;}
@@ -143,7 +155,7 @@ function ensureOfficialCatalog(data){
     if(!data.poli.some(function(p){return p.id===x[0];})) data.poli.push({id:x[0],nama:x[1],biaya:0,layanan:x[2],official:true});
   });
   if(!Array.isArray(data.facilities)) data.facilities=[];
-  NOTOPURO_FACILITY_STRUCTURE.forEach(function(x){
+  PROTOTYPE_FACILITY_STRUCTURE.forEach(function(x){
     if(!data.facilities.some(function(f){return f.id===x.id;})) data.facilities.push(Object.assign({},x));
   });
   return data;
@@ -261,10 +273,10 @@ function seedData(){
   const users = [
     {id:'U-ADM', username:'admin', password:'admin123', nama:'Siti Rahayu', role:'admin'},
     {id:'U-LOK', username:'loket', password:'loket123', nama:'Budi Santoso', role:'loket'},
-    {id:'U-DOK1', username:'dokter.umum', password:'dokter123', nama:'dr. Andi Wijaya', role:'dokter', poliId:'UMU'},
-    {id:'U-DOK2', username:'dokter.anak', password:'dokter123', nama:'dr. Maria Christiani, Sp.A', role:'dokter', poliId:'ANA'},
-    {id:'U-DOK3', username:'dokter.gigi', password:'dokter123', nama:'drg. Hendra Kusuma', role:'dokter', poliId:'GIG'},
-    {id:'U-DOK4', username:'dokter.jantung', password:'dokter123', nama:'dr. Rudi Hartono, Sp.JP', role:'dokter', poliId:'JAN'},
+    {id:'U-DOK1', username:'dokter.umum', password:'dokter123', nama:'dr. ADITYA BALADIKA', role:'dokter', unit:'rawat-jalan', poliId:'RJ-UMU', doctorMasterId:'DOC-ADITYA-UMUM'},
+    {id:'U-DOK2', username:'dokter.anak', password:'dokter123', nama:'dr. FITA SOFIYAH., Sp. A', role:'dokter', unit:'rawat-jalan', poliId:'SP-ANA', doctorMasterId:'DOC-FITA'},
+    {id:'U-DOK3', username:'dokter.gigi', password:'dokter123', nama:'drg. BARNABAS HOWUK HANO BONARDO SIBARANI, Sp.KGA', role:'dokter', unit:'rawat-jalan', poliId:'SP-GIG', doctorMasterId:'DOC-BARNABAS'},
+    {id:'U-DOK4', username:'dokter.jantung', password:'dokter123', nama:'dr. ANGELA BETY RATNASARI, Sp.JP', role:'dokter', unit:'rawat-jalan', poliId:'SP-JAN', doctorMasterId:'DOC-ANGELA'},
     {id:'U-FAR', username:'farmasi', password:'farmasi123', nama:'Apt. Dewi Lestari', role:'farmasi', unit:'rawat-jalan'},
     {id:'U-KAS', username:'kasir', password:'kasir123', nama:'Rina Marlina', role:'kasir', unit:'rawat-jalan'},
     {id:'U-LAB', username:'lab', password:'lab123', nama:'Agus Setiawan', role:'lab'},
@@ -373,14 +385,14 @@ function seedData(){
 }
 
 /* ---------------- persistence ---------------- */
-const DB_SCHEMA_VERSION = 16;
+const DB_SCHEMA_VERSION = 17;
 
 function ensureDivisionDemoUsers(data){
   if(!Array.isArray(data.users)) data.users=[];
   const demoUsers = [
-    {id:'U-LOK', username:'loket', password:'loket123', nama:'Petugas Loket RSUD R.T. Notopuro', role:'loket', unit:'rawat-jalan'},
+    {id:'U-LOK', username:'loket', password:'loket123', nama:'Petugas Loket SIMRS PROTOTYPE', role:'loket', unit:'rawat-jalan'},
     {id:'U-RJ-ADM', username:'rawatjalan', password:'rawatjalan123', nama:'Budi Santoso', role:'rawat_jalan', unit:'rawat-jalan'},
-    {id:'U-RJ-DOK', username:'dokter.rajal', password:'dokter123', nama:'dr. Andi Wijaya', role:'dokter', unit:'rawat-jalan', poliId:'UMU'},
+    {id:'U-RJ-DOK', username:'dokter.rajal', password:'dokter123', nama:'dr. ADITYA BALADIKA', role:'dokter', unit:'rawat-jalan', poliId:'RJ-UMU', doctorMasterId:'DOC-ADITYA-UMUM'},
     {id:'U-RJ-DOK-01', username:'dokter.umum', password:'dokter123', nama:'dr. ADITYA BALADIKA', role:'dokter', unit:'rawat-jalan', poliId:'RJ-UMU', doctorMasterId:'DOC-ADITYA-UMUM'},
     {id:'U-RJ-DOK-02', username:'dokter.anak', password:'dokter123', nama:'dr. FITA SOFIYAH., Sp. A', role:'dokter', unit:'rawat-jalan', poliId:'SP-ANA', doctorMasterId:'DOC-FITA'},
     {id:'U-RJ-DOK-03', username:'dokter.gigi', password:'dokter123', nama:'drg. BARNABAS HOWUK HANO BONARDO SIBARANI, Sp.KGA', role:'dokter', unit:'rawat-jalan', poliId:'SP-GIG', doctorMasterId:'DOC-BARNABAS'},
@@ -443,7 +455,7 @@ function ensurePatientDemoAccounts(data){
     if(oldUser) Object.assign(oldUser,user); else data.users.push(user);
     const existing=data.bookings.find(function(b){return b.id==='BK-'+d.pid || (b.patientId===d.pid && b.tanggalKontrol===tanggal && samePoli(b.poliId,d.poli));});
     if(!existing){
-      data.bookings.push({id:'BK-'+d.pid,patientId:d.pid,poliId:d.poli,tanggalKontrol:tanggal,jenisBayar:d.bayar,sumber:'Aplikasi Pasien RS (Demo)',noBpjs:d.bayar==='BPJS'?'DEMO-'+d.pid:'',noAntrian:d.no,kodeCheckIn:d.kode,status:'terjadwal',visitId:null,reminded:false,remindedAt:null,confirmedAt:null,asuransiNama:d.bayar==='Asuransi'?'Asuransi Demo': '',createdAt:nowISO(),updatedAt:nowISO(),demo:true});
+      data.bookings.push({id:'BK-'+d.pid,patientId:d.pid,poliId:d.poli,tanggalKontrol:tanggal,jenisBayar:d.bayar,sumber:'Aplikasi Pasien SIMRS PROTOTYPE (Demo)',noBpjs:d.bayar==='BPJS'?'DEMO-'+d.pid:'',noAntrian:d.no,kodeCheckIn:d.kode,status:'terjadwal',visitId:null,reminded:false,remindedAt:null,confirmedAt:null,asuransiNama:d.bayar==='Asuransi'?'Asuransi Demo': '',createdAt:nowISO(),updatedAt:nowISO(),demo:true});
     }
   });
   // Kunjungan hari ini sengaja dibuat beragam agar lima akun pasien dapat menguji
@@ -466,6 +478,7 @@ function ensurePatientDemoAccounts(data){
 function migrateData(data){
   if(!data || typeof data!=='object') return seedData();
   if(!data.meta) data.meta = {};
+  data.meta.prototypeVersion=PROTOTYPE_VERSION; data.meta.prototypeName=PROTOTYPE_NAME; data.meta.prototypeMode=PROTOTYPE_MODE;
   if(!data.meta.queueCounters) data.meta.queueCounters = {};
   if(!Array.isArray(data.auditLog)) data.auditLog = [];
   if(!Array.isArray(data.bookings)) data.bookings = [];
@@ -485,10 +498,18 @@ function migrateData(data){
     if(b.updatedAt===undefined) b.updatedAt=b.createdAt;
     if(b.cancelReason===undefined) b.cancelReason='';
     if(b.rescheduledFrom===undefined) b.rescheduledFrom=null;
+    if(b.arrivalWindowStart===undefined) b.arrivalWindowStart=null;
+    if(b.arrivalWindowEnd===undefined) b.arrivalWindowEnd=null;
+    if(b.suggestedArrivalAt===undefined) b.suggestedArrivalAt=null;
+    if(b.journeyVersion===undefined) b.journeyVersion=1;
   });
   // Pastikan counter antrean tidak pernah menghasilkan nomor duplikat,
   // termasuk ketika sumber booking berasal dari JKN Mobile dan aplikasi RS.
   if(Array.isArray(data.bookings)) data.bookings.forEach(function(b){ if(b.jenisLayanan===undefined){const pp=data.poli.find(function(p){return p.id===b.poliId;});b.jenisLayanan=pp&&pp.layanan||'Rawat Jalan';} });
+  if(Array.isArray(data.bookings)) data.bookings.forEach(function(b){
+    if(!b.arrivalWindowStart || !b.arrivalWindowEnd){ const aw=suggestedArrivalWindow(b); if(aw){b.arrivalWindowStart=aw.start;b.arrivalWindowEnd=aw.end;b.suggestedArrivalAt=aw.start;} }
+    if(!b.journeyVersion)b.journeyVersion=1;
+  });
   if(Array.isArray(data.visits)) data.visits.forEach(function(v){ if(v.jenisLayanan===undefined){const pp=data.poli.find(function(p){return p.id===v.poliId;});v.jenisLayanan=pp&&pp.layanan||'Rawat Jalan';} });
   if(Array.isArray(data.visits)) data.visits.forEach(function(v){
     if(v.unit==='rawat-jalan' && v.status==='screening' && v.screening && v.workflow && v.workflow.screeningAt){
@@ -649,7 +670,7 @@ function pharmacyWaitMinutes(resep){
 }
 function pharmacyMetrics(kind, poliId){
   const isInpatient=kind==='rawat_inap';
-  const settings=Store.data.meta.settings||{};
+  const settings=(Store.data&&Store.data.meta&&Store.data.meta.settings)||{};
   const sla=isInpatient?(settings.pharmacyInpatientSlaMinutes||60):(settings.pharmacyOutpatientSlaMinutes||30);
   let list=[];
   if(isInpatient){ list=Store.data.prescriptions.filter(function(r){return r.admissionId && r.status==='menunggu';}); }
@@ -672,6 +693,39 @@ function quotaForPoli(poliId, dateStr){
   const d = dateStr || todayStr();
   const custom = Store.data.doctorSchedules.find(function(s){ return samePoli(s.poliId,poliId) && s.tanggal===d; });
   return custom && custom.kuota ? custom.kuota : ((Store.data.meta.settings && Store.data.meta.settings.doctorQuotaDefault) || 30);
+}
+function journeyIndex(status){
+  const map={terjadwal:0,checked_in:1,menunggu_screening:2,menunggu_dokter:3,menunggu_poli:3,dipanggil:4,diperiksa:5,menunggu_lab:5,menunggu_farmasi:5,menunggu_bayar:5,obat_siap:5,selesai:6,dibatalkan:-1,tidak_hadir:-1,rescheduled:0,kadaluarsa:-1};
+  return map[status]===undefined?3:map[status];
+}
+function journeyHtml(status, compact){
+  const idx=journeyIndex(status);
+  if(idx<0) return '<div class="alert alert-warning">'+(status==='dibatalkan'?'Booking dibatalkan.':status==='tidak_hadir'?'Pasien ditandai tidak hadir.':'Status booking sudah tidak aktif.')+'</div>';
+  const cls=compact?' journey-compact':'';
+  return '<div class="journey'+cls+'">'+QUEUE_JOURNEY.map(function(s,i){return '<div class="journey-step '+(i<idx?'done ':'')+(i===idx?'active':'')+'"><span>'+s.icon+'</span><div><strong>'+esc(s.label)+'</strong></div></div>';}).join('')+'</div>';
+}
+function suggestedArrivalWindow(booking){
+  if(!booking) return null;
+  const settings=(Store.data&&Store.data.meta&&Store.data.meta.settings)||{};
+  const avg=Math.max(5,parseInt(settings.avgWaitMinutes||8,10));
+  const sc=booking.sessionId?Store.data.doctorSchedules.find(function(x){return x.id===booking.sessionId;}):null;
+  let startMinutes=null;
+  if(booking.appointmentTime){ const m=String(booking.appointmentTime).match(/(\d{1,2}):(\d{2})/); if(m) startMinutes=parseInt(m[1],10)*60+parseInt(m[2],10); }
+  if(startMinutes===null && sc && sc.jamMulai){ const m=String(sc.jamMulai).split(':'); startMinutes=parseInt(m[0],10)*60+parseInt(m[1],10); }
+  if(startMinutes===null) startMinutes=8*60;
+  const n=Math.max(1,queueNumberValue(booking.noAntrian)||1);
+  const offset=Math.min(180,(n-1)*avg);
+  const s=startMinutes+offset;
+  const e=s+avg;
+  function fmt(x){const h=Math.floor(x/60)%24,m=x%60;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');}
+  return {start:fmt(s),end:fmt(e),text:fmt(s)+'–'+fmt(e),base:fmt(startMinutes),avgWait:avg};
+}
+function queueRuleExplanation(booking){
+  if(!booking) return '';
+  const isEx=(booking.jenisLayanan||'').toLowerCase().includes('eksekutif') || String(booking.poliId||'').startsWith('EX-');
+  const q=queueNumberValue(booking.noAntrian);
+  const cap=booking.sessionId?sessionCapacity(Store.data.doctorSchedules.find(function(x){return x.id===booking.sessionId;})||{}):null;
+  return '<div class="alert alert-info"><strong>Aturan antrean prototype:</strong> '+(isEx?'Eksekutif memakai konteks klinik, dokter, sesi, dan appointment sendiri; tidak digabung dengan Reguler.':'Reguler memakai urutan nomor per poli + tanggal, lalu sistem mengalokasikan dokter/sesi berdasarkan jadwal dan kapasitas.')+(q!==null?' Nomor Anda <strong>'+esc(booking.noAntrian)+'</strong> tetap menjadi identitas antrean pada kunjungan ini.':'')+(cap?' Kapasitas sesi saat ini '+cap+' pasien.':'')+'</div>';
 }
 function bookingStatusLabel(status){
   return ({terjadwal:'BOOKED',checked_in:'CHECK-IN',dibatalkan:'DIBATALKAN',tidak_hadir:'TIDAK HADIR',rescheduled:'DIJADWALKAN ULANG',kadaluarsa:'KADALUARSA'})[status] || status;
@@ -722,10 +776,10 @@ const NAV_ITEMS = [
   {hash:'rekam-medis',label:'Rekam Medis',ic:'📋'},
   {hash:'riwayat-dokter',label:'Riwayat',ic:'🕘'},
   {hash:'master-data',label:'Master Data',ic:'⚙️'},
+  {hash:'audit-sistem',label:'Audit Sistem',ic:'🧪'},
   {hash:'cek-antrian',label:'Cek Antrian',ic:'📺'},
   {hash:'monitor-antrean',label:'Monitor',ic:'🖥️'},
   {hash:'pasien-dashboard',label:'Dashboard',ic:'⌂'},
-  {hash:'monitor-antrean',label:'Monitor',ic:'🖥️'},
   {hash:'pasien-booking',label:'Rawat Jalan',ic:'📅'},
   {hash:'pasien-booking-saya',label:'Booking Saya',ic:'🎫'},
   {hash:'pasien-riwayat',label:'Riwayat',ic:'🕘'}
@@ -838,13 +892,14 @@ function renderShell(route){
   document.getElementById('app').innerHTML =
    '<div class="app-shell">'+
      '<aside class="sidebar" id="sidebar">'+
-       '<div class="brand"><div class="brand-mark"></div><div class="brand-text"><div class="t1">SIMRS Terpadu</div><div class="t2">RSUD R.T. Notopuro Sidoarjo</div></div></div>'+
+       '<div class="brand"><div class="brand-mark"></div><div class="brand-text"><div class="t1">SIMRS PROTOTYPE</div><div class="t2">Portfolio / Demo</div></div></div>'+
        '<nav class="nav">'+sidebarNavHtml+'</nav>'+
        '<div class="sidebar-user"><div class="name">'+esc(u.nama)+'</div><div class="role">'+roleLabel(u.role)+(u.poliId?' · '+esc(getPoli(u.poliId).nama):'')+'</div>'+
          '<button class="btn btn-outline btn-sm btn-block" id="btn-logout-sidebar">🚪 Keluar</button></div>'+
      '</aside>'+
      '<div class="main-area">'+
        '<div class="topbar">'+
+         '<div class="prototype-badge">🧪 '+PROTOTYPE_NAME+' · '+PROTOTYPE_VERSION+' · '+PROTOTYPE_MODE+'</div>'+
          '<h1 id="page-title"></h1>'+
          '<div class="topbar-right">'+
            '<button class="btn btn-outline btn-sm hidden" id="btn-install">⭳ Pasang</button>'+
@@ -993,8 +1048,8 @@ function renderLogin(){
     '<div class="login-wrap"><div class="login-panel">'+
       '<div class="login-hero">'+
         '<div class="login-emblem"></div>'+
-        '<h1>SIMRS Terpadu</h1>'+
-        '<div class="sub">RSUD R.T. Notopuro Sidoarjo — Sistem Informasi Manajemen Rumah Sakit</div>'+
+        '<h1>SIMRS PROTOTYPE</h1>'+
+        '<div class="sub">SIMRS PROTOTYPE — Sistem Informasi Manajemen Rumah Sakit</div>'+
         '<div class="ticket-hint">NO. ANTRIAN &nbsp;— · — · — —</div>'+
       '</div>'+
       '<div class="login-body">'+
@@ -1130,7 +1185,7 @@ function renderDashboard(){
     }).join('');
   };
   document.getElementById('main-content').innerHTML=
-    '<div class="ops-hero"><div><div class="ops-eyebrow">SIMRS COMMAND CENTER · RSUD R.T. NOTOPURO</div><h2>Monitoring Operasional Harian</h2><p>'+formatTanggalIndo(today)+' · Rawat jalan, IGD, rawat inap, penunjang, dan farmasi.</p></div><div class="ops-hero-actions"><button class="btn btn-outline btn-sm" id="btn-dashboard-refresh">↻ Perbarui</button><button class="btn btn-primary btn-sm" data-nav="cek-antrian">📺 Papan Antrian</button></div></div>'+
+    '<div class="ops-hero"><div><div class="ops-eyebrow">SIMRS COMMAND CENTER · SIMRS PROTOTYPE</div><h2>Monitoring Operasional Harian</h2><p>'+formatTanggalIndo(today)+' · Rawat jalan, IGD, rawat inap, penunjang, dan farmasi.</p></div><div class="ops-hero-actions"><button class="btn btn-outline btn-sm" id="btn-dashboard-refresh">↻ Perbarui</button><button class="btn btn-primary btn-sm" data-nav="cek-antrian">📺 Papan Antrian</button></div></div>'+
     '<div class="ops-kpi-grid">'+
       kpi('👥','Pasien Terdaftar',visits.length,'kunjungan tercatat hari ini')+
       kpi('🎫','Antrean Menunggu',waiting,'semua poli',waiting>=((settings.alertQueueThreshold)||10)?'hot':'')+
@@ -1143,7 +1198,7 @@ function renderDashboard(){
     '</div>'+
     '<div class="ops-grid-main"><section class="panel ops-panel"><div class="panel-head"><div><h2>🩺 Rekap Semua Poli</h2><div class="hint">Setiap poli ditampilkan: terdaftar, booking, antrean, diperiksa, selesai, dan waktu farmasi.</div></div></div><div class="panel-body"><div class="table-wrap ops-clinic-table"><table><thead><tr><th>Poli</th><th>Daftar</th><th>Booking</th><th>Menunggu</th><th>Diperiksa</th><th>Selesai</th><th>Farmasi</th><th>Status</th></tr></thead><tbody>'+renderClinicTable('Poliklinik Spesialis')+'</tbody></table></div></div></section></div>'+
     '<div class="ops-grid-main"><section class="panel ops-panel"><div class="panel-head"><div><h2>⭐ Poliklinik Eksekutif</h2><div class="hint">Monitoring terpisah dari Poliklinik Spesialis.</div></div></div><div class="panel-body"><div class="table-wrap ops-clinic-table"><table><thead><tr><th>Poli</th><th>Daftar</th><th>Booking</th><th>Menunggu</th><th>Diperiksa</th><th>Selesai</th><th>Farmasi</th><th>Status</th></tr></thead><tbody>'+renderClinicTable('Poliklinik Eksekutif')+'</tbody></table></div></div></section></div>'+
-    '<div class="ops-grid-main"><section class="panel ops-panel"><div class="panel-head"><div><h2>💊 Farmasi</h2><div class="hint">Rawat jalan memakai konsep waktu tunggu pengambilan obat; rawat inap memakai waktu pemenuhan instruksi obat untuk unit perawatan.</div></div><button class="btn btn-ghost btn-sm" data-nav="farmasi">Buka Farmasi →</button></div><div class="panel-body"><div class="pharmacy-monitor-grid"><div class="pharmacy-monitor"><span>Rawat Jalan</span><strong>'+outPh.pending+'</strong><small>menunggu · max '+outPh.maxWait+' / SLA '+outPh.sla+' mnt</small></div><div class="pharmacy-monitor"><span>Rawat Inap</span><strong>'+inPh.pending+'</strong><small>instruksi · max '+inPh.maxWait+' / SLA '+inPh.sla+' mnt</small></div><div class="pharmacy-monitor '+(outPh.overSla?'danger':'')+'"><span>Lewat SLA RJ</span><strong>'+outPh.overSla+'</strong><small>resep melewati batas</small></div><div class="pharmacy-monitor '+(inPh.overSla?'danger':'')+'"><span>Lewat SLA RI</span><strong>'+inPh.overSla+'</strong><small>instruksi melewati batas</small></div></div><div class="hint" style="margin-top:10px">SLA di atas adalah parameter prototype yang dapat diubah pada pengaturan; bukan klaim standar resmi RSUD.</div></div></section><section class="panel ops-panel"><div class="panel-head"><div><h2>🚑 IGD & Rawat Inap</h2><div class="hint">Struktur layanan berdasarkan informasi publik RSUD.</div></div><button class="btn btn-ghost btn-sm" data-nav="ranap">Rawat Inap →</button></div><div class="panel-body"><div class="service-tree"><div><strong>IGD</strong><span>Zona Merah · Zona Kuning · Ambulans Gawat Darurat</span></div><div><strong>Rawat Inap</strong><span>Tulip · Teratai · Mawar Kuning · Mawar Merah Putih · Graha Delta Husada</span></div><div><strong>Rawat Intensif</strong><span>ICU · ICCU · PICU · NICU · HCU</span></div><div><strong>Ruang Bersalin</strong><span>Pelayanan rawat inap maternal</span></div></div></div></section></div>'+
+    '<div class="ops-grid-main"><section class="panel ops-panel"><div class="panel-head"><div><h2>💊 Farmasi</h2><div class="hint">Rawat jalan memakai konsep waktu tunggu pengambilan obat; rawat inap memakai waktu pemenuhan instruksi obat untuk unit perawatan.</div></div><button class="btn btn-ghost btn-sm" data-nav="farmasi">Buka Farmasi →</button></div><div class="panel-body"><div class="pharmacy-monitor-grid"><div class="pharmacy-monitor"><span>Rawat Jalan</span><strong>'+outPh.pending+'</strong><small>menunggu · max '+outPh.maxWait+' / SLA '+outPh.sla+' mnt</small></div><div class="pharmacy-monitor"><span>Rawat Inap</span><strong>'+inPh.pending+'</strong><small>instruksi · max '+inPh.maxWait+' / SLA '+inPh.sla+' mnt</small></div><div class="pharmacy-monitor '+(outPh.overSla?'danger':'')+'"><span>Lewat SLA RJ</span><strong>'+outPh.overSla+'</strong><small>resep melewati batas</small></div><div class="pharmacy-monitor '+(inPh.overSla?'danger':'')+'"><span>Lewat SLA RI</span><strong>'+inPh.overSla+'</strong><small>instruksi melewati batas</small></div></div><div class="hint" style="margin-top:10px">SLA di atas adalah parameter prototype yang dapat diubah pada pengaturan; bukan klaim standar resmi institusi kesehatan manapun.</div></div></section><section class="panel ops-panel"><div class="panel-head"><div><h2>🚑 IGD & Rawat Inap</h2><div class="hint">Struktur layanan baseline prototype; detail fasilitas wajib diverifikasi sebelum implementasi nyata.</div></div><button class="btn btn-ghost btn-sm" data-nav="ranap">Rawat Inap →</button></div><div class="panel-body"><div class="service-tree"><div><strong>IGD</strong><span>Zona Merah · Zona Kuning · Ambulans Gawat Darurat</span></div><div><strong>Rawat Inap</strong><span>Tulip · Teratai · Mawar Kuning · Mawar Merah Putih · Graha Delta Husada</span></div><div><strong>Rawat Intensif</strong><span>ICU · ICCU · PICU · NICU · HCU</span></div><div><strong>Ruang Bersalin</strong><span>Pelayanan rawat inap maternal</span></div></div></div></section></div>'+
     '<div class="ops-grid-main"><section class="panel ops-panel"><div class="panel-head"><div><h2>📈 Alur Hari Ini</h2><div class="hint">BOOKING → CHECK-IN → MENUNGGU → DIPERIKSA → SELESAI.</div></div></div><div class="panel-body"><div class="flow-status-grid">'+[['BOOKING',bookingHariIni.length,'slate'],['CHECK-IN',checkedIn,'sage'],['MENUNGGU',waiting,'amber'],['DIPERIKSA',diperiksa,'clinical'],['SELESAI',selesai,'slate']].map(function(x){return '<div class="flow-status '+x[2]+'"><span>'+x[0]+'</span><strong>'+x[1]+'</strong></div>';}).join('')+'</div></div></section><section class="panel ops-panel"><div class="panel-head"><div><h2>💊 Stok Kritis</h2><div class="hint">Obat di bawah batas minimum.</div></div></div><div class="panel-body">'+(obatMenipis.length?obatMenipis.slice(0,8).map(function(m){return '<div class="ops-stock-row"><span>'+esc(m.nama)+'</span><strong>'+m.stok+' '+esc(m.satuan)+'</strong></div>';}).join(''):'<div class="ops-empty">✓ Stok aman.</div>')+'</div></section></div>';
   const btn=document.getElementById('btn-dashboard-refresh'); if(btn) btn.addEventListener('click',renderDashboard);
 }
@@ -1353,7 +1408,8 @@ function submitPatientBooking(){
     if(!allocation){showToast('Sesi dokter yang dipilih tidak tersedia. Silakan pilih dokter atau tanggal lain.','danger');return;}
   }
   const noAntrian=generateNoAntrian(poliId,tanggal);
-  const booking={id:uid('BK'),patientId:patientId,poliId:poliId,tanggalKontrol:tanggal,jenisLayanan:layanan,jenisBayar:penjamin,sumber:'Aplikasi Pasien RS — Prototype',noBpjs:'',noAntrian:noAntrian,dokterId:allocation.doctorId,sessionId:allocation.schedule&&allocation.schedule.id||null,allocationMode:allocation.reason,appointmentTime:appointmentTime,kodeCheckIn:'CHK'+Date.now().toString(36).toUpperCase().slice(-8),status:'terjadwal',asuransiNama:penjamin==='Asuransi'?asuransi:'',confirmedAt:null,createdAt:nowISO(),updatedAt:nowISO()};
+  const booking={id:uid('BK'),patientId:patientId,poliId:poliId,tanggalKontrol:tanggal,jenisLayanan:layanan,jenisBayar:penjamin,sumber:'Aplikasi Pasien SIMRS PROTOTYPE — Demo',noBpjs:'',noAntrian:noAntrian,dokterId:allocation.doctorId,sessionId:allocation.schedule&&allocation.schedule.id||null,allocationMode:allocation.reason,appointmentTime:appointmentTime,kodeCheckIn:'CHK'+Date.now().toString(36).toUpperCase().slice(-8),status:'terjadwal',asuransiNama:penjamin==='Asuransi'?asuransi:'',confirmedAt:null,arrivalWindowStart:null,arrivalWindowEnd:null,suggestedArrivalAt:null,journeyVersion:1,createdAt:nowISO(),updatedAt:nowISO()};
+  const aw=suggestedArrivalWindow(booking); if(aw){booking.arrivalWindowStart=aw.start;booking.arrivalWindowEnd=aw.end;booking.suggestedArrivalAt=aw.start;}
   Store.data.bookings.push(booking); Store.save();
   const doctor=doctorMasterById(booking.dokterId)||Store.data.users.find(function(x){return x.id===booking.dokterId;});
   pushNotification('booking','Pendaftaran Rawat Jalan berhasil',noAntrian+' — '+poli.nama+' · '+layanan+' pada '+formatTanggalIndo(tanggal),patientId,u.id);
@@ -1400,7 +1456,16 @@ function openPatientBookingTicket(bookingId, fresh){
   const booking=getPatientBookingById(bookingId);
   if(!booking){showToast('Tiket tidak ditemukan.','danger');return;}
   const p=getPatient(booking.patientId), poli=getPoli(booking.poliId);
-  openModal('<div class="modal-head"><div><h2>🎫 Tiket Rawat Jalan</h2><div class="hint">Tiket dapat dibuka kembali kapan saja.</div></div><button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button></div><div class="modal-body"><div class="patient-ticket ticket-download-target"><span>NOMOR ANTREAN</span><strong>'+esc(booking.noAntrian)+'</strong><b>'+esc(poli.nama)+'</b><small>'+formatTanggalIndo(booking.tanggalKontrol)+' · '+esc(poli.layanan)+' · '+esc(booking.jenisBayar)+'</small><div style="margin-top:14px">'+renderQrSvg(booking.kodeCheckIn,190)+'</div><small style="margin-top:8px">Tunjukkan QR/barcode ini di loket saat Anda datang. Pembayaran dilakukan di rumah sakit.</small><div class="ticket-actions"><button class="btn btn-primary" onclick="downloadPatientTicket(\''+booking.id+'\')">⬇️ Download Tiket</button><button class="btn btn-outline" onclick="printPatientTicket(\''+booking.id+'\')">🖨️ Cetak / Simpan PDF</button></div></div></div>');
+  const aw=suggestedArrivalWindow(booking);
+  const dm=bookingDoctorMaster(booking);
+  openModal('<div class="modal-head"><div><h2>🎫 Tiket Rawat Jalan</h2><div class="hint">'+PROTOTYPE_NAME+' · '+PROTOTYPE_MODE+'</div></div><button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button></div><div class="modal-body">'+
+    '<div class="patient-ticket ticket-download-target"><span>NOMOR ANTREAN</span><strong>'+esc(booking.noAntrian)+'</strong><b>'+esc(poli.nama)+'</b><small>'+formatTanggalIndo(booking.tanggalKontrol)+' · '+esc(booking.jenisLayanan||poli.layanan)+' · '+esc(booking.jenisBayar)+'</small>'+
+    (dm?'<small style="margin-top:6px">Dokter: '+esc(dm.nama)+'</small>':'')+
+    (booking.appointmentTime?'<small style="margin-top:6px">Janji: '+esc(booking.appointmentTime)+'</small>':'')+
+    (aw?'<div class="alert alert-info" style="margin-top:12px"><strong>Disarankan datang:</strong> '+esc(aw.text)+'<br><span class="hint">Estimasi berbasis sesi dan waktu tunggu prototype, bukan janji waktu pelayanan.</span></div>':'')+
+    '<div style="margin-top:14px">'+renderQrSvg(booking.kodeCheckIn,190)+'</div><small style="margin-top:8px">Tunjukkan QR/barcode ini saat check-in. Kode: <span class="mono">'+esc(booking.kodeCheckIn)+'</span></small>'+
+    queueRuleExplanation(booking)+journeyHtml(booking.status,true)+
+    '<div class="ticket-actions"><button class="btn btn-primary" onclick="downloadPatientTicket(\''+booking.id+'\')">⬇️ Download Tiket</button><button class="btn btn-outline" onclick="printPatientTicket(\''+booking.id+'\')">🖨️ Cetak / Simpan PDF</button></div></div></div>');
 }
 function downloadPatientTicket(bookingId){
   const booking=getPatientBookingById(bookingId); if(!booking)return;
@@ -1411,7 +1476,7 @@ function downloadPatientTicket(bookingId){
   ctx.fillStyle='#f7faf9'; ctx.fillRect(0,0,900,1250);
   ctx.fillStyle='#ffffff'; ctx.strokeStyle='#d8e5e1'; ctx.lineWidth=2;
   if(ctx.roundRect) ctx.roundRect(45,45,810,1160,30); else ctx.rect(45,45,810,1160); ctx.fill(); ctx.stroke();
-  ctx.fillStyle='#0e5c56'; ctx.font='700 30px Arial'; ctx.fillText('SIMRS RSUD R.T. Notopuro',80,105);
+  ctx.fillStyle='#0e5c56'; ctx.font='700 30px Arial'; ctx.fillText('SIMRS PROTOTYPE',80,105);
   ctx.fillStyle='#687773'; ctx.font='18px Arial'; ctx.fillText('TIKET RAWAT JALAN',80,145);
   ctx.fillStyle='#263b37'; ctx.font='700 72px monospace'; ctx.fillText(booking.noAntrian,80,245);
   ctx.font='700 30px Arial'; ctx.fillText(poli.nama,80,300);
@@ -1426,7 +1491,7 @@ function downloadPatientTicket(bookingId){
 function printPatientTicket(bookingId){
   const booking=getPatientBookingById(bookingId); if(!booking)return;
   const p=getPatient(booking.patientId), poli=getPoli(booking.poliId);
-  printArea('<div style="max-width:420px;margin:30px auto;text-align:center;font-family:Arial,sans-serif"><h2>SIMRS RSUD R.T. Notopuro</h2><h3>Tiket Rawat Jalan</h3><div style="font-size:64px;font-weight:800;font-family:monospace">'+esc(booking.noAntrian)+'</div><h3>'+esc(poli.nama)+'</h3><p>'+formatTanggalIndo(booking.tanggalKontrol)+' · '+esc(poli.layanan)+'</p><p>Pasien: '+esc(p.nama)+'</p><div style="margin:20px auto;width:190px">'+renderQrSvg(booking.kodeCheckIn,190)+'</div><p>'+esc(booking.kodeCheckIn)+'</p><p>Tunjukkan QR/barcode ini saat check-in di loket.</p></div>');
+  printArea('<div style="max-width:420px;margin:30px auto;text-align:center;font-family:Arial,sans-serif"><h2>SIMRS PROTOTYPE</h2><h3>Tiket Rawat Jalan</h3><div style="font-size:64px;font-weight:800;font-family:monospace">'+esc(booking.noAntrian)+'</div><h3>'+esc(poli.nama)+'</h3><p>'+formatTanggalIndo(booking.tanggalKontrol)+' · '+esc(poli.layanan)+'</p><p>Pasien: '+esc(p.nama)+'</p><div style="margin:20px auto;width:190px">'+renderQrSvg(booking.kodeCheckIn,190)+'</div><p>'+esc(booking.kodeCheckIn)+'</p><p>Tunjukkan QR/barcode ini saat check-in di loket.</p></div>');
 }
 
 function renderPatientDashboard(){
@@ -1463,6 +1528,8 @@ function renderPatientDashboard(){
   maybeNotifyPatientQueue();
   if(window.__patientPoll) clearInterval(window.__patientPoll);
   window.__patientPoll=setInterval(function(){ if(Session.currentUser && Session.currentUser.role==='pasien' && currentRoute()==='pasien-dashboard'){ maybeNotifyPatientQueue(); renderPatientDashboard(); } },15000);
+
+
 }
 function kpiPatient(icon,label,value,sub){ return '<div class="ops-kpi"><div class="ops-kpi-icon">'+icon+'</div><div><div class="ops-kpi-label">'+label+'</div><div class="ops-kpi-value">'+value+'</div><div class="ops-kpi-sub">'+sub+'</div></div></div>'; }
 function patientFlow(v){
@@ -1969,7 +2036,7 @@ function submitKunjungan(e){
 }
 function cetakTiket(visitId){
   const v = getVisit(visitId), p = getPatient(v.patientId), poli = getPoli(v.poliId);
-  printArea('<div style="text-align:center;font-family:monospace;max-width:300px;margin:0 auto"><h2>RSUD R.T. NOTOPURO</h2><p>Nomor Antrian</p>'+
+  printArea('<div style="text-align:center;font-family:monospace;max-width:300px;margin:0 auto"><h2>SIMRS PROTOTYPE</h2><p>Nomor Antrian</p>'+
     '<div style="font-size:48px;font-weight:700;margin:14px 0">'+v.noAntrian+'</div><p>'+esc(poli.nama)+'</p><hr>'+
     '<p style="text-align:left">Nama: '+esc(p.nama)+'<br>No. RM: '+p.id+'<br>Tanggal: '+formatTanggalWaktu(v.createdAt)+'<br>Pembayaran: '+esc(v.jenisBayar)+'</p></div>');
 }
@@ -2318,7 +2385,7 @@ function renderH1List(list){
   if(list.length===0){ el.innerHTML = '<div class="empty"><div class="big">—</div>Tidak ada jadwal kontrol besok.</div>'; return; }
   el.innerHTML = list.map(b=>{
     const p = getPatient(b.patientId), poli = getPoli(b.poliId);
-    const pesan = 'Halo '+p.nama+', mengingatkan jadwal kontrol Anda besok ('+formatTanggalIndo(b.tanggalKontrol)+') di '+poli.nama+' RSUD R.T. Notopuro, nomor antrian '+b.noAntrian+'. Mohon datang tepat waktu. Terima kasih.';
+    const pesan = 'Halo '+p.nama+', mengingatkan jadwal kontrol Anda besok ('+formatTanggalIndo(b.tanggalKontrol)+') di '+poli.nama+' SIMRS PROTOTYPE, nomor antrian '+b.noAntrian+'. Mohon datang tepat waktu. Terima kasih.';
     return '<div class="queue-list-item" style="cursor:default"><div><div class="no">'+b.noAntrian+'</div><div class="nm">'+esc(p.nama)+' · '+esc(poli.nama)+
       (b.reminded ? ' · <span style="color:var(--sage)">✓ sudah diingatkan</span>' : '')+'</div></div>'+
       '<a class="btn btn-success btn-sm" href="'+waLink(p.noHp, pesan)+'" target="_blank" rel="noopener" data-remind="'+b.id+'">📱 WhatsApp</a></div>';
@@ -3205,7 +3272,7 @@ function prosesBayarRanap(admissionId, metode, rincianRows, total){
 function openInvoiceModal(trxId){
   const trx = Store.data.transactions.find(t=>t.id===trxId);
   const p = trx.visitId ? getPatient(getVisit(trx.visitId).patientId) : getPatient(Store.data.admissions.find(a=>a.id===trx.admissionId).patientId);
-  const bodyHtml = '<div id="invoice-content"><h3 style="text-align:center">RSUD R.T. NOTOPURO</h3><p style="text-align:center;color:var(--ink-soft);font-size:13px">Kwitansi Pembayaran'+(trx.admissionId?' — Rawat Inap':'')+'</p><hr>'+
+  const bodyHtml = '<div id="invoice-content"><h3 style="text-align:center">SIMRS PROTOTYPE</h3><p style="text-align:center;color:var(--ink-soft);font-size:13px">Kwitansi Pembayaran'+(trx.admissionId?' — Rawat Inap':'')+'</p><hr>'+
     '<p>No. Transaksi: <span class="mono">'+trx.id+'</span><br>Pasien: '+esc(p.nama)+' ('+p.id+')<br>Tanggal: '+formatTanggalWaktu(trx.createdAt)+'<br>Metode: '+esc(trx.metode)+'</p>'+
     '<div class="table-wrap"><table>'+trx.rincian.map(r=>'<tr><td>'+r.label+'</td><td class="mono" style="text-align:right">'+formatRupiah(r.jumlah)+'</td></tr>').join('')+
     '<tr><td><strong>Total</strong></td><td class="mono" style="text-align:right"><strong>'+formatRupiah(trx.total)+'</strong></td></tr></table></div></div>';
@@ -3554,7 +3621,7 @@ function selesaikanPulang(admissionId){
 function cetakResumeMedis(admissionId){
   const a = Store.data.admissions.find(x=>x.id===admissionId);
   const p = getPatient(a.patientId), ward = Store.data.wards.find(w=>w.id===a.wardId), r = a.resumeMedis||{}, b = computeBillingRanap(a);
-  printArea('<div style="font-family:monospace;max-width:420px;margin:0 auto"><h2 style="text-align:center">RSUD R.T. NOTOPURO</h2><p style="text-align:center">Resume Medis Rawat Inap</p><hr>'+
+  printArea('<div style="font-family:monospace;max-width:420px;margin:0 auto"><h2 style="text-align:center">SIMRS PROTOTYPE</h2><p style="text-align:center">Resume Medis Rawat Inap</p><hr>'+
     '<p>Nama: '+esc(p.nama)+'<br>No. RM: '+p.id+'<br>Ruang: '+esc(ward.nama)+'<br>Masuk: '+formatTanggalIndo(a.tanggalMasuk)+'<br>Keluar: '+formatTanggalIndo(a.tanggalKeluar)+' ('+b.hari+' hari)</p><hr>'+
     '<p><strong>Diagnosis Masuk:</strong> '+esc(a.diagnosisMasuk)+'<br><strong>Diagnosis Akhir:</strong> '+esc(r.diagnosisAkhir)+'</p>'+
     '<p><strong>Ringkasan:</strong> '+esc(r.ringkasan)+'</p><p><strong>Obat Pulang:</strong> '+esc(r.obatPulang)+'</p><p><strong>Kontrol:</strong> '+esc(r.instruksiKontrol)+'</p><hr>'+
@@ -3753,7 +3820,7 @@ function renderMasterDoctorsTab(){
   const el=document.getElementById('master-tab-area');
   const days=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
   const docs=Store.data.doctors||[];
-  el.innerHTML='<div class="alert alert-info"><strong>Master editable.</strong> Baseline diambil dari halaman publik “Dokter Kami” RSUD R.T. Notopuro. Karena situs resmi juga menandai sebagian entri “Data Belum Diperbarui”, setiap jadwal diberi status verifikasi. Perubahan di sini tersimpan di perangkat/browser ini; gunakan Ekspor/Impor untuk memindahkan master tanpa mengubah kode GitHub.</div>'+
+  el.innerHTML='<div class="alert alert-info"><strong>Master editable.</strong> Baseline diambil dari halaman publik “Dokter Kami” SIMRS PROTOTYPE. Karena situs resmi juga menandai sebagian entri “Data Belum Diperbarui”, setiap jadwal diberi status verifikasi. Perubahan di sini tersimpan di perangkat/browser ini; gunakan Ekspor/Impor untuk memindahkan master tanpa mengubah kode GitHub.</div>'+
   '<div class="panel"><div class="panel-head"><h2>Tambah Dokter</h2></div><div class="panel-body"><form id="form-doctor-master" class="field-row3"><div class="field"><label>Nama Dokter</label><input id="dm-nama" required></div><div class="field"><label>Spesialisasi</label><input id="dm-spesialis" required></div><div class="field"><label>Poli</label><select id="dm-poli">'+Store.data.poli.map(function(p){return '<option value="'+p.id+'">'+esc(p.nama)+' — '+esc(p.layanan||'')+'</option>';}).join('')+'</select></div><div style="grid-column:1/-1"><button class="btn btn-primary">Tambah Dokter</button></div></form></div></div>'+
   '<div class="panel"><div class="panel-head"><div><h2>Jadwal Praktik</h2><div class="hint">'+docs.length+' dokter master · '+(Store.data.doctorSchedules||[]).length+' slot jadwal</div></div><div class="chip-row"><button class="btn btn-outline btn-sm" id="btn-export-master">⬇️ Ekspor Master JSON</button><button class="btn btn-outline btn-sm" id="btn-import-master">⬆️ Impor Master JSON</button><input id="master-file" type="file" accept="application/json" class="hidden"></div></div><div class="panel-body">'+
   '<form id="form-schedule-master" class="field-row3"><div class="field"><label>Dokter</label><select id="sc-dokter">'+docs.map(function(d){return '<option value="'+d.id+'">'+esc(d.nama)+'</option>';}).join('')+'</select></div><div class="field"><label>Poli/Layanan</label><select id="sc-poli">'+Store.data.poli.map(function(p){return '<option value="'+p.id+'">'+esc(p.nama)+' — '+esc(p.layanan||'')+'</option>';}).join('')+'</select></div><div class="field"><label>Hari</label><select id="sc-hari">'+days.map(function(d,i){return '<option value="'+i+'">'+d+'</option>';}).join('')+'</select></div><div class="field"><label>Mulai</label><input id="sc-mulai" type="time" required value="08:00"></div><div class="field"><label>Selesai</label><input id="sc-selesai" type="time" required value="12:00"></div><div class="field"><label>Ruang</label><input id="sc-ruang" value="Belum dipetakan"></div><div class="field"><label>Kuota (opsional)</label><input id="sc-kuota" type="number" min="0" placeholder="Otomatis dari durasi"></div><div style="grid-column:1/-1"><button class="btn btn-primary">Tambah Jadwal</button></div></form>'+
@@ -3762,7 +3829,7 @@ function renderMasterDoctorsTab(){
   document.getElementById('form-schedule-master').addEventListener('submit',function(e){e.preventDefault();const s={id:'SCH-'+Date.now().toString(36),doctorId:document.getElementById('sc-dokter').value,poliId:canonicalPoliId(document.getElementById('sc-poli').value),tanggal:null,hari:Number(document.getElementById('sc-hari').value),jamMulai:document.getElementById('sc-mulai').value,jamSelesai:document.getElementById('sc-selesai').value,ruang:document.getElementById('sc-ruang').value.trim()||'Belum dipetakan',shiftLabel:'Manual Admin',kuota:Number(document.getElementById('sc-kuota').value)||null,source:'Admin',needsConfirmation:false,createdAt:nowISO(),updatedAt:nowISO()};Store.data.doctorSchedules.push(s);Store.save();logAudit('jadwal_dokter_baru',doctorDisplayName(s.doctorId)+' — '+getPoli(s.poliId).nama);renderMasterDoctorsTab();showToast('Jadwal ditambahkan','success');});
   el.querySelectorAll('[data-edit-doc]').forEach(function(b){b.addEventListener('click',function(){const d=doctorMasterById(b.dataset.editDoc);if(!d)return;const nama=prompt('Nama dokter',d.nama);if(nama===null)return;const sp=prompt('Spesialisasi',d.spesialis||'');if(sp===null)return;d.nama=nama.trim()||d.nama;d.spesialis=sp.trim()||d.spesialis;d.updatedAt=nowISO();Store.save();logAudit('dokter_master_edit',d.nama);renderMasterDoctorsTab();showToast('Master dokter diperbarui','success');});});
   el.querySelectorAll('[data-del-sc]').forEach(function(b){b.addEventListener('click',function(){if(!confirm('Hapus jadwal ini?'))return;Store.data.doctorSchedules=Store.data.doctorSchedules.filter(function(s){return s.id!==b.dataset.delSc;});Store.save();logAudit('jadwal_dokter_hapus',b.dataset.delSc);renderMasterDoctorsTab();});});
-  document.getElementById('btn-export-master').addEventListener('click',function(){const payload={version:'15.0',exportedAt:nowISO(),doctors:Store.data.doctors||[],doctorSchedules:Store.data.doctorSchedules||[],poli:Store.data.poli||[]};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='master-simrs-notopuro-v15.json';a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},500);});
+  document.getElementById('btn-export-master').addEventListener('click',function(){const payload={version:'15.0',exportedAt:nowISO(),doctors:Store.data.doctors||[],doctorSchedules:Store.data.doctorSchedules||[],poli:Store.data.poli||[]};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='master-simrs-prototype-v13.8.json';a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},500);});
   document.getElementById('btn-import-master').addEventListener('click',function(){document.getElementById('master-file').click();});
   document.getElementById('master-file').addEventListener('change',function(e){const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=function(){try{const x=JSON.parse(rd.result);if(!Array.isArray(x.doctors)||!Array.isArray(x.doctorSchedules))throw new Error('Format master tidak valid');Store.data.doctors=x.doctors;Store.data.doctorSchedules=x.doctorSchedules;Store.save();logAudit('master_dokter_impor','Master dokter dan jadwal diperbarui dari JSON');renderMasterDoctorsTab();showToast('Master berhasil diimpor','success');}catch(err){showToast('Import gagal: '+err.message,'danger');}};rd.readAsText(f);});
 }
@@ -3770,7 +3837,7 @@ function renderMasterDoctorsTab(){
 function renderMasterFacilityTab(){
   const el=document.getElementById('master-tab-area');
   const typeLabel={gedung:'Gedung',lantai:'Lantai',unit:'Unit/Instalasi',ruang:'Ruang',kamar:'Kamar',bed:'Bed'};
-  el.innerHTML='<div class="alert alert-info">Struktur fasilitas dibuat bertingkat agar nanti mudah dipetakan ke struktur nyata RSUD R.T. Notopuro. Data yang belum diverifikasi resmi sengaja dibuat sebagai placeholder dan tidak dianggap sebagai denah rumah sakit.</div>'+
+  el.innerHTML='<div class="alert alert-info">Struktur fasilitas dibuat bertingkat agar nanti mudah dipetakan ke struktur nyata SIMRS PROTOTYPE. Data yang belum diverifikasi resmi sengaja dibuat sebagai placeholder dan tidak dianggap sebagai denah rumah sakit.</div>'+
     '<div class="panel"><div class="panel-head"><h2>Tambah Node Fasilitas</h2></div><div class="panel-body"><form id="form-facility" class="field-row3">'+
     '<div class="field"><label>Jenis</label><select id="fc-type">'+Object.keys(typeLabel).map(function(k){return '<option value="'+k+'">'+typeLabel[k]+'</option>';}).join('')+'</select></div>'+
     '<div class="field"><label>Nama</label><input id="fc-nama" required placeholder="Contoh: Ruang Mawar"></div>'+
@@ -3926,6 +3993,30 @@ function renderIGD(){
     '<div class="panel"><div class="panel-head"><h2>Integrasi Layanan</h2></div><div class="panel-body"><div class="hint">Farmasi IGD dan Kasir IGD tersedia sebagai menu terpisah agar alur IGD tidak tercampur dengan Rawat Jalan/Rawat Inap.</div></div></div></div>';
 }
 
+function runSystemAudit(){
+  const checks=[];
+  function check(id,label,pass,detail){checks.push({id,label,pass,detail});}
+  check('db','Database demo dapat dimuat',!!Store.data&&Array.isArray(Store.data.users)&&Array.isArray(Store.data.bookings), 'Store.data tersedia dan memiliki users + bookings.');
+  check('roles','Role utama tersedia',['admin','loket','rawat_jalan','dokter','pasien'].every(function(r){return Store.data.users.some(function(u){return u.role===r;});}), 'Admin, Loket, Rawat Jalan, Dokter, Pasien.');
+  check('patient-nav','Navigasi pasien tepat 5 tombol',['pasien-dashboard','monitor-antrean','pasien-booking','pasien-booking-saya','pasien-riwayat'].every(function(r){return ROLE_ROUTE_RULES.pasien.includes(r);}) && !ROLE_ROUTE_RULES.pasien.includes('lainnya'), 'Dashboard · Monitor · Rawat Jalan · Booking Saya · Riwayat.');
+  check('catalog','Master poli memiliki Reguler dan Eksekutif',Store.data.poli.some(function(x){return x.layanan==='Poliklinik Spesialis';})&&Store.data.poli.some(function(x){return x.layanan==='Poliklinik Eksekutif';}), 'Konteks layanan tidak dicampur.');
+  check('queue','Nomor antrean konsisten per poli+tanggal',(function(){const s=new Map();let ok=true;Store.data.bookings.forEach(function(x){if(!x.noAntrian)return;const k=x.poliId+'|'+(x.tanggalKontrol||'')+'|'+x.noAntrian;if(s.has(k))ok=false;s.set(k,x.id);});Store.data.visits.forEach(function(x){if(!x.noAntrian)return;const k=x.poliId+'|'+(x.tanggal||'')+'|'+x.noAntrian;const booking=x.bookingId?Store.data.bookings.find(function(b){return b.id===x.bookingId;}):null;if(s.has(k)&&!(booking&&s.get(k)===booking.id))ok=false;if(!s.has(k))s.set(k,x.id);});return ok;})(), 'Booking dan visit boleh berbagi nomor jika visit berasal dari booking yang sama.');
+  check('journey','Kunjungan memiliki workflow',Store.data.visits.filter(function(v){return v.unit==='rawat-jalan';}).every(function(v){return v.workflow&&Object.prototype.hasOwnProperty.call(v.workflow,'checkinAt');}), 'Workflow check-in dan tahapan layanan tersedia.');
+  check('arrival','Booking memiliki estimasi jendela kedatangan',Store.data.bookings.filter(function(b){return ['terjadwal','checked_in'].includes(b.status);}).every(function(b){return b.arrivalWindowStart&&b.arrivalWindowEnd;}), 'Jam kedatangan disimpan sebagai estimasi, bukan janji medis.');
+  check('qr','Booking memiliki kode check-in unik',(function(){const s=new Set();return Store.data.bookings.every(function(b){if(!b.kodeCheckIn)return false;if(s.has(b.kodeCheckIn))return false;s.add(b.kodeCheckIn);return true;});})(), 'Kode QR/barcode tidak boleh duplikat.');
+  check('demo-data','Tidak ada identitas pasien nyata pada akun demo',Store.data.patients.filter(function(p){return String(p.id).startsWith('RM-DEMO-');}).every(function(p){return String(p.alamat||'').includes('bukan data pasien nyata')||String(p.nik||'').startsWith('DEMO');}), 'Akun demo menggunakan data fiktif.');
+  return checks;
+}
+function renderAuditSistem(){
+  setPageTitle('Audit Sistem');
+  const checks=runSystemAudit(), pass=checks.filter(function(x){return x.pass;}).length;
+  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V13.8 untuk memastikan jalur utama, data demo, antrean, QR, dan batas prototype tetap konsisten.')+
+    '<div class="ops-kpi-grid"><div class="ops-kpi"><div class="kpi-label">Lulus</div><div class="kpi-value">'+pass+'</div></div><div class="ops-kpi"><div class="kpi-label">Diperiksa</div><div class="kpi-value">'+checks.length+'</div></div><div class="ops-kpi"><div class="kpi-label">Status</div><div class="kpi-value" style="font-size:20px">'+(pass===checks.length?'SIAP':'PERLU REVIEW')+'</div></div></div>'+
+    '<div class="panel"><div class="panel-head"><div><h2>🧪 Self-Test V13.8</h2><div class="hint">Ini adalah audit data/aturan sisi client, bukan pengganti pengujian keamanan backend.</div></div><button class="btn btn-outline btn-sm" onclick="renderAuditSistem()">↻ Jalankan Lagi</button></div><div class="panel-body">'+
+    '<div class="table-wrap"><table><thead><tr><th>Status</th><th>Pemeriksaan</th><th>Detail</th></tr></thead><tbody>'+checks.map(function(c){return '<tr><td>'+(c.pass?'<span class="badge badge-sage">✓ LULUS</span>':'<span class="badge badge-brick">✕ GAGAL</span>')+'</td><td><strong>'+esc(c.label)+'</strong></td><td>'+esc(c.detail)+'</td></tr>';}).join('')+'</tbody></table></div></div></div>'+
+    '<div class="alert alert-warning"><strong>Batas prototype:</strong> localStorage hanya untuk simulasi. Untuk produksi dibutuhkan backend, database terpusat, autentikasi server, otorisasi server, audit trail terpusat, enkripsi, backup, dan integrasi resmi.</div>';
+}
+
 /* =================================================================
    INIT / PWA BOOTSTRAP
    ================================================================= */
@@ -3952,6 +4043,7 @@ MODULE_RENDERERS['riwayat-dokter'] = renderRiwayatDokter;
 MODULE_RENDERERS['master-data'] = renderMasterData;
 MODULE_RENDERERS['cek-antrian'] = renderCekAntrian;
 MODULE_RENDERERS['monitor-antrean'] = renderMonitorAntrean;
+MODULE_RENDERERS['audit-sistem'] = renderAuditSistem;
 function openDoctorMonitor(){
   const u=Session.currentUser; if(!u||!['dokter','perawat','rawat_jalan','admin'].includes(u.role))return;
   const poliId=canonicalPoliId(u.poliId||'SP-JAN');
@@ -3976,7 +4068,7 @@ function renderMonitorAntrean(){
   const doctorInfo=activeDoctor?esc(activeDoctor.nama):'Menunggu sesi dokter berikutnya';
   const nextSession=schedules.find(sc=>{const a=String(sc.jamMulai||'00:00').split(':').map(Number);return (now.getHours()*60+now.getMinutes()) < a[0]*60+a[1];});
   const nextInfo=nextSession?('Berikutnya: '+esc((Store.data.users.find(u=>u.id===nextSession.doctorId)||doctorMasterById(nextSession.doctorId)||{}).nama||'Dokter')+' · '+esc(nextSession.jamMulai)+'–'+esc(nextSession.jamSelesai)):'';
-  document.getElementById('main-content').innerHTML='<div class="public-monitor"><div class="monitor-head"><div><div class="ops-eyebrow">SIMRS RSUD R.T. NOTOPURO · MONITOR POLI</div><h1>'+esc(poli.nama).toUpperCase()+'</h1><div>'+doctorInfo+' · '+sessionInfo+'</div></div><div class="monitor-clock" id="monitor-clock"></div></div><div class="monitor-current"><span>NOMOR YANG DIPANGGIL</span><strong>'+esc(active?active.noAntrian:'—')+'</strong><div>'+(active?'Silakan menuju ruang pemeriksaan':'Mohon menunggu panggilan berikutnya')+'</div></div><div class="monitor-next"><h2>ANTREAN MENUNGGU</h2><div class="monitor-queue-list">'+(waiting.length?waiting.slice(0,10).map(function(v){return '<div><strong>'+esc(v.noAntrian)+'</strong><span>Menunggu</span></div>';}).join(''):'<div class="monitor-empty">Belum ada pasien yang menunggu.</div>')+'</div></div><div class="monitor-session-strip"><span>SESI AKTIF</span><strong>'+sessionInfo+'</strong><small>'+esc(nextInfo)+'</small></div><div class="monitor-footer">Nomor antrean dibuat per poli dan tanggal · Dokter/sesi dialokasikan otomatis sesuai jadwal dan kapasitas · Tidak menampilkan nama pasien</div></div>';
+  document.getElementById('main-content').innerHTML='<div class="public-monitor"><div class="monitor-head"><div><div class="ops-eyebrow">SIMRS PROTOTYPE · MONITOR POLI</div><h1>'+esc(poli.nama).toUpperCase()+'</h1><div>'+doctorInfo+' · '+sessionInfo+'</div></div><div class="monitor-clock" id="monitor-clock"></div></div><div class="monitor-current"><span>NOMOR YANG DIPANGGIL</span><strong>'+esc(active?active.noAntrian:'—')+'</strong><div>'+(active?'Silakan menuju ruang pemeriksaan':'Mohon menunggu panggilan berikutnya')+'</div></div><div class="monitor-next"><h2>ANTREAN MENUNGGU</h2><div class="monitor-queue-list">'+(waiting.length?waiting.slice(0,10).map(function(v){return '<div><strong>'+esc(v.noAntrian)+'</strong><span>Menunggu</span></div>';}).join(''):'<div class="monitor-empty">Belum ada pasien yang menunggu.</div>')+'</div></div><div class="monitor-session-strip"><span>SESI AKTIF</span><strong>'+sessionInfo+'</strong><small>'+esc(nextInfo)+'</small></div><div class="monitor-footer">Nomor antrean dibuat per poli dan tanggal · Dokter/sesi dialokasikan otomatis sesuai jadwal dan kapasitas · Tidak menampilkan nama pasien</div></div>';
   if(monitorClockTimer)clearInterval(monitorClockTimer); const clock=document.getElementById('monitor-clock'); if(clock){const tick=()=>clock.textContent=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});tick();monitorClockTimer=setInterval(tick,1000);}
 }
 
