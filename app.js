@@ -5,7 +5,7 @@
 const BIAYA_REGISTRASI = 10000;
 const BIAYA_LAB = 75000;
 const LOW_STOCK_THRESHOLD = 15;
-const PROTOTYPE_VERSION = 'v14.4';
+const PROTOTYPE_VERSION = 'v14.4.1';
 const PROTOTYPE_NAME = 'SIMRS PROTOTYPE';
 const PROTOTYPE_MODE = 'Portfolio / Demo';
 const QUEUE_JOURNEY = [
@@ -900,7 +900,6 @@ const NAV_ITEMS = [
   {hash:'pasien-booking',label:'Rawat Jalan',ic:'📅'},
   {hash:'pasien-rawat-inap',label:'Rawat Inap',ic:'🏥'},
   {hash:'pasien-booking-saya',label:'Booking Saya',ic:'🎫'},
-  {hash:'monitor-antrean',label:'Monitor',ic:'📺'},
   {hash:'pasien-riwayat',label:'Riwayat',ic:'🕘'}
 ];
 
@@ -927,8 +926,10 @@ const ROLE_ROUTE_RULES = {
 function isRouteAllowed(route, role){
   const u = Session.currentUser;
   if(!u || !role) return false;
+  // Menu pasien tidak boleh bocor ke navigasi staf/admin; pasien memiliki shell sendiri.
+  if(role!=='pasien' && route.indexOf('pasien-')===0) return false;
   if(role==='admin') return true; // super user
-  if(route==='monitor-antrean') return true;
+  if(route==='monitor-antrean') return ['monitor_public','loket','rawat_jalan','dokter','dokter_igd','dokter_ranap','perawat','perawat_igd','perawat_ranap','pasien'].includes(role);
 
   const allowed = ROLE_ROUTE_RULES[role] || [];
   if(!allowed.includes(route)) return false;
@@ -993,7 +994,8 @@ function getVisibleNotifications(){
 function renderShell(route){
   const u = Session.currentUser;
   const visibleNotifications=getVisibleNotifications();
-  const items = NAV_ITEMS.filter(n=>isRouteAllowed(n.hash,u.role) && !(u.role==='pasien' && (n.hash==='cek-antrian' || /cari|pencarian/i.test(n.label))));
+  const items = NAV_ITEMS.filter(n=>isRouteAllowed(n.hash,u.role) && !(u.role==='pasien' && (n.hash==='cek-antrian' || /cari|pencarian/i.test(n.label))))
+    .filter(function(n,i,arr){ return arr.findIndex(function(x){return x.hash===n.hash;})===i; });
   // Navigasi mobile dibuat tetap dan ringkas. Pasien memakai 6 tab khusus; Admin memakai 5 tab + folder Lainnya.
   const patientFixedNav = ['pasien-dashboard','pasien-booking','pasien-rawat-inap','pasien-booking-saya','monitor-antrean','pasien-riwayat'];
   const adminFixedNav = ['dashboard','poli','ranap','beranda'];
@@ -1083,7 +1085,7 @@ function openNotifications(){
 function openAdminMenuFolder(overflow){
   const groups = [
     {title:'Pelayanan', items:['pendaftaran','booking','igd','lab','radiologi','farmasi-rawat-jalan','farmasi-rawat-inap','farmasi-igd']},
-    {title:'Administrasi & Monitoring', items:['kasir-rawat-jalan','kasir-rawat-inap','kasir-igd','rekam-medis','riwayat-dokter','master-data','audit-sistem','cek-antrian','monitor-antrean']}
+    {title:'Administrasi & Monitoring', items:['kasir-rawat-jalan','kasir-rawat-inap','kasir-igd','rekam-medis','master-data','audit-sistem','cek-antrian','monitor-antrean']}
   ];
   const ordered=[];
   groups.forEach(g=>g.items.forEach(h=>{const n=overflow.find(x=>x.hash===h); if(n && !ordered.some(x=>x.hash===n.hash)) ordered.push(n);}));
@@ -4133,6 +4135,11 @@ function renderRiwayatDokter(){
   const list=Store.data.visits.filter(function(v){
     return v.dokterId===u.id && (v.diagnosis || v.catatan || v.vital || v.screening);
   }).sort(function(a,b){return new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt);});
+  // Variabel ini wajib didefinisikan sebelum template dirender. Versi sebelumnya
+  // merujuk medOrders/canAdminMed tanpa deklarasi sehingga menu Riwayat dokter
+  // berhenti dengan ReferenceError dan tampak seperti tombol tidak berfungsi.
+  const medOrders = [];
+  const canAdminMed = false;
   document.getElementById('main-content').innerHTML=
     pageIntro('Riwayat pemeriksaan khusus dokter yang sedang login. '+(u.poliId?'Hanya pemeriksaan pada '+esc(getPoli(u.poliId).nama)+' yang ditangani akun ini. ':'')+'Data klinis tetap melekat pada nomor rekam medis pasien dan dapat dibuka melalui Rekam Medis.')+
     '<div class="panel"><div class="panel-head"><div><h2>🩺 Riwayat Pemeriksaan Saya</h2><div class="hint">'+list.length+' kunjungan memiliki data klinis yang sudah dicatat.</div></div></div><div class="panel-body">'+
