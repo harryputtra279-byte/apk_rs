@@ -5,7 +5,7 @@
 const BIAYA_REGISTRASI = 10000;
 const BIAYA_LAB = 75000;
 const LOW_STOCK_THRESHOLD = 15;
-const PROTOTYPE_VERSION = 'v14.4.1';
+const PROTOTYPE_VERSION = 'v14.4.2';
 const PROTOTYPE_NAME = 'SIMRS PROTOTYPE';
 const PROTOTYPE_MODE = 'Portfolio / Demo';
 const QUEUE_JOURNEY = [
@@ -892,6 +892,7 @@ const NAV_ITEMS = [
   {hash:'kasir-igd',label:'Kasir IGD',ic:'🧾'},
   {hash:'rekam-medis',label:'Rekam Medis',ic:'📋'},
   {hash:'riwayat-dokter',label:'Riwayat',ic:'🕘'},
+  {hash:'riwayat-admin',label:'Riwayat',ic:'🕘'},
   {hash:'master-data',label:'Master Data',ic:'⚙️'},
   {hash:'audit-sistem',label:'Audit Sistem',ic:'🧪'},
   {hash:'cek-antrian',label:'Cek Antrian',ic:'📺'},
@@ -994,6 +995,8 @@ function getVisibleNotifications(){
 function renderShell(route){
   const u = Session.currentUser;
   const visibleNotifications=getVisibleNotifications();
+  // Katalog menu SELALU dibatasi oleh RBAC lalu dideduplikasi berdasarkan route.
+  // Ini mencegah menu pasien/dokter bocor ke Admin dan mencegah satu route tampil dua kali.
   const items = NAV_ITEMS.filter(n=>isRouteAllowed(n.hash,u.role) && !(u.role==='pasien' && (n.hash==='cek-antrian' || /cari|pencarian/i.test(n.label))))
     .filter(function(n,i,arr){ return arr.findIndex(function(x){return x.hash===n.hash;})===i; });
   // Navigasi mobile dibuat tetap dan ringkas. Pasien memakai 6 tab khusus; Admin memakai 5 tab + folder Lainnya.
@@ -1004,7 +1007,10 @@ function renderShell(route){
     : u.role==='admin'
       ? adminFixedNav.map(h=>items.find(n=>n.hash===h)).filter(Boolean)
       : items.slice(0,4);
-  const overflow = u.role==='pasien' ? [] : (u.role==='admin' ? items.filter(n=>!adminFixedNav.includes(n.hash)) : items.slice(4));
+  const ADMIN_FOLDER_ROUTES = ['pendaftaran','booking','igd','lab','radiologi','farmasi-rawat-jalan','farmasi-rawat-inap','farmasi-igd','kasir-rawat-jalan','kasir-rawat-inap','kasir-igd','rekam-medis','riwayat-admin','master-data','audit-sistem','cek-antrian','monitor-antrean'];
+  const overflow = u.role==='pasien' ? [] : (u.role==='admin'
+    ? ADMIN_FOLDER_ROUTES.map(function(h){return items.find(function(n){return n.hash===h;});}).filter(Boolean)
+    : items.slice(4));
   const initial = (u.nama||'?').trim().charAt(0).toUpperCase();
 
   const sidebarNavHtml = items.map(n=>
@@ -1083,13 +1089,16 @@ function openNotifications(){
   Store.save();
 }
 function openAdminMenuFolder(overflow){
+  // Admin folder memakai daftar whitelist sendiri; tidak mengambil route pasien/dokter.
+  // Set juga dideduplikasi lagi sebagai pengaman terakhir sebelum DOM dibuat.
+  overflow = (overflow||[]).filter(function(n,i,arr){return n && arr.findIndex(function(x){return x.hash===n.hash;})===i;});
   const groups = [
     {title:'Pelayanan', items:['pendaftaran','booking','igd','lab','radiologi','farmasi-rawat-jalan','farmasi-rawat-inap','farmasi-igd']},
-    {title:'Administrasi & Monitoring', items:['kasir-rawat-jalan','kasir-rawat-inap','kasir-igd','rekam-medis','master-data','audit-sistem','cek-antrian','monitor-antrean']}
+    {title:'Administrasi & Monitoring', items:['kasir-rawat-jalan','kasir-rawat-inap','kasir-igd','rekam-medis','riwayat-admin','master-data','audit-sistem','cek-antrian','monitor-antrean']}
   ];
   const ordered=[];
   groups.forEach(g=>g.items.forEach(h=>{const n=overflow.find(x=>x.hash===h); if(n && !ordered.some(x=>x.hash===n.hash)) ordered.push(n);}));
-  overflow.forEach(n=>{if(!ordered.some(x=>x.hash===n.hash)) ordered.push(n);});
+  // Tidak ada penambahan menu lain di luar whitelist Admin Folder.
   const cards=ordered.map(function(n){return '<button class="admin-folder-item" data-nav="'+n.hash+'"><span class="admin-folder-icon">'+n.ic+'</span><span>'+esc(n.label)+'</span></button>';}).join('');
   document.getElementById('modal-root').innerHTML =
     '<div class="sheet-overlay admin-folder-overlay" id="modal-overlay"><div class="admin-menu-folder">'+
@@ -4424,6 +4433,16 @@ function renderIGD(){
     '<div class="panel"><div class="panel-head"><h2>Integrasi Layanan</h2></div><div class="panel-body"><div class="hint">Farmasi IGD dan Kasir IGD tersedia sebagai menu terpisah agar alur IGD tidak tercampur dengan Rawat Jalan/Rawat Inap.</div></div></div></div>';
 }
 
+function renderRiwayatAdmin(){
+  setPageTitle('Riwayat');
+  const logs=Array.isArray(Store.data.auditLog)?Store.data.auditLog.slice(0,100):[];
+  document.getElementById('main-content').innerHTML=
+    pageIntro('Riwayat aktivitas sistem untuk Admin. Riwayat ini berbeda dari Riwayat Pemeriksaan Dokter dan tidak menampilkan menu pasien.')+
+    '<div class="panel"><div class="panel-head"><div><h2>🕘 Riwayat Aktivitas Sistem</h2><div class="hint">'+logs.length+' aktivitas terakhir tersimpan pada demo perangkat ini.</div></div></div><div class="panel-body">'+
+    (logs.length?'<div class="table-wrap"><table><thead><tr><th>Waktu</th><th>Pengguna</th><th>Peran</th><th>Aktivitas</th><th>Detail</th></tr></thead><tbody>'+logs.map(function(x){return '<tr><td>'+esc(formatTanggalWaktu(x.createdAt))+'</td><td>'+esc(x.userName||'-')+'</td><td>'+esc(x.role||'-')+'</td><td><strong>'+esc(x.aksi||'-')+'</strong></td><td>'+esc(x.detail||'-')+'</td></tr>';}).join('')+'</tbody></table></div>':'<div class="empty"><div class="big">🕘</div>Belum ada aktivitas yang tercatat.</div>')+
+    '</div></div>';
+}
+
 function runSystemAudit(){
   const checks=[];
   function check(id,label,pass,detail){checks.push({id,label,pass,detail});}
@@ -4444,6 +4463,9 @@ function runSystemAudit(){
   check('ranap-shift','Shift Rawat Inap 24 jam terdefinisi',INPATIENT_SHIFTS.length===3&&INPATIENT_SHIFTS.every(function(x){return x.jamMulai&&x.jamSelesai;}),'Pagi 06–14, Sore 14–22, Malam 22–06.');
   check('admin-radiology-route','Admin memiliki menu Radiologi',isRouteAllowed('radiologi','admin') && NAV_ITEMS.some(function(n){return n.hash==='radiologi';}),'Radiologi tersedia untuk Admin melalui folder Lainnya.');
   check('admin-mobile-nav','Admin memiliki 5 item mobile termasuk Lainnya', ['dashboard','poli','ranap','beranda'].every(function(h){return NAV_ITEMS.some(function(n){return n.hash===h;});}),'Dashboard · Rawat Jalan · Rawat Inap · Beranda · Lainnya.');
+  check('nav-no-duplicate-monitor','Route Monitor tidak terduplikasi',NAV_ITEMS.filter(function(n){return n.hash==='monitor-antrean';}).length===1,'Monitor hanya memiliki satu route: monitor-antrean.');
+  check('nav-no-duplicate-history','Route Riwayat tidak terduplikasi untuk dokter',NAV_ITEMS.filter(function(n){return n.hash==='riwayat-dokter';}).length===1,'Riwayat dokter hanya memiliki satu route: riwayat-dokter.');
+  check('admin-folder-no-patient-menu','Booking Saya/Riwayat pasien tidak bocor ke folder Admin',!['pasien-booking-saya','pasien-riwayat','pasien-dashboard','pasien-booking','pasien-rawat-inap'].some(function(h){return ['pendaftaran','booking','igd','lab','radiologi','farmasi-rawat-jalan','farmasi-rawat-inap','farmasi-igd','kasir-rawat-jalan','kasir-rawat-inap','kasir-igd','rekam-medis','riwayat-admin','master-data','audit-sistem','cek-antrian','monitor-antrean'].includes(h);}), 'Folder Admin memakai whitelist modul staf.');
   check('inpatient-journey','Journey Rawat Inap memiliki alur utama dan aktivitas dinamis', typeof patientInpatientJourney==='function' && typeof inpatientJourneyForAdmission==='function','Admisi · Kamar/Bed · Perawatan · Evaluasi · Pulang + aktivitas pendukung sesuai order.');
   check('demo-data','Tidak ada identitas pasien nyata pada akun demo',Store.data.patients.filter(function(p){return String(p.id).startsWith('RM-DEMO-');}).every(function(p){return String(p.alamat||'').includes('bukan data pasien nyata')||String(p.nik||'').startsWith('DEMO');}), 'Akun demo menggunakan data fiktif.');
   return checks;
@@ -4483,6 +4505,7 @@ MODULE_RENDERERS['kasir-rawat-inap'] = renderKasir;
 MODULE_RENDERERS['kasir-igd'] = renderKasir;
 MODULE_RENDERERS['rekam-medis'] = renderRekamMedis;
 MODULE_RENDERERS['riwayat-dokter'] = renderRiwayatDokter;
+MODULE_RENDERERS['riwayat-admin'] = renderRiwayatAdmin;
 MODULE_RENDERERS['master-data'] = renderMasterData;
 MODULE_RENDERERS['cek-antrian'] = renderCekAntrian;
 MODULE_RENDERERS['monitor-antrean'] = renderMonitorAntrean;

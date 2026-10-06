@@ -18,13 +18,13 @@ V14.3 adalah penyempurnaan dari V14.2. Fokusnya adalah membuat Rawat Inap terlih
 
 ### Perbaikan penting v14.4
 
-### Perbaikan v14.4.1 — Demo Account Navigation & History Fix
+### Perbaikan v14.4.2 — Demo Account Navigation & History Fix
 - Menghapus duplikasi route `Monitor` pada katalog navigasi.
 - `Monitor` hanya ditampilkan pada role yang memang membutuhkan monitor antrean; akun Laboratorium/Radiologi tidak lagi mendapat menu Monitor yang tidak relevan.
 - Menghapus akses `Riwayat Pemeriksaan Dokter` dari menu Admin; histori aktivitas Admin tetap melalui Audit Sistem.
 - Memperbaiki bug `Riwayat Pemeriksaan Dokter` yang sebelumnya berhenti karena referensi variabel `medOrders`/`canAdminMed` tidak terdefinisi.
 - Menambahkan de-duplicator route pada shell agar satu hash hanya dirender sekali walaupun katalog menu berubah di masa depan.
-- Service Worker/cache dinaikkan ke v14.4.1.
+- Service Worker/cache dinaikkan ke v14.4.2.
 
 - Order Rawat Inap terhubung ke Laboratorium dan Radiologi sampai hasil kembali ke episode pasien.
 - Order obat Rawat Inap: dokter → farmasi → diserahkan ke perawat → dicatat diberikan oleh perawat (eMAR simulasi).
