@@ -1801,7 +1801,11 @@ function patientJourneyDefinition(v){
   // Patient Journey bersifat dinamis: unit yang tidak dibutuhkan pasien tidak ditampilkan.
   // Jalur aktual ditentukan oleh tindakan/permintaan dokter, bukan sekadar poli.
   const hasLab=!!(v && v.labRequest);
-  const hasRx=!!(v && v.resepId);
+  // Resep dianggap aktif jika visit memiliki resepId atau sudah masuk status
+  // yang hanya mungkin terjadi setelah resep Rawat Jalan dibuat.
+  // Fallback status ini menjaga Patient Journey tetap muncul pada data lama/migrasi
+  // yang mungkin belum memiliki resepId tersimpan.
+  const hasRx=!!(v && (v.resepId || ['menunggu_farmasi','obat_siap'].includes(v.status)));
   const steps=[
     {key:'booking',label:'Pendaftaran',icon:'📅'},
     {key:'checkin',label:'Check-in',icon:'✓'},
@@ -1817,7 +1821,7 @@ function patientJourneyDefinition(v){
   }
   steps.push({key:'payment',label:'Kasir',icon:'💳'});
   if(hasRx){
-    steps.push({key:'pharmacy_pickup',label:'Farmasi',sub:'Ambil obat',icon:'💊'});
+    steps.push({key:'pharmacy_pickup',label:'Pengambilan Obat',sub:'Ambil obat di farmasi',icon:'💊'});
   }
   steps.push({key:'done',label:'Selesai',icon:'✓'});
   return steps;

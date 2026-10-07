@@ -667,3 +667,63 @@ body.kiosk-on .content{max-width:1100px;margin:0 auto;padding-top:32px}
   .admin-topbar .topbar-right{grid-column:3!important;grid-row:1!important;position:static!important;margin:0!important;min-width:max-content!important}
 }
 @media(max-width:600px){.admin-topbar{padding-left:3px!important;padding-right:5px!important}.admin-topbar .admin-top-menu-btn{margin-left:0!important}}
+
+
+/* ================================================================
+   V14.6.2 — Mobile safety: modal & form tidak boleh keluar viewport
+   ================================================================ */
+.modal-overlay{
+  overflow:auto;
+  box-sizing:border-box;
+}
+.modal{
+  width:min(100%,520px);
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+.modal-head,.modal-body,.panel,.panel-body,#form-periksa{
+  min-width:0;
+  box-sizing:border-box;
+}
+.modal input,.modal select,.modal textarea,
+#form-periksa input,#form-periksa select,#form-periksa textarea{
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
+}
+.field-row>*,.field-row3>*{
+  min-width:0;
+}
+#poli-exam-area,
+#poli-exam-area .panel,
+#poli-exam-area .panel-body{
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
+}
+#form-periksa>div:last-child{
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
+}
+#form-periksa>div:last-child .btn{
+  min-width:0;
+  max-width:100%;
+  white-space:normal;
+  box-sizing:border-box;
+}
+@media(max-width:600px){
+  .modal-overlay{padding:10px;}
+  .modal-head{padding:14px 15px;}
+  .modal-body{padding:15px;}
+  #form-periksa>div:last-child{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  #form-periksa>div:last-child .btn{
+    width:100%;
+    flex:0 1 auto;
+  }
+}
