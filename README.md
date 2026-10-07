@@ -1,6 +1,6 @@
 # SIMRS PROTOTYPE — Portfolio / Demo
 
-**Versi:** V14.6.2  
+**Versi:** V14.6.3  
 **Baseline pengembangan:** V14.6.1  
 **Platform:** PWA / Web  
 **Status:** Prototype portfolio, bukan SIMRS produksi
@@ -32,6 +32,14 @@ Perubahan dibuat langsung dari baseline **V14.6.1**:
 - Pengujian responsif dilakukan pada viewport **360×800, 390×844, dan 412×915**.
 - Pengujian alur resep dilakukan untuk memastikan status bergerak dari **Farmasi → Kasir → Pengambilan Obat** dan tahap pengambilan obat tampil pada Patient Journey.
 - Service Worker/cache dinaikkan ke **V14.6.2** agar browser mengambil aset aplikasi terbaru.
+
+
+## 4. Perubahan V14.6.3 — Monitor Klinik, Patient Journey Farmasi, dan Pemisahan Akun RJ
+
+- Patient Journey pasien kini mencari resep langsung berdasarkan `visitId`, sehingga tahap **Pengambilan Obat** tetap muncul meskipun `resepId` pada visit lama belum tersimpan/terisi.
+- Monitor antrean akun dokter/perawat Rawat Jalan dikunci mengikuti `poliId` akun login; konfigurasi monitor dari sesi akun lain tidak dapat mengganti klinik akun aktif.
+- Pemetaan akun dokter Rawat Jalan dinormalisasi menjadi satu username untuk satu akun; tautan dokter master diperbaiki agar tidak mengambil record duplikat.
+- Login demo Rawat Jalan dipisahkan menjadi kelompok **Dokter Rawat Jalan** dan **Perawat/Asisten Rawat Jalan**.
 
 ## 3. Perubahan V14.6.0 — UI Navbar Admin & Menu Sekunder
 
@@ -312,9 +320,11 @@ Proyek ini dibuat untuk menunjukkan kemampuan dalam:
 |---|---|
 | V14.5.2 | Rawat Jalan, UI Penunjang, alokasi dokter klinik reguler |
 | V14.6.1 | Penyempurnaan UI tombol hasil Lab/Radiologi dan posisi tombol Menu Admin |
-| **V14.6.0** | **UI Navbar Admin dan pemindahan Menu Lainnya ke tombol kiri atas** |
+| **V14.6.3** | **Perbaikan monitor klinik, Patient Journey farmasi, dan pemisahan akun Rawat Jalan** |
+| V14.6.2 | Patient Journey farmasi dan mobile responsive fix |
+| V14.6.0 | UI Navbar Admin dan pemindahan Menu Lainnya ke tombol kiri atas |
 
-**Baseline aktif untuk pengembangan berikutnya: V14.6.1**
+**Baseline aktif untuk pengembangan berikutnya: V14.6.3**
 
 ---
 
