@@ -1,7 +1,7 @@
 # SIMRS PROTOTYPE — Portfolio / Demo
 
-**Versi:** V14.6.3  
-**Baseline pengembangan:** V14.6.1  
+**Versi:** V14.6.4  
+**Baseline pengembangan:** V14.6.3  
 **Platform:** PWA / Web  
 **Status:** Prototype portfolio, bukan SIMRS produksi
 
@@ -21,27 +21,7 @@ Aturan pengembangan proyek:
 4. Setiap perubahan harus melalui pemeriksaan syntax, UI, navigasi, role/RBAC, alur utama, dan regresi fitur sebelum ZIP diberikan.
 5. README hanya diperbarui setelah fungsi aplikasi cukup stabil untuk didokumentasikan.
 
-## 2. Perubahan V14.6.2 — Patient Journey & Mobile Responsive Fix
-
-Perubahan dibuat langsung dari baseline **V14.6.1**:
-
-- Alur resep Rawat Jalan sekarang tetap menampilkan tahap **Pengambilan Obat — Ambil obat di farmasi** ketika kunjungan sudah berstatus `obat_siap`.
-- Patient Journey memiliki fallback berdasarkan status `menunggu_farmasi` / `obat_siap` sehingga data lama yang belum memiliki `resepId` tidak kehilangan tahap pengambilan obat.
-- Form Screening Perawat diperketat agar modal, field, dan konten tidak melewati viewport pada layar kecil.
-- Form Pemeriksaan/Diagnosis Dokter diperketat agar area tombol dan input tidak menyebabkan horizontal overflow.
-- Pengujian responsif dilakukan pada viewport **360×800, 390×844, dan 412×915**.
-- Pengujian alur resep dilakukan untuk memastikan status bergerak dari **Farmasi → Kasir → Pengambilan Obat** dan tahap pengambilan obat tampil pada Patient Journey.
-- Service Worker/cache dinaikkan ke **V14.6.2** agar browser mengambil aset aplikasi terbaru.
-
-
-## 4. Perubahan V14.6.3 — Monitor Klinik, Patient Journey Farmasi, dan Pemisahan Akun RJ
-
-- Patient Journey pasien kini mencari resep langsung berdasarkan `visitId`, sehingga tahap **Pengambilan Obat** tetap muncul meskipun `resepId` pada visit lama belum tersimpan/terisi.
-- Monitor antrean akun dokter/perawat Rawat Jalan dikunci mengikuti `poliId` akun login; konfigurasi monitor dari sesi akun lain tidak dapat mengganti klinik akun aktif.
-- Pemetaan akun dokter Rawat Jalan dinormalisasi menjadi satu username untuk satu akun; tautan dokter master diperbaiki agar tidak mengambil record duplikat.
-- Login demo Rawat Jalan dipisahkan menjadi kelompok **Dokter Rawat Jalan** dan **Perawat/Asisten Rawat Jalan**.
-
-## 3. Perubahan V14.6.0 — UI Navbar Admin & Menu Sekunder
+## 2. Perubahan V14.6.0 — UI Navbar Admin & Menu Sekunder
 
 ### Navbar Admin Super User
 
@@ -85,7 +65,7 @@ Tombol tersebut membuka folder glass berisi modul sekunder, antara lain:
 
 Menu utama digunakan untuk fungsi yang paling sering dipakai, sedangkan modul sekunder tetap tersedia melalui tombol Menu. Dengan demikian navbar tidak penuh, tetapi fungsi Admin tetap lengkap.
 
-## 4. Modul yang tersedia
+## 3. Modul yang tersedia
 
 ### Rawat Jalan
 
@@ -138,7 +118,7 @@ Menu utama digunakan untuk fungsi yang paling sering dipakai, sedangkan modul se
 - Audit Sistem
 - Monitor antrean
 
-## 5. Navigasi berdasarkan role
+## 4. Navigasi berdasarkan role
 
 ### Admin Super User
 
@@ -190,7 +170,7 @@ Menu utama menyesuaikan unit kerja akun, sehingga modul yang tidak relevan tidak
 
 **Beranda | Rawat Jalan | Rawat Inap | Booking Saya | Monitor | Riwayat**
 
-## 6. Akun demo utama
+## 5. Akun demo utama
 
 | Role | Username | Password |
 |---|---|---|
@@ -211,7 +191,7 @@ Menu utama menyesuaikan unit kerja akun, sehingga modul yang tidak relevan tidak
 
 Akun tambahan tersedia untuk dokter/perawat per unit, dokter jaga dan perawat per shift, Farmasi/Kasir IGD, Farmasi/Kasir Rawat Inap, serta pasien demo Rawat Inap.
 
-## 7. Teknologi
+## 6. Teknologi
 
 - HTML5
 - CSS3
@@ -225,7 +205,7 @@ Akun tambahan tersedia untuk dokter/perawat per unit, dokter jaga dan perawat pe
 
 Prototype sengaja dibuat tanpa framework frontend besar agar source mudah dibaca, dipelajari, dan dipresentasikan sebagai portfolio.
 
-## 8. Arsitektur prototype
+## 7. Arsitektur prototype
 
 ```text
 PWA / Browser
@@ -320,13 +300,20 @@ Proyek ini dibuat untuk menunjukkan kemampuan dalam:
 |---|---|
 | V14.5.2 | Rawat Jalan, UI Penunjang, alokasi dokter klinik reguler |
 | V14.6.1 | Penyempurnaan UI tombol hasil Lab/Radiologi dan posisi tombol Menu Admin |
-| **V14.6.3** | **Perbaikan monitor klinik, Patient Journey farmasi, dan pemisahan akun Rawat Jalan** |
-| V14.6.2 | Patient Journey farmasi dan mobile responsive fix |
-| V14.6.0 | UI Navbar Admin dan pemindahan Menu Lainnya ke tombol kiri atas |
+| **V14.6.0** | **UI Navbar Admin dan pemindahan Menu Lainnya ke tombol kiri atas** |
 
-**Baseline aktif untuk pengembangan berikutnya: V14.6.3**
+**Baseline aktif untuk pengembangan berikutnya: V14.6.1**
 
 ---
 
 **SIMRS PROTOTYPE — Portfolio / Demo**  
 Dibuat sebagai proyek portfolio Sistem Informasi untuk menunjukkan kemampuan analisis, desain, implementasi frontend, business logic, RBAC, PWA, dan pengujian alur aplikasi.
+
+
+## V14.6.4 — Samsung Glass 3D Full UI
+
+- Samsung Glass 3D diterapkan menyeluruh pada surface UI.
+- Halaman login ikut menggunakan bahasa visual Glass 3D.
+- Panel, card, form, tombol, navigasi, modal, monitor, journey, dan bottom navigation diseragamkan.
+- Perubahan UI tidak mengubah workflow SIMRS, RBAC, data, atau logika antrean.
+- Responsive mobile tetap dipertahankan untuk layar sempit.

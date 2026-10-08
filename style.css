@@ -670,60 +670,96 @@ body.kiosk-on .content{max-width:1100px;margin:0 auto;padding-top:32px}
 
 
 /* ================================================================
-   V14.6.2 — Mobile safety: modal & form tidak boleh keluar viewport
+   V14.6.4 — SAMSUNG GLASS 3D / FULL UI SYSTEM
+   Prinsip: frosted glass + layered depth + specular highlight + soft edge.
+   Hanya visual; tidak mengubah workflow, RBAC, data, atau event handler.
    ================================================================ */
-.modal-overlay{
-  overflow:auto;
-  box-sizing:border-box;
+:root{
+  --glass-3d-bg:rgba(255,255,255,.48);
+  --glass-3d-bg-strong:rgba(255,255,255,.68);
+  --glass-3d-edge:rgba(255,255,255,.78);
+  --glass-3d-edge-soft:rgba(255,255,255,.42);
+  --glass-3d-shadow:0 18px 45px rgba(18,31,43,.16),0 5px 16px rgba(18,31,43,.08),inset 0 1px 0 rgba(255,255,255,.76),inset 0 -1px 0 rgba(18,31,43,.05);
+  --glass-3d-shadow-hover:0 24px 58px rgba(18,31,43,.21),0 8px 20px rgba(18,31,43,.10),inset 0 1px 0 rgba(255,255,255,.86),inset 0 -1px 0 rgba(18,31,43,.05);
+  --glass-3d-blur:28px;
 }
-.modal{
-  width:min(100%,520px);
-  max-width:100%;
-  min-width:0;
-  box-sizing:border-box;
+body{background-image:radial-gradient(circle at 10% 5%,rgba(14,92,86,.34),transparent 36%),radial-gradient(circle at 92% 10%,rgba(47,128,120,.28),transparent 34%),radial-gradient(circle at 88% 92%,rgba(184,114,42,.18),transparent 38%),radial-gradient(circle at 5% 90%,rgba(58,90,120,.18),transparent 38%),linear-gradient(145deg,#e7f2f0 0%,#f3f3ef 48%,#f6eee4 100%);}
+
+/* Semua surface utama */
+.panel,.sidebar,.topbar,.stat,.queue-board-item,.login-panel,.modal,.bottom-tabbar,.bottom-sheet,.ticket,.queue-list-item,.action-card,.patient-journey-card,.admin-menu-folder,.patient-hero,.ops-hero,.ops-kpi,.doctor-session-dashboard,.public-monitor,.monitor-current,.monitor-next,.monitor-session-strip,.checkin-result-card,.scanner-frame,.login-demo-section{
+  background:linear-gradient(145deg,rgba(255,255,255,.62),rgba(255,255,255,.30));
+  border:1px solid var(--glass-3d-edge);
+  -webkit-backdrop-filter:blur(var(--glass-3d-blur)) saturate(180%);
+  backdrop-filter:blur(var(--glass-3d-blur)) saturate(180%);
+  box-shadow:var(--glass-3d-shadow);
+  position:relative;
+  overflow:hidden;
 }
-.modal-head,.modal-body,.panel,.panel-body,#form-periksa{
-  min-width:0;
-  box-sizing:border-box;
+.panel::before,.sidebar::before,.topbar::before,.stat::before,.queue-board-item::before,.login-panel::before,.modal::before,.bottom-tabbar::before,.bottom-sheet::before,.ticket::before,.queue-list-item::before,.action-card::before,.patient-journey-card::before,.admin-menu-folder::before,.patient-hero::before,.ops-hero::before,.ops-kpi::before,.doctor-session-dashboard::before,.public-monitor::before,.monitor-current::before,.monitor-next::before,.monitor-session-strip::before,.checkin-result-card::before,.login-demo-section::before{
+  content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(125deg,rgba(255,255,255,.42),transparent 28%,transparent 72%,rgba(255,255,255,.10));opacity:.8;
 }
-.modal input,.modal select,.modal textarea,
-#form-periksa input,#form-periksa select,#form-periksa textarea{
-  min-width:0;
-  max-width:100%;
-  box-sizing:border-box;
-}
-.field-row>*,.field-row3>*{
-  min-width:0;
-}
-#poli-exam-area,
-#poli-exam-area .panel,
-#poli-exam-area .panel-body{
-  min-width:0;
-  max-width:100%;
-  box-sizing:border-box;
-}
-#form-periksa>div:last-child{
-  width:100%;
-  min-width:0;
-  max-width:100%;
-  box-sizing:border-box;
-}
-#form-periksa>div:last-child .btn{
-  min-width:0;
-  max-width:100%;
-  white-space:normal;
-  box-sizing:border-box;
-}
+.panel:hover,.stat:hover,.queue-board-item:hover,.queue-list-item:hover,.action-card:hover,.ops-kpi:hover,.patient-journey-card:hover{box-shadow:var(--glass-3d-shadow-hover);transform:translateY(-1px);}
+.panel,.stat,.queue-board-item,.queue-list-item,.action-card,.ops-kpi,.patient-journey-card{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;}
+
+/* Sidebar dan topbar */
+.sidebar{background:linear-gradient(160deg,rgba(255,255,255,.66),rgba(255,255,255,.36));}
+.topbar{background:linear-gradient(135deg,rgba(255,255,255,.70),rgba(255,255,255,.38));}
+.brand{border-bottom-color:rgba(255,255,255,.38)}
+.sidebar-user{border-top-color:rgba(255,255,255,.38)}
+.nav-item{border:1px solid transparent;}
+.nav-item:hover{background:rgba(255,255,255,.34);border-color:rgba(255,255,255,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.55)}
+.nav-item.active{background:linear-gradient(145deg,rgba(14,92,86,.94),rgba(10,66,62,.84));box-shadow:0 10px 24px rgba(14,92,86,.28),inset 0 1px 0 rgba(255,255,255,.42),inset 0 -1px 0 rgba(0,0,0,.10);}
+
+/* Tombol: tetap punya identitas fungsi, tetapi diberi kedalaman kaca */
+.btn-outline,.admin-top-menu-btn,.chip,.tab,.tab-item,.sheet-item{border-color:rgba(255,255,255,.68);box-shadow:inset 0 1px 0 rgba(255,255,255,.72),0 4px 12px rgba(18,31,43,.06);}
+.btn-outline{background:linear-gradient(145deg,rgba(255,255,255,.64),rgba(255,255,255,.34));}
+.btn-primary,.btn-success,.btn-danger{border-color:rgba(255,255,255,.34);box-shadow:0 9px 22px rgba(14,92,86,.24),inset 0 1px 0 rgba(255,255,255,.42),inset 0 -1px 0 rgba(0,0,0,.10);}
+.btn-ghost{border:1px solid transparent;}
+.btn:active{transform:translateY(1px) scale(.985)}
+
+/* Form fields */
+input,select,textarea{background:linear-gradient(145deg,rgba(255,255,255,.72),rgba(255,255,255,.42));border-color:rgba(255,255,255,.76);box-shadow:inset 0 1px 2px rgba(18,31,43,.06),inset 0 1px 0 rgba(255,255,255,.82),0 4px 12px rgba(18,31,43,.04);}
+input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(14,92,86,.12),inset 0 1px 0 rgba(255,255,255,.9),0 8px 18px rgba(18,31,43,.07)}
+.field label{color:var(--ink);}
+
+/* Table / list / journey surfaces */
+th{background:rgba(255,255,255,.22)}
+td{border-bottom-color:rgba(255,255,255,.34)}
+tr:hover td{background:rgba(255,255,255,.20)}
+.tabs{background:linear-gradient(145deg,rgba(255,255,255,.56),rgba(255,255,255,.28));box-shadow:var(--glass-3d-shadow)}
+.tab.active,.tab-item.active{background:linear-gradient(145deg,rgba(14,92,86,.94),rgba(10,66,62,.82));box-shadow:0 9px 20px rgba(14,92,86,.24),inset 0 1px 0 rgba(255,255,255,.42)}
+
+/* Badge/status tetap mempertahankan warna makna, tetapi diberi volume */
+.badge,.allergy-flag{box-shadow:inset 0 1px 0 rgba(255,255,255,.65),0 4px 10px rgba(18,31,43,.06);}
+.alert{box-shadow:inset 0 1px 0 rgba(255,255,255,.58),0 5px 14px rgba(18,31,43,.05);}
+
+/* Modal: kaca tebal, tetapi ukuran/responsive V14.6.3 dipertahankan */
+.modal-overlay,.sheet-overlay{background:rgba(12,23,30,.34);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);}
+.modal{background:linear-gradient(145deg,rgba(255,255,255,.72),rgba(255,255,255,.40));}
+.modal-head{background:linear-gradient(180deg,rgba(255,255,255,.20),transparent);}
+.bottom-sheet{background:linear-gradient(145deg,rgba(255,255,255,.76),rgba(255,255,255,.48));}
+
+/* Login: sekarang benar-benar satu bahasa visual dengan seluruh aplikasi */
+.login-wrap{position:relative;overflow:hidden;background:transparent;}
+.login-panel{background:linear-gradient(145deg,rgba(255,255,255,.72),rgba(255,255,255,.36));border-radius:32px;box-shadow:0 30px 80px rgba(18,31,43,.22),0 10px 28px rgba(18,31,43,.10),inset 0 1px 0 rgba(255,255,255,.86),inset 0 -1px 0 rgba(18,31,43,.05);}
+.login-hero{background:linear-gradient(145deg,rgba(14,92,86,.82),rgba(10,66,62,.68));border-bottom:1px solid rgba(255,255,255,.35);position:relative;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.34),inset 0 -18px 40px rgba(0,0,0,.06);}
+.login-hero::after{content:"";position:absolute;width:210px;height:210px;right:-80px;top:-95px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.30),rgba(255,255,255,0) 68%);pointer-events:none;}
+.login-emblem{box-shadow:0 12px 25px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.55);}
+.login-body{background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.18));}
+.login-demo-section{background:linear-gradient(145deg,rgba(255,255,255,.40),rgba(255,255,255,.18));box-shadow:inset 0 1px 0 rgba(255,255,255,.56),0 8px 20px rgba(18,31,43,.06);}
+.chip{background:linear-gradient(145deg,rgba(255,255,255,.70),rgba(255,255,255,.38));}
+
+/* Monitor/kiosk tetap terbaca; glass hanya di frame, angka tetap kontras */
+.public-monitor{border-radius:30px;}
+.monitor-current{background:linear-gradient(145deg,rgba(255,255,255,.60),rgba(255,255,255,.28));}
+.monitor-next{background:linear-gradient(145deg,rgba(255,255,255,.52),rgba(255,255,255,.24));}
+
+/* Mobile: kurangi blur/ornamen sedikit agar tetap ringan dan tidak overflow */
 @media(max-width:600px){
-  .modal-overlay{padding:10px;}
-  .modal-head{padding:14px 15px;}
-  .modal-body{padding:15px;}
-  #form-periksa>div:last-child{
-    flex-direction:column;
-    align-items:stretch;
-  }
-  #form-periksa>div:last-child .btn{
-    width:100%;
-    flex:0 1 auto;
-  }
+  .panel,.sidebar,.topbar,.stat,.queue-board-item,.login-panel,.modal,.bottom-tabbar,.bottom-sheet,.ticket,.queue-list-item,.action-card,.patient-journey-card,.ops-kpi,.login-demo-section{ -webkit-backdrop-filter:blur(20px) saturate(170%);backdrop-filter:blur(20px) saturate(170%); }
+  .login-wrap{padding:12px;align-items:flex-start;padding-top:24px;}
+  .login-panel{border-radius:26px;max-width:100%;}
+  .login-hero{padding:24px 20px 20px;}
+  .login-body{padding:18px 18px 22px;}
 }
+@media(prefers-reduced-motion:reduce){.panel,.stat,.queue-board-item,.queue-list-item,.action-card,.ops-kpi,.patient-journey-card{transition:none}.panel:hover,.stat:hover,.queue-board-item:hover,.queue-list-item:hover,.action-card:hover,.ops-kpi:hover,.patient-journey-card:hover{transform:none}}

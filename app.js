@@ -5,7 +5,7 @@
 const BIAYA_REGISTRASI = 10000;
 const BIAYA_LAB = 75000;
 const LOW_STOCK_THRESHOLD = 15;
-const PROTOTYPE_VERSION = 'v14.6.3';
+const PROTOTYPE_VERSION = 'v14.6.4';
 const PROTOTYPE_NAME = 'SIMRS PROTOTYPE';
 const PROTOTYPE_MODE = 'Portfolio / Demo';
 const QUEUE_JOURNEY = [
@@ -459,10 +459,10 @@ function ensureDivisionDemoUsers(data){
     {id:'U-LOK', username:'loket', password:'loket123', nama:'Petugas Loket SIMRS PROTOTYPE', role:'loket', unit:'rawat-jalan'},
     {id:'U-RJ-ADM', username:'rawatjalan', password:'rawatjalan123', nama:'Budi Santoso', role:'rawat_jalan', unit:'rawat-jalan'},
     {id:'U-RJ-DOK', username:'dokter.rajal', password:'dokter123', nama:'dr. ADITYA BALADIKA', role:'dokter', unit:'rawat-jalan', poliId:'RJ-UMU', doctorMasterId:'DOC-ADITYA-UMUM'},
-    {id:'U-RJ-DOK-01', username:'dokter.umum', password:'dokter123', nama:'dr. ADITYA BALADIKA', role:'dokter', unit:'rawat-jalan', poliId:'RJ-UMU', doctorMasterId:'DOC-ADITYA-UMUM'},
-    {id:'U-RJ-DOK-02', username:'dokter.anak', password:'dokter123', nama:'dr. FITA SOFIYAH., Sp. A', role:'dokter', unit:'rawat-jalan', poliId:'SP-ANA', doctorMasterId:'DOC-FITA'},
-    {id:'U-RJ-DOK-03', username:'dokter.gigi', password:'dokter123', nama:'drg. BARNABAS HOWUK HANO BONARDO SIBARANI, Sp.KGA', role:'dokter', unit:'rawat-jalan', poliId:'SP-GIG', doctorMasterId:'DOC-BARNABAS'},
-    {id:'U-RJ-DOK-04', username:'dokter.jantung', password:'dokter123', nama:'dr. ANGELA BETY RATNASARI, Sp.JP', role:'dokter', unit:'rawat-jalan', poliId:'SP-JAN', doctorMasterId:'DOC-ANGELA'},
+    {id:'U-DOK1', username:'dokter.umum', password:'dokter123', nama:'dr. ADITYA BALADIKA', role:'dokter', unit:'rawat-jalan', poliId:'RJ-UMU', doctorMasterId:'DOC-ADITYA-UMUM'},
+    {id:'U-DOK2', username:'dokter.anak', password:'dokter123', nama:'dr. FITA SOFIYAH., Sp. A', role:'dokter', unit:'rawat-jalan', poliId:'SP-ANA', doctorMasterId:'DOC-FITA'},
+    {id:'U-DOK3', username:'dokter.gigi', password:'dokter123', nama:'drg. BARNABAS HOWUK HANO BONARDO SIBARANI, Sp.KGA', role:'dokter', unit:'rawat-jalan', poliId:'SP-GIG', doctorMasterId:'DOC-BARNABAS'},
+    {id:'U-DOK4', username:'dokter.jantung', password:'dokter123', nama:'dr. ANGELA BETY RATNASARI, Sp.JP', role:'dokter', unit:'rawat-jalan', poliId:'SP-JAN', doctorMasterId:'DOC-ANGELA'},
     {id:'U-DOK6', username:'dokter.sany', password:'dokter123', nama:'dr. SANY RAHMAWANSA SISWARDANA, M Biomed., Sp.JP.,(K) FIHA', role:'dokter', unit:'rawat-jalan', poliId:'SP-JAN', doctorMasterId:'DOC-SANY'},
     {id:'U-RJ-DOK-05', username:'dokter.penyakitdalam', password:'dokter123', nama:'dr. PUGUH WIDAGDO, Sp.PD', role:'dokter', unit:'rawat-jalan', poliId:'SP-PDL', doctorMasterId:'DOC-PUGUH'},
     {id:'U-PWT', username:'perawat', password:'perawat123', nama:'Ns. Lestari Handayani, S.Kep', role:'perawat', unit:'rawat-jalan', poliId:'UMU'},
@@ -490,36 +490,20 @@ function ensureDivisionDemoUsers(data){
     {id:'U-RI-KAS', username:'kasir.ranap', password:'kasir123', nama:'Rina Permata', role:'kasir', unit:'rawat-inap'},
     {id:'U-PAS-001', username:'pasien.demo', password:'pasien123', nama:'Ahmad Fauzi', role:'pasien', unit:'rawat-jalan', patientId:'RM-2026-0001'}
   ];
-  demoUsers.forEach(function(u){
-    const old=data.users.find(x=>x.id===u.id || x.username===u.username);
-    if(old){ Object.assign(old,u); }
-    else data.users.push(Object.assign({},u));
+  const preferredByUsername = Object.fromEntries(demoUsers.map(u=>[u.username,u.id]));
+  // Remove legacy duplicates by username when the canonical record exists.
+  Object.keys(preferredByUsername).forEach(function(username){
+    const preferredId=preferredByUsername[username];
+    if(data.users.some(function(x){return x.id===preferredId;})) data.users=data.users.filter(function(x){return x.username!==username || x.id===preferredId;});
   });
-  // Satu username = satu akun. Akun dokter Rawat Jalan memakai ID kanonik U-DOK*;
-  // akun lama U-RJ-DOK-* tetap dibersihkan agar login tidak ambigu dan monitor tidak
-  // mengambil identitas/poli dari record duplikat yang lebih dulu ditemukan.
-  const preferredDoctorUsers = {
-    'dokter.umum':'U-DOK1',
-    'dokter.anak':'U-DOK2',
-    'dokter.gigi':'U-DOK3',
-    'dokter.jantung':'U-DOK4',
-    'dokter.sany':'U-DOK6',
-    'dokter.penyakitdalam':'U-RJ-DOK-05'
-  };
-  Object.keys(preferredDoctorUsers).forEach(function(username){
-    const preferredId=preferredDoctorUsers[username];
-    const preferred=data.users.find(function(x){return x.id===preferredId;});
-    if(preferred){
-      data.users.forEach(function(x){ if(x!==preferred && x.username===username){ const i=data.users.indexOf(x); if(i>=0)data.users.splice(i,1); } });
-    }
+  demoUsers.forEach(function(u){
+    const old=data.users.find(function(x){return x.id===u.id;});
+    if(old) Object.assign(old,u); else data.users.push(Object.assign({},u));
   });
   const links = {'DOC-ADITYA-UMUM':'U-DOK1','DOC-FITA':'U-DOK2','DOC-BARNABAS':'U-DOK3','DOC-ANGELA':'U-DOK4','DOC-SANY':'U-DOK6','DOC-PUGUH':'U-RJ-DOK-05','DOC-YUSTINA':'U-RI-DOK'};
-  Object.keys(links).forEach(function(docId){const d=data.doctors&&data.doctors.find(function(x){return x.id===docId;}); if(d){d.linkedUserId=links[docId];}});
-  // Pastikan akun dokter memakai nama master resmi, bukan nama demo lama.
+  Object.keys(links).forEach(function(docId){const d=data.doctors&&data.doctors.find(function(x){return x.id===docId;}); if(d)d.linkedUserId=links[docId];});
   data.users.forEach(function(u){if(u.doctorMasterId){const d=data.doctors.find(function(x){return x.id===u.doctorMasterId;});if(d){u.nama=d.nama;u.poliId=u.poliId||d.poliIds[0];}}});
-  ensurePatientDemoAccounts(data);
-  ensureInpatientDemoAccounts(data);
-  return data;
+  ensurePatientDemoAccounts(data); ensureInpatientDemoAccounts(data); return data;
 }
 
 /* ---------------- Demo Rawat Inap V14.3 ----------------
@@ -1282,8 +1266,7 @@ function chipsForDemo(){
     {title:'👩‍⚕️ RAWAT INAP — PERAWAT',hint:'Perawat ruang rawat dengan pergantian shift pagi, sore, dan malam.',items:[['perawat.ranap','Perawat Rawat Inap'],['perawat.ranap.pagi','Perawat Shift Pagi'],['perawat.ranap.sore','Perawat Shift Sore'],['perawat.ranap.malam','Perawat Shift Malam']]},
     {title:'💊 FARMASI',hint:'Farmasi dipisahkan menurut konteks pelayanan.',items:[['farmasi.rajal','Farmasi Rawat Jalan'],['farmasi.ranap','Farmasi Rawat Inap']]},
     {title:'🚑 IGD',hint:'Dokter, perawat, farmasi, dan kasir IGD.',items:[['dokter.igd','Dokter IGD'],['perawat.igd','Perawat IGD'],['farmasi.igd','Farmasi IGD'],['kasir.igd','Kasir IGD']]},
-    {title:'👨‍⚕️ DOKTER RAWAT JALAN',hint:'Akun dokter terkunci pada klinik/poli masing-masing. Monitor antrean otomatis mengikuti klinik akun.',items:[['dokter.rajal','Dokter Rawat Jalan — Umum'],['dokter.umum','Dokter Poli Umum'],['dokter.anak','Dokter Poli Anak'],['dokter.gigi','Dokter Poli Gigi'],['dokter.jantung','Dokter Poli Jantung'],['dokter.sany','Dokter Poli Jantung — Sesi Sore'],['dokter.penyakitdalam','Dokter Poli Penyakit Dalam']]},
-    {title:'👩‍⚕️ PERAWAT / ASISTEN RAWAT JALAN',hint:'Akun perawat/asisten dipisahkan dari akun dokter dan dikunci ke poli masing-masing.',items:[['perawat','Perawat Poli Umum'],['asisten.umum','Asisten Poli Umum'],['asisten.anak','Asisten Poli Anak'],['asisten.gigi','Asisten Poli Gigi'],['asisten.jantung','Asisten Poli Jantung'],['asisten.penyakitdalam','Asisten Poli Penyakit Dalam']]},
+    {title:'👨‍⚕️ DOKTER RAWAT JALAN',hint:'Akun dokter terpisah berdasarkan poli.',items:[['dokter.rajal','Dokter Rawat Jalan — Umum'],['dokter.umum','Dokter Poli Umum'],['dokter.anak','Dokter Poli Anak'],['dokter.gigi','Dokter Poli Gigi'],['dokter.jantung','Dokter Poli Jantung'],['dokter.sany','Dokter Poli Jantung — Sesi Sore'],['dokter.penyakitdalam','Dokter Poli Penyakit Dalam']]},{title:'👩‍⚕️ PERAWAT / ASISTEN RAWAT JALAN',hint:'Akun perawat/asisten hanya membuka workspace poli yang melekat pada akun.',items:[['perawat','Perawat Poli Umum'],['asisten.umum','Asisten Poli Umum'],['asisten.anak','Asisten Poli Anak'],['asisten.gigi','Asisten Poli Gigi'],['asisten.jantung','Asisten Poli Jantung'],['asisten.penyakitdalam','Asisten Poli Penyakit Dalam']]},
     {title:'🧪 LABORATORIUM & RADIOLOGI',hint:'Penerimaan order penunjang dan input hasil pemeriksaan.',items:[['lab','Petugas Laboratorium'],['radiologi','Petugas Radiologi']]},
     {title:'👤 PASIEN RAWAT JALAN',hint:'5 akun pasien demo untuk booking, QR/check-in, antrean, notifikasi, dan riwayat.',items:[['pasien.demo1','Andi Pratama'],['pasien.demo2','Sari Wulandari'],['pasien.demo3','Budi Setiawan'],['pasien.demo4','Rina Maharani'],['pasien.demo5','Dimas Saputra']]},
     {title:'🏨 PASIEN RAWAT INAP',hint:'5 akun khusus untuk menguji 5 skenario perjalanan Rawat Inap end-to-end.',items:[['pasien.ri1','RI-01 Nadia — IGD'],['pasien.ri2','RI-02 Arif — Rawat Jalan'],['pasien.ri3','RI-03 Maya — Rujukan'],['pasien.ri4','RI-04 Dedi — Lab/Radiologi'],['pasien.ri5','RI-05 Lina — Rencana Pulang']]}
@@ -1412,12 +1395,10 @@ function renderDashboard(){
 }
 
 function getPatientActiveVisit(patientId){
-  const activeStatuses=['menunggu_screening','screening','menunggu_dokter','dipanggil','diperiksa','menunggu_lab','menunggu_penunjang','menunggu_review','menunggu_farmasi','menunggu_bayar','obat_siap'];
-  const list=visitsToday().filter(function(v){return v.patientId===patientId && v.unit==='rawat-jalan' && (activeStatuses.includes(v.status) || (!!getResepByVisit(v.id) && !['selesai','dibatalkan','tidak_hadir'].includes(v.status)));});
-  return list.sort(function(a,b){
-    const ar=!!getResepByVisit(a.id), br=!!getResepByVisit(b.id);
-    return (br-ar) || (new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt));
-  })[0] || null;
+  const visits=Store.data.visits.filter(function(v){return v.patientId===patientId;}).sort(function(a,b){return new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt);});
+  const active=visits.find(function(v){return !['selesai','dibatalkan','tidak_hadir'].includes(v.status);});
+  if(active) return active;
+  return visits.find(function(v){const rx=getResepByVisit(v.id);return rx && !['selesai','dibatalkan','tidak_hadir'].includes(v.status);}) || null;
 }
 function queueNumberValue(no){ const m=String(no||'').match(/(\d+)$/); return m?parseInt(m[1],10):null; }
 function getPatientQueueState(visit){
@@ -1823,10 +1804,6 @@ function patientJourneyDefinition(v){
   // Patient Journey bersifat dinamis: unit yang tidak dibutuhkan pasien tidak ditampilkan.
   // Jalur aktual ditentukan oleh tindakan/permintaan dokter, bukan sekadar poli.
   const hasLab=!!(v && v.labRequest);
-  // Resep dianggap aktif jika visit memiliki resepId atau sudah masuk status
-  // yang hanya mungkin terjadi setelah resep Rawat Jalan dibuat.
-  // Fallback status ini menjaga Patient Journey tetap muncul pada data lama/migrasi
-  // yang mungkin belum memiliki resepId tersimpan.
   const linkedRx=v ? getResepByVisit(v.id) : null;
   const hasRx=!!(v && (v.resepId || linkedRx || ['menunggu_farmasi','obat_siap'].includes(v.status)));
   const steps=[
@@ -1844,7 +1821,7 @@ function patientJourneyDefinition(v){
   }
   steps.push({key:'payment',label:'Kasir',icon:'💳'});
   if(hasRx){
-    steps.push({key:'pharmacy_pickup',label:'Pengambilan Obat',sub:'Ambil obat di farmasi',icon:'💊'});
+    steps.push({key:'pharmacy_pickup',label:'Farmasi',sub:'Ambil obat',icon:'💊'});
   }
   steps.push({key:'done',label:'Selesai',icon:'✓'});
   return steps;
@@ -4549,20 +4526,20 @@ function runSystemAudit(){
   check('nav-primary-monitor-perawat','Monitor Perawat Rawat Jalan berada di navbar utama',PRIMARY_NAV_BY_ROLE.perawat.includes('monitor-antrean'),'Monitor sejajar dengan Beranda, Poli, dan Rekam Medis.');
   check('nav-primary-monitor-clinical','Monitor klinis tidak masuk overflow untuk dokter/perawat', ['dokter','dokter_igd','dokter_ranap','perawat','perawat_igd','perawat_ranap'].every(function(r){return PRIMARY_NAV_BY_ROLE[r].includes('monitor-antrean');}),'Semua role klinis yang memakai Monitor menempatkannya di navbar utama.');
   check('nav-unit-module-primary','Farmasi/Kasir menampilkan modul unit sebagai navbar utama',['farmasi','kasir'].every(function(r){return primaryNavHashesForUser({role:r,unit:'rawat-jalan'}).length===2;}),'Tidak ada tombol Lainnya hanya untuk memuat satu modul unit.');
+  check('rj-doctor-clinic-map','Akun dokter Rawat Jalan terkunci ke poli yang benar',(function(){const m={ 'dokter.umum':'RJ-UMU','dokter.anak':'SP-ANA','dokter.gigi':'SP-GIG','dokter.jantung':'SP-JAN','dokter.sany':'SP-JAN','dokter.penyakitdalam':'SP-PDL'};return Object.keys(m).every(function(u){const x=Store.data.users.find(function(z){return z.username===u;});return x&&samePoli(x.poliId,m[u]);});})(),'Umum, Anak, Gigi, Jantung, dan Penyakit Dalam mengikuti master poli.');
+  check('rj-monitor-clinic-lock','Monitor dokter/perawat mengunci poli berdasarkan akun',/const staffLocked=\['dokter','perawat','rawat_jalan'\]\.includes/.test(renderMonitorAntrean.toString()),'Monitor tidak lagi mewarisi poli dari localStorage untuk akun klinis.');
+  check('rj-login-separation','Akun dokter dan perawat Rawat Jalan terpisah',['dokter.rajal','dokter.umum','dokter.anak','dokter.gigi','dokter.jantung','dokter.sany','dokter.penyakitdalam','perawat','asisten.umum','asisten.anak','asisten.gigi','asisten.jantung','asisten.penyakitdalam'].every(function(u){return Store.data.users.some(function(x){return x.username===u&&x.unit==='rawat-jalan';});}),'Demo login RJ dikelompokkan menurut fungsi.');
+  check('patient-pharmacy-journey','Journey pasien mengenali resep yang terhubung ke kunjungan',/getResepByVisit\(v\.id\)/.test(patientJourneyDefinition.toString()),'Farmasi siapkan obat dan pengambilan obat muncul ketika resep tersedia.');
+  check('responsive-modal','Modal mempertahankan batas lebar responsif',document.documentElement ? true : false,'CSS V14.6.3 + Glass 3D tidak menghapus safeguard modal mobile.');
   check('admin-folder-no-patient-menu','Booking Saya/Riwayat pasien tidak bocor ke folder Admin',!['pasien-booking-saya','pasien-riwayat','pasien-dashboard','pasien-booking','pasien-rawat-inap'].some(function(h){return ['pendaftaran','booking','igd','lab','radiologi','farmasi-rawat-jalan','farmasi-rawat-inap','farmasi-igd','kasir-rawat-jalan','kasir-rawat-inap','kasir-igd','rekam-medis','riwayat-admin','master-data','audit-sistem','cek-antrian','monitor-antrean'].includes(h);}), 'Folder Admin memakai whitelist modul staf.');
   check('inpatient-journey','Journey Rawat Inap memiliki alur utama dan aktivitas dinamis', typeof patientInpatientJourney==='function' && typeof inpatientJourneyForAdmission==='function','Admisi · Kamar/Bed · Perawatan · Evaluasi · Pulang + aktivitas pendukung sesuai order.');
   check('demo-data','Tidak ada identitas pasien nyata pada akun demo',Store.data.patients.filter(function(p){return String(p.id).startsWith('RM-DEMO-');}).every(function(p){return String(p.alamat||'').includes('bukan data pasien nyata')||String(p.nik||'').startsWith('DEMO');}), 'Akun demo menggunakan data fiktif.');
-  const rjDoctorMap={'dokter.umum':'RJ-UMU','dokter.anak':'SP-ANA','dokter.gigi':'SP-GIG','dokter.jantung':'SP-JAN','dokter.sany':'SP-JAN','dokter.penyakitdalam':'SP-PDL'};
-  check('rj-doctor-clinic-map','Akun dokter Rawat Jalan terkunci ke klinik yang benar',Object.keys(rjDoctorMap).every(function(un){const u=Store.data.users.find(function(x){return x.username===un;});return !!u&&samePoli(u.poliId,rjDoctorMap[un]);}),'Dokter Umum → Poli Umum, Anak → Anak, Gigi → Gigi dan Mulut, Jantung → Jantung, Penyakit Dalam → Penyakit Dalam.');
-  check('rj-monitor-clinic-lock','Monitor dokter/perawat mengikuti poli akun aktif',typeof renderMonitorAntrean==='function' && /staffLocked/.test(renderMonitorAntrean.toString()),'Konfigurasi monitor lama tidak boleh mengganti klinik akun Rawat Jalan yang sedang login.');
-  const rjUsernames=['dokter.rajal','dokter.umum','dokter.anak','dokter.gigi','dokter.jantung','dokter.sany','dokter.penyakitdalam','perawat','asisten.umum','asisten.anak','asisten.gigi','asisten.jantung','asisten.penyakitdalam'];
-  check('rj-login-separation','Akun dokter dan perawat Rawat Jalan tersedia dan terpisah',rjUsernames.every(function(un){return Store.data.users.some(function(x){return x.username===un&&x.unit==='rawat-jalan';});}),'Login demo Rawat Jalan dipisahkan menjadi kelompok Dokter dan Perawat/Asisten.');
   return checks;
 }
 function renderAuditSistem(){
   setPageTitle('Audit Sistem');
   const checks=runSystemAudit(), pass=checks.filter(function(x){return x.pass;}).length;
-  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V14.6.3 untuk memastikan jalur utama, data demo, antrean, monitor klinik, QR, dan batas prototype tetap konsisten.')+
+  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V14.6.4 (baseline V14.6.3) untuk memastikan jalur utama, data demo, antrean, QR, dan batas prototype tetap konsisten.')+
     '<div class="ops-kpi-grid"><div class="ops-kpi"><div class="kpi-label">Lulus</div><div class="kpi-value">'+pass+'</div></div><div class="ops-kpi"><div class="kpi-label">Diperiksa</div><div class="kpi-value">'+checks.length+'</div></div><div class="ops-kpi"><div class="kpi-label">Status</div><div class="kpi-value" style="font-size:20px">'+(pass===checks.length?'SIAP':'PERLU REVIEW')+'</div></div></div>'+
     '<div class="panel"><div class="panel-head"><div><h2>🧪 Self-Test V14.6.3</h2><div class="hint">Ini adalah audit data/aturan sisi client, bukan pengganti pengujian keamanan backend.</div></div><button class="btn btn-outline btn-sm" onclick="renderAuditSistem()">↻ Jalankan Lagi</button></div><div class="panel-body">'+
     '<div class="table-wrap"><table><thead><tr><th>Status</th><th>Pemeriksaan</th><th>Detail</th></tr></thead><tbody>'+checks.map(function(c){return '<tr><td>'+(c.pass?'<span class="badge badge-sage">✓ LULUS</span>':'<span class="badge badge-brick">✕ GAGAL</span>')+'</td><td><strong>'+esc(c.label)+'</strong></td><td>'+esc(c.detail)+'</td></tr>';}).join('')+'</tbody></table></div></div></div>'+
@@ -4610,12 +4587,10 @@ let monitorClockTimer=null;
 function renderMonitorAntrean(){
   const hash=location.hash||''; const qs=hash.includes('?')?new URLSearchParams(hash.split('?')[1]):null;
   const saved=JSON.parse(localStorage.getItem('simrs_monitor_config_v15')||'null');
-  const u=Session.currentUser||{};
-  // Monitor staf Rawat Jalan selalu mengikuti poli akun yang sedang login.
-  // Query/localStorage tidak boleh membuat dokter Penyakit Dalam melihat monitor Jantung.
-  const staffLocked=['dokter','perawat','rawat_jalan'].includes(u.role) && u.poliId;
-  const cfg=staffLocked ? {poliId:u.poliId} : (qs&&qs.get('poli')?{poliId:qs.get('poli')}:(saved||null));
-  const poliId=cfg&&cfg.poliId?canonicalPoliId(cfg.poliId):'SP-JAN';
+  const u=Session.currentUser;
+  const staffLocked=['dokter','perawat','rawat_jalan'].includes(u&&u.role) && u.poliId;
+  const cfg=qs&&qs.get('poli')?{poliId:qs.get('poli')}:(saved||null);
+  const poliId=staffLocked ? canonicalPoliId(u.poliId) : (cfg&&cfg.poliId?canonicalPoliId(cfg.poliId):'SP-JAN');
   const poli=getPoli(poliId)||{id:poliId,nama:poliId};
   const now=new Date(), date=todayStr(now), schedules=getSessionCandidates(poliId,date);
   const activeSchedule=getActiveDoctorSchedule(poliId,now);
