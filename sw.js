@@ -1,6 +1,61 @@
-const SW_VERSION="simrs-prototype-v14.6.4";
-const CACHE=SW_VERSION;
-const ASSETS=["./","./index.html","./style.css","./app.js","./qrcode.lib.js","./manifest.json"];
-self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
-self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener("fetch",e=>{if(e.request.method!=="GET")return;e.respondWith(fetch(e.request).then(r=>{const c=r.clone();caches.open(CACHE).then(x=>x.put(e.request,c));return r}).catch(()=>caches.match(e.request).then(r=>r||caches.match("./index.html"))))});
+// Service Worker — SIMRS PROTOTYPE
+// Strategi: cache-first untuk app shell, supaya aplikasi tetap bisa dibuka offline.
+// Data pasien/kunjungan/transaksi tersimpan di localStorage milik browser (per perangkat),
+// bukan lewat service worker ini.
+//
+// PENTING: SW_VERSION harus dinaikkan setiap kali app.js/style.css/qrcode.lib.js berubah,
+// supaya browser tahu ada versi baru dan mengambil file segar (bukan memakai cache lama selamanya).
+const SW_VERSION = 'v14.6.2';
+const CACHE_NAME = 'simrs-prototype-' + SW_VERSION;
+const APP_SHELL = [
+  './',
+  './index.html',
+  './style.css?v=14.6.2',
+  './app.js?v=14.6.2',
+  './qrcode.lib.js',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png',
+  './icon-512-maskable.png',
+  './apple-touch-icon.png'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+
+  event.respondWith(
+    caches.match(event.request).then((cached) => {
+      const fetchAndUpdate = fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => cached || caches.match('./index.html'));
+      // Jaga service worker tetap hidup sampai pembaruan cache di latar belakang selesai,
+      // supaya kunjungan BERIKUTNYA mendapat file yang sudah segar (bukan macet di cache lama).
+      event.waitUntil(fetchAndUpdate.catch(() => {}));
+      return cached || fetchAndUpdate;
+    })
+  );
+});
