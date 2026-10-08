@@ -1,6 +1,6 @@
 # SIMRS PROTOTYPE — Portfolio / Demo
 
-**Versi:** V15.1.0  
+**Versi:** V14.6.2  
 **Baseline pengembangan:** V14.6.1  
 **Platform:** PWA / Web  
 **Status:** Prototype portfolio, bukan SIMRS produksi
@@ -21,7 +21,7 @@ Aturan pengembangan proyek:
 4. Setiap perubahan harus melalui pemeriksaan syntax, UI, navigasi, role/RBAC, alur utama, dan regresi fitur sebelum ZIP diberikan.
 5. README hanya diperbarui setelah fungsi aplikasi cukup stabil untuk didokumentasikan.
 
-## 2. Perubahan V15.1.0 — Patient Journey & Mobile Responsive Fix
+## 2. Perubahan V14.6.2 — Patient Journey & Mobile Responsive Fix
 
 Perubahan dibuat langsung dari baseline **V14.6.1**:
 
@@ -31,7 +31,7 @@ Perubahan dibuat langsung dari baseline **V14.6.1**:
 - Form Pemeriksaan/Diagnosis Dokter diperketat agar area tombol dan input tidak menyebabkan horizontal overflow.
 - Pengujian responsif dilakukan pada viewport **360×800, 390×844, dan 412×915**.
 - Pengujian alur resep dilakukan untuk memastikan status bergerak dari **Farmasi → Kasir → Pengambilan Obat** dan tahap pengambilan obat tampil pada Patient Journey.
-- Service Worker/cache dinaikkan ke **V15.1.0** agar browser mengambil aset aplikasi terbaru.
+- Service Worker/cache dinaikkan ke **V14.6.2** agar browser mengambil aset aplikasi terbaru.
 
 ## 3. Perubahan V14.6.0 — UI Navbar Admin & Menu Sekunder
 

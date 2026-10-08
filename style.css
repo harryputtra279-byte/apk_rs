@@ -670,7 +670,7 @@ body.kiosk-on .content{max-width:1100px;margin:0 auto;padding-top:32px}
 
 
 /* ================================================================
-   V15.0.0 — Mobile safety: modal & form tidak boleh keluar viewport
+   V14.6.2 — Mobile safety: modal & form tidak boleh keluar viewport
    ================================================================ */
 .modal-overlay{
   overflow:auto;
@@ -729,338 +729,110 @@ body.kiosk-on .content{max-width:1100px;margin:0 auto;padding-top:32px}
 }
 
 /* =========================================================
-   V15.0.0 — MATCHING CORE / SPATIAL GLASS SYSTEM
-   Foundation: V14.6.2 (visual layer upgraded in V15.0.0)
-   Visual language: blue → indigo → violet, physical glass depth
+   V15.2.0 — SAFE COLOR / BORDER REVISION
+   Foundation: V14.6.2 EXACT UI + FUNCTIONAL STRUCTURE.
+   IMPORTANT: no layout, DOM, spacing or positioning changes.
+   Visual direction: blue (left) -> indigo -> violet (right),
+   inspired by the ring/gradient character requested by user.
    ========================================================= */
 :root{
-  --ink:#14233B;
-  --ink-soft:rgba(20,35,59,.66);
-  --ink-faint:rgba(20,35,59,.14);
-  --ink-hair:rgba(20,35,59,.09);
-  --paper:#EEF4FB;
-  --panel:rgba(255,255,255,.72);
   --accent:#2563EB;
-  --accent-2:#4F46E5;
+  --accent-2:#7C3AED;
   --clinical:#2563EB;
-  --clinical-dark:#3730A3;
-  --clinical-tint:rgba(37,99,235,.12);
-  --amber:#C47A16;
-  --amber-tint:rgba(196,122,22,.13);
-  --brick:#B42318;
-  --brick-tint:rgba(180,35,24,.12);
-  --sage:#16805B;
-  --sage-tint:rgba(22,128,91,.12);
-  --slate:#315A8A;
-  --slate-tint:rgba(49,90,138,.12);
-  --plum:#6D45B8;
-  --plum-tint:rgba(109,69,184,.12);
+  --clinical-dark:#1D4ED8;
+  --clinical-tint:rgba(79,70,229,.12);
+  --slate:#4F46E5;
+  --slate-tint:rgba(79,70,229,.12);
+  --plum:#7C3AED;
+  --plum-tint:rgba(124,58,237,.12);
   --core-blue:#2563EB;
   --core-indigo:#4F46E5;
   --core-violet:#7C3AED;
-  --glass-bg:rgba(255,255,255,.60);
-  --glass-bg-strong:rgba(255,255,255,.80);
-  --glass-border:rgba(255,255,255,.82);
-  --glass-border-soft:rgba(93,116,153,.18);
-  --glass-blur:26px;
-  --shadow-float:0 18px 42px rgba(35,61,101,.13),0 3px 9px rgba(35,61,101,.08),inset 0 1px 0 rgba(255,255,255,.92);
-  --shadow-pop:0 24px 64px rgba(31,57,99,.20),0 5px 16px rgba(31,57,99,.10),inset 0 1px 0 rgba(255,255,255,.96);
-  --shadow-core:0 10px 30px rgba(37,99,235,.22),0 4px 18px rgba(124,58,237,.13),inset 0 1px 0 rgba(255,255,255,.8);
+  --core-gradient:linear-gradient(90deg,#2563EB 0%,#3B82F6 28%,#4F46E5 62%,#7C3AED 100%);
+  --core-ring:conic-gradient(from 210deg,#2563EB 0%,#3B82F6 25%,#4F46E5 58%,#7C3AED 82%,#2563EB 100%);
+  --core-shadow:0 7px 18px rgba(46,60,120,.12),inset 0 1px 0 rgba(255,255,255,.86);
 }
+
+/* Background only: preserve the original V14.6.2 geometry/layout. */
 body{
-  background-color:#EEF4FB;
+  background-color:#F4F7FC;
   background-image:
-    radial-gradient(circle at 8% 6%,rgba(37,99,235,.22),transparent 32%),
-    radial-gradient(circle at 92% 10%,rgba(79,70,229,.18),transparent 30%),
-    radial-gradient(circle at 84% 92%,rgba(124,58,237,.13),transparent 32%),
-    radial-gradient(circle at 12% 88%,rgba(56,189,248,.10),transparent 28%),
-    linear-gradient(145deg,#F8FBFF 0%,#EEF4FB 52%,#F4F1FC 100%);
-}
-.bg-bubbles{z-index:-1;opacity:.9}
-.bubble-1{background:radial-gradient(circle at 32% 30%,rgba(37,99,235,.34),rgba(37,99,235,0) 70%)}
-.bubble-2{background:radial-gradient(circle at 32% 30%,rgba(124,58,237,.28),rgba(124,58,237,0) 70%)}
-.bubble-3{background:radial-gradient(circle at 32% 30%,rgba(79,70,229,.25),rgba(79,70,229,0) 70%)}
-.bubble-4{background:radial-gradient(circle at 32% 30%,rgba(56,189,248,.20),rgba(56,189,248,0) 70%)}
-.bubble-5{background:radial-gradient(circle at 32% 30%,rgba(124,58,237,.20),rgba(124,58,237,0) 70%)}
-
-/* Shared physical surface */
-.panel,.sidebar,.topbar,.stat,.queue-board-item,.login-panel,.modal,.bottom-tabbar,.bottom-sheet,.ticket,.queue-list-item{
-  background:linear-gradient(145deg,rgba(255,255,255,.76),rgba(255,255,255,.48));
-  border:1px solid rgba(255,255,255,.86);
-  box-shadow:var(--shadow-float);
-  position:relative;
-}
-.panel::before,.stat::before,.queue-board-item::before,.login-panel::before,.modal::before,.ticket::before,.queue-list-item::before{
-  content:"";position:absolute;inset:1px;border-radius:inherit;pointer-events:none;
-  background:linear-gradient(125deg,rgba(255,255,255,.56),transparent 24%,transparent 72%,rgba(124,58,237,.055));
-  opacity:.8;
-}
-.panel>* ,.stat>* ,.queue-board-item>* ,.login-panel>* ,.modal>* ,.ticket>* ,.queue-list-item>*{position:relative;z-index:1}
-
-/* Core/ring utility — visual signature */
-.brand-mark,.avatar-btn,.login-emblem{background:radial-gradient(circle at 35% 28%,#60A5FA 0 8%,#2563EB 28%,#4F46E5 62%,#7C3AED 100%)!important;box-shadow:var(--shadow-core)!important;overflow:visible}
-.brand-mark::after,.avatar-btn::after,.login-emblem::after{
-  content:"";position:absolute;inset:-5px;border-radius:inherit;border:2px solid transparent;
-  background:linear-gradient(135deg,#60A5FA,#2563EB,#4F46E5,#7C3AED) border-box;
-  -webkit-mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);
-  -webkit-mask-composite:xor;mask-composite:exclude;opacity:.65;pointer-events:none;
+    radial-gradient(circle at 12% 8%,rgba(37,99,235,.20),transparent 38%),
+    radial-gradient(circle at 88% 12%,rgba(124,58,237,.18),transparent 36%),
+    radial-gradient(circle at 82% 88%,rgba(79,70,229,.12),transparent 38%),
+    radial-gradient(circle at 8% 92%,rgba(59,130,246,.10),transparent 38%),
+    linear-gradient(160deg,#EEF5FF 0%,#F5F7FC 55%,#F6F1FC 100%);
 }
 
-/* Navigation becomes raised spatial controls */
-.sidebar{background:linear-gradient(150deg,rgba(255,255,255,.82),rgba(239,246,255,.60));box-shadow:0 24px 56px rgba(37,68,112,.15),0 5px 14px rgba(37,68,112,.08),inset 0 1px 0 #fff}
-.nav-item{transition:transform .16s ease,box-shadow .16s ease,background .16s ease,color .16s ease}
-.nav-item:hover{background:rgba(255,255,255,.62);color:var(--ink);transform:translateY(-1px);box-shadow:0 8px 18px rgba(42,69,110,.08),inset 0 1px 0 rgba(255,255,255,.9)}
-.nav-item.active{background:linear-gradient(135deg,#2563EB,#4F46E5 62%,#6D45B8);color:#fff;transform:translateY(-1px);box-shadow:0 11px 24px rgba(59,74,201,.25),inset 0 1px 0 rgba(255,255,255,.44),inset 0 -2px 0 rgba(37,45,140,.22)}
-.topbar{background:linear-gradient(145deg,rgba(255,255,255,.82),rgba(255,255,255,.56));box-shadow:0 14px 34px rgba(35,61,101,.11),inset 0 1px 0 #fff}
+/* Existing bubbles keep their original size/position; only their hue changes. */
+.bubble-1{background:radial-gradient(circle at 32% 30%,rgba(37,99,235,.34),rgba(37,99,235,0) 72%)}
+.bubble-2{background:radial-gradient(circle at 32% 30%,rgba(124,58,237,.30),rgba(124,58,237,0) 72%)}
+.bubble-3{background:radial-gradient(circle at 32% 30%,rgba(79,70,229,.25),rgba(79,70,229,0) 72%)}
+.bubble-4{background:radial-gradient(circle at 32% 30%,rgba(59,130,246,.22),rgba(59,130,246,0) 72%)}
+.bubble-5{background:radial-gradient(circle at 32% 30%,rgba(167,139,250,.22),rgba(167,139,250,0) 72%)}
 
-/* 3D buttons */
-.btn{border-color:rgba(255,255,255,.62);box-shadow:0 6px 12px rgba(31,57,99,.10),inset 0 1px 0 rgba(255,255,255,.78);transition:transform .14s ease,box-shadow .14s ease,filter .14s ease,background .14s ease}
-.btn:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(31,57,99,.14),inset 0 1px 0 rgba(255,255,255,.88)}
-.btn:active{transform:translateY(1px) scale(.985);box-shadow:0 3px 7px rgba(31,57,99,.14),inset 0 2px 4px rgba(22,38,69,.12)}
-.btn-primary{background:linear-gradient(135deg,#2563EB,#4F46E5 66%,#6D45B8);box-shadow:0 10px 22px rgba(63,77,207,.25),inset 0 1px 0 rgba(255,255,255,.52),inset 0 -2px 0 rgba(45,43,145,.20)}
-.btn-primary:hover{background:linear-gradient(135deg,#3B82F6,#4F46E5 60%,#7C3AED);filter:saturate(1.06)}
-.btn-outline{background:linear-gradient(145deg,rgba(255,255,255,.78),rgba(239,246,255,.52));border-color:rgba(75,101,143,.17)}
-.btn-outline:hover{border-color:rgba(79,70,229,.38)}
-.btn-success{background:linear-gradient(135deg,#16805B,#0E9F6E);box-shadow:0 9px 20px rgba(22,128,91,.22),inset 0 1px 0 rgba(255,255,255,.5)}
-.btn-danger{background:linear-gradient(135deg,#B42318,#D0443B);box-shadow:0 9px 20px rgba(180,35,24,.20),inset 0 1px 0 rgba(255,255,255,.5)}
-.btn-icon{box-shadow:0 7px 16px rgba(37,68,112,.13),inset 0 1px 0 #fff}
-
-/* Inputs are inset into the glass surface */
-input,select,textarea{background:linear-gradient(145deg,rgba(255,255,255,.86),rgba(242,247,253,.68));border-color:rgba(82,108,148,.16);box-shadow:inset 0 2px 5px rgba(33,56,93,.045),0 1px 0 rgba(255,255,255,.75);transition:border-color .15s,box-shadow .15s,background .15s}
-input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(79,70,229,.55);box-shadow:0 0 0 3px rgba(79,70,229,.10),inset 0 2px 5px rgba(33,56,93,.035),0 1px 0 #fff;background:rgba(255,255,255,.95)}
-
-/* Spatial cards */
-.panel{overflow:hidden}
-.stat{overflow:hidden;min-height:116px;padding:18px 19px;transform:translateZ(0)}
-.stat::after{content:"";position:absolute;width:86px;height:86px;right:-25px;bottom:-30px;border-radius:50%;border:10px solid rgba(79,70,229,.07);box-shadow:0 0 0 8px rgba(37,99,235,.035);pointer-events:none}
-.stat .val{color:#1D3F88;text-shadow:0 1px 0 rgba(255,255,255,.8)}
-.panel:hover,.stat:hover,.queue-board-item:hover{box-shadow:0 22px 50px rgba(35,61,101,.16),0 5px 12px rgba(35,61,101,.08),inset 0 1px 0 #fff}
-
-/* Tables remain solid enough for clinical readability */
-table{background:rgba(255,255,255,.20)}
-th{background:rgba(245,249,255,.56)}
-tr.tr-click:hover{background:linear-gradient(90deg,rgba(37,99,235,.08),rgba(124,58,237,.04))}
-
-/* Queue / medical core */
-.queue-board-item{overflow:hidden}
-.queue-board-item .num{color:#24458F;text-shadow:0 1px 0 #fff}
-.queue-board-item.calling{border-color:rgba(124,58,237,.34);background:linear-gradient(145deg,rgba(237,233,254,.75),rgba(255,255,255,.48))}
-.ticket{background:linear-gradient(145deg,#1D4ED8,#4F46E5 62%,#6D28D9);box-shadow:0 22px 48px rgba(55,48,163,.28),inset 0 1px 0 rgba(255,255,255,.48),inset 0 -3px 0 rgba(31,28,107,.24)}
-.ticket::after{content:"";position:absolute;width:150px;height:150px;right:-42px;top:-50px;border-radius:50%;border:14px solid rgba(255,255,255,.10);box-shadow:0 0 0 8px rgba(255,255,255,.045);pointer-events:none}
-
-/* Login = gateway into the spatial system */
-.login-wrap{position:relative;isolation:isolate;background:radial-gradient(circle at 50% 20%,rgba(255,255,255,.5),transparent 42%)}
-.login-wrap::before,.login-wrap::after{content:"";position:absolute;border-radius:50%;pointer-events:none;z-index:-1}
-.login-wrap::before{width:460px;height:460px;left:50%;top:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(37,99,235,.13),rgba(79,70,229,.07) 38%,rgba(124,58,237,0) 70%);filter:blur(2px)}
-.login-wrap::after{width:250px;height:250px;left:calc(50% + 190px);top:calc(50% - 220px);border:22px solid rgba(124,58,237,.045);box-shadow:0 0 0 12px rgba(37,99,235,.035),inset 0 0 30px rgba(124,58,237,.06)}
-.login-panel{max-width:450px;border-radius:34px;background:linear-gradient(145deg,rgba(255,255,255,.78),rgba(241,247,255,.56));box-shadow:0 30px 80px rgba(30,58,101,.22),0 7px 20px rgba(30,58,101,.10),inset 0 1px 0 #fff;overflow:hidden}
-.login-hero{position:relative;overflow:hidden;background:linear-gradient(145deg,#2563EB 0%,#4F46E5 58%,#6D28D9 100%);padding:32px 28px 25px;border-bottom:1px solid rgba(255,255,255,.22)}
-.login-hero::before{content:"";position:absolute;width:180px;height:180px;right:-40px;top:-72px;border-radius:50%;border:18px solid rgba(255,255,255,.10);box-shadow:0 0 0 9px rgba(255,255,255,.05),0 0 35px rgba(255,255,255,.08)}
-.login-hero::after{content:"";position:absolute;width:95px;height:95px;left:-25px;bottom:-45px;border-radius:50%;border:10px solid rgba(255,255,255,.10)}
-.login-emblem{width:54px;height:54px;border-radius:18px;margin-bottom:17px;border:1px solid rgba(255,255,255,.55)}
-.login-emblem::before{z-index:2}
-.login-body{padding:24px 28px 28px}
-.login-demo-section{background:linear-gradient(145deg,rgba(255,255,255,.60),rgba(239,246,255,.34));border-color:rgba(82,108,148,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.78),0 5px 14px rgba(35,61,101,.05)}
-
-/* Generic demo chips get physical depth */
-.chip{border-color:rgba(255,255,255,.76)!important;background:linear-gradient(145deg,rgba(255,255,255,.84),rgba(236,243,252,.62))!important;box-shadow:0 5px 11px rgba(35,61,101,.08),inset 0 1px 0 #fff!important;transition:transform .14s,box-shadow .14s,background .14s!important}
-.chip:hover{transform:translateY(-2px);box-shadow:0 9px 18px rgba(35,61,101,.13),inset 0 1px 0 #fff!important;background:linear-gradient(145deg,#fff,rgba(232,238,252,.72))!important}
-.chip:active{transform:translateY(1px)}
-
-/* Modal / sheet depth */
-.modal-overlay{background:rgba(24,39,66,.28);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
-.modal{background:linear-gradient(145deg,rgba(255,255,255,.86),rgba(241,247,255,.68));box-shadow:0 30px 75px rgba(20,42,78,.24),0 7px 18px rgba(20,42,78,.10),inset 0 1px 0 #fff}
-.bottom-sheet{background:linear-gradient(145deg,rgba(255,255,255,.90),rgba(239,246,255,.76));box-shadow:0 -22px 50px rgba(30,58,101,.18),inset 0 1px 0 #fff}
-
-/* Badges retain semantics, but gain the new material language */
-.badge{box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 2px 5px rgba(35,61,101,.05)}
-.badge-clinical{color:#2453C4;background:linear-gradient(145deg,rgba(219,234,254,.78),rgba(224,231,255,.62))}
-.badge-sage{color:#137451}.badge-amber{color:#9A5D0E}.badge-brick{color:#A52219}
-
-/* Mobile: preserve usable touch targets and prevent decorative depth from covering content */
-@media(max-width:600px){
-  .sidebar{background:linear-gradient(145deg,rgba(255,255,255,.90),rgba(239,246,255,.78))}
-  .topbar{box-shadow:0 10px 26px rgba(35,61,101,.10),inset 0 1px 0 #fff}
-  .login-panel{border-radius:28px}
-  .login-hero{padding:27px 21px 22px}
-  .login-body{padding:20px 21px 24px}
-  .login-wrap::before{width:330px;height:330px}
-  .login-wrap::after{width:160px;height:160px;left:auto;right:-60px;top:8%}
-  .stat{min-height:104px}
-  .btn{min-height:42px}
-}
-@media(prefers-reduced-motion:reduce){
-  .btn,.nav-item,.chip{transition:none!important}
+/* The core idea: gradient belongs on the edge, not over the content. */
+.panel,.sidebar,.topbar,.stat,.queue-board-item,.login-panel,.modal,.bottom-tabbar,.bottom-sheet,.queue-list-item{
+  border-color:transparent;
+  background:
+    linear-gradient(var(--glass-bg),var(--glass-bg)) padding-box,
+    var(--core-gradient) border-box;
+  box-shadow:var(--core-shadow);
 }
 
-/* =========================================================
-   V15.1 — MATCHING CORE / SPATIAL 3D REVISION
-   Intentional visual redesign: not a recolor.
-   Blue-indigo-violet orbital core, glass volume, bevels,
-   physical controls and spatial depth across the interface.
-   ========================================================= */
-:root{
-  --core-blue:#2563EB;
-  --core-blue-hi:#60A5FA;
-  --core-indigo:#4F46E5;
-  --core-violet:#7C3AED;
-  --core-violet-hi:#A78BFA;
-  --core-gradient:linear-gradient(120deg,var(--core-blue-hi) 0%,var(--core-blue) 28%,var(--core-indigo) 62%,var(--core-violet) 100%);
-  --core-conic:conic-gradient(from 210deg,var(--core-blue-hi),var(--core-blue),var(--core-indigo),var(--core-violet),var(--core-blue-hi));
-  --surface-white:rgba(255,255,255,.78);
-  --surface-blue:rgba(238,246,255,.62);
-  --edge-light:rgba(255,255,255,.92);
-  --depth-shadow:0 26px 60px rgba(35,50,92,.16),0 7px 18px rgba(48,55,110,.08),inset 0 1px 0 rgba(255,255,255,.96);
-}
-
-/* Spatial background: cool white plane with orbital light fields. */
-body{
-  background-color:#F5F8FD;
-  background-image:
-    radial-gradient(circle at 14% 8%,rgba(37,99,235,.16),transparent 27%),
-    radial-gradient(circle at 88% 10%,rgba(124,58,237,.15),transparent 28%),
-    radial-gradient(circle at 78% 86%,rgba(79,70,229,.10),transparent 28%),
-    radial-gradient(circle at 12% 92%,rgba(96,165,250,.10),transparent 25%),
-    linear-gradient(145deg,#F9FBFF 0%,#EEF4FC 52%,#F7F3FC 100%);
-}
-
-.bg-bubbles .bubble{filter:blur(1px);opacity:.82}
-.bg-bubbles .bubble-1{background:radial-gradient(circle at 35% 30%,rgba(37,99,235,.32),rgba(37,99,235,0) 68%)}
-.bg-bubbles .bubble-2{background:radial-gradient(circle at 35% 30%,rgba(124,58,237,.30),rgba(124,58,237,0) 68%)}
-.bg-bubbles .bubble-3{background:radial-gradient(circle at 35% 30%,rgba(79,70,229,.25),rgba(79,70,229,0) 68%)}
-.bg-bubbles .bubble-4{background:radial-gradient(circle at 35% 30%,rgba(96,165,250,.22),rgba(96,165,250,0) 68%)}
-.bg-bubbles .bubble-5{background:radial-gradient(circle at 35% 30%,rgba(167,139,250,.24),rgba(167,139,250,0) 68%)}
-
-/* All major surfaces now have material, edge and depth. */
-.panel,.sidebar,.topbar,.stat,.queue-board-item,.login-panel,.modal,.bottom-tabbar,.bottom-sheet,.ticket,.queue-list-item,.patient-journey-card{
-  background:linear-gradient(145deg,var(--surface-white),var(--surface-blue));
-  border:1px solid rgba(255,255,255,.84);
-  box-shadow:var(--depth-shadow);
-  -webkit-backdrop-filter:blur(26px) saturate(155%);
-  backdrop-filter:blur(26px) saturate(155%);
-}
-.panel,.stat,.queue-board-item,.login-panel,.modal,.ticket,.queue-list-item,.patient-journey-card{isolation:isolate}
-.panel::before,.stat::before,.queue-board-item::before,.login-panel::before,.modal::before,.ticket::before,.queue-list-item::before,.patient-journey-card::before{
-  content:"";position:absolute;inset:1px;border-radius:inherit;pointer-events:none;z-index:-1;
-  background:linear-gradient(120deg,rgba(255,255,255,.78),transparent 28%,transparent 68%,rgba(124,58,237,.08));
-}
-
-/* Matching Core: orbital 3D mark rather than a flat blue square. */
-.brand-mark,.login-emblem,.avatar-btn{
-  position:relative!important;
-  background:radial-gradient(circle at 34% 26%,#DCEBFF 0 5%,#60A5FA 10%,#2563EB 32%,#4F46E5 64%,#7C3AED 100%)!important;
-  border:1px solid rgba(255,255,255,.78)!important;
-  box-shadow:0 12px 28px rgba(37,99,235,.28),0 5px 18px rgba(124,58,237,.20),inset 0 2px 2px rgba(255,255,255,.72),inset 0 -7px 14px rgba(48,34,135,.20)!important;
-}
-.brand-mark::after,.login-emblem::after,.avatar-btn::after{
-  content:"";position:absolute;inset:-6px;border-radius:50%;padding:3px;
-  background:var(--core-conic);
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
-  -webkit-mask-composite:xor;mask-composite:exclude;
-  opacity:.9;filter:drop-shadow(0 4px 9px rgba(79,70,229,.20));
-  animation:coreOrbit 9s linear infinite;pointer-events:none;
-}
-.brand-mark::before,.login-emblem::before,.avatar-btn::before{
-  content:"";position:absolute;inset:8px;border-radius:50%;border:1px solid rgba(255,255,255,.58);box-shadow:inset 0 1px 4px rgba(255,255,255,.75);z-index:2;pointer-events:none;
-}
-@keyframes coreOrbit{to{transform:rotate(360deg)}}
-
-/* Sidebar becomes a floating spatial rail. */
-.sidebar{
-  background:linear-gradient(145deg,rgba(255,255,255,.86),rgba(236,244,255,.68));
-  box-shadow:0 30px 70px rgba(31,50,93,.16),0 8px 20px rgba(31,50,93,.08),inset 0 1px 0 #fff;
-  border-color:rgba(255,255,255,.9);
-}
-.brand{border-bottom-color:rgba(79,70,229,.10)}
-.nav-item{position:relative;transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s,background .18s,color .18s}
-.nav-item:hover{transform:translate3d(3px,-1px,0);background:linear-gradient(100deg,rgba(255,255,255,.76),rgba(238,243,255,.50));box-shadow:8px 10px 24px rgba(41,59,103,.10),inset 0 1px 0 #fff}
+/* The active navigation uses the same left-blue/right-violet language. */
 .nav-item.active{
-  transform:translate3d(4px,-2px,0);
-  background:linear-gradient(120deg,#2563EB 0%,#4F46E5 62%,#7C3AED 100%);
-  box-shadow:0 15px 28px rgba(65,67,195,.25),inset 0 2px 0 rgba(255,255,255,.48),inset 0 -4px 8px rgba(35,30,120,.18);
+  background:var(--core-gradient);
+  color:#fff;
+  box-shadow:0 7px 18px rgba(79,70,229,.22),inset 0 1px 0 rgba(255,255,255,.38);
 }
-.nav-item.active::after{content:"";position:absolute;right:8px;top:10px;bottom:10px;width:3px;border-radius:99px;background:linear-gradient(#A5B4FC,#fff,#C4B5FD);box-shadow:0 0 12px rgba(196,181,253,.85)}
+.nav-item:hover{color:#263A63;background:linear-gradient(90deg,rgba(37,99,235,.09),rgba(124,58,237,.07))}
 
-/* Topbar / floating controls. */
-.topbar{box-shadow:0 18px 42px rgba(35,50,92,.12),inset 0 1px 0 #fff}
-.btn-icon,.admin-top-menu-btn{box-shadow:0 9px 20px rgba(37,54,99,.11),inset 0 1px 0 #fff;transition:transform .16s,box-shadow .16s}
-.btn-icon:hover,.admin-top-menu-btn:hover{transform:translateY(-2px);box-shadow:0 14px 26px rgba(37,54,99,.15),inset 0 1px 0 #fff}
-
-/* Physical buttons. */
-.btn{border-color:rgba(255,255,255,.72);box-shadow:0 7px 15px rgba(35,50,92,.10),inset 0 2px 0 rgba(255,255,255,.72),inset 0 -2px 0 rgba(40,48,90,.06);transition:transform .15s cubic-bezier(.2,.8,.2,1),box-shadow .15s,filter .15s}
-.btn:hover{transform:translateY(-3px);box-shadow:0 14px 25px rgba(35,50,92,.15),inset 0 2px 0 rgba(255,255,255,.88)}
-.btn:active{transform:translateY(1px) scale(.982);box-shadow:0 3px 7px rgba(35,50,92,.16),inset 0 3px 7px rgba(38,43,82,.15)}
-.btn-primary{background:linear-gradient(120deg,#2563EB 0%,#4F46E5 58%,#7C3AED 100%);box-shadow:0 13px 28px rgba(70,67,197,.27),inset 0 2px 0 rgba(255,255,255,.48),inset 0 -4px 8px rgba(37,31,130,.20)}
-.btn-primary:hover{background:linear-gradient(120deg,#3B82F6,#4F46E5 52%,#8B5CF6);filter:saturate(1.08)}
-.btn-outline{background:linear-gradient(145deg,rgba(255,255,255,.82),rgba(238,244,253,.58));border-color:rgba(79,70,229,.16)}
-.btn-outline:hover{border-color:rgba(124,58,237,.38)}
-
-/* Inset form controls. */
-input,select,textarea{background:linear-gradient(145deg,rgba(255,255,255,.91),rgba(239,245,253,.70));border-color:rgba(71,91,135,.15);box-shadow:inset 0 3px 7px rgba(35,50,92,.055),0 1px 0 #fff;transition:border-color .16s,box-shadow .16s,transform .16s}
-input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(79,70,229,.52);box-shadow:0 0 0 4px rgba(79,70,229,.10),inset 0 3px 7px rgba(35,50,92,.04),0 1px 0 #fff}
-
-/* Dashboard cards: layered orbital edge gives the 3D identity. */
-.stat{min-height:122px;overflow:hidden;transform:translateZ(0);transition:transform .18s,box-shadow .18s}
-.stat:hover{transform:translateY(-5px) rotateX(1deg);box-shadow:0 30px 62px rgba(35,50,92,.18),0 8px 18px rgba(35,50,92,.08),inset 0 1px 0 #fff}
-.stat::after{content:"";position:absolute;width:108px;height:108px;right:-38px;bottom:-46px;border-radius:50%;background:conic-gradient(from 220deg,rgba(96,165,250,.0),rgba(37,99,235,.16),rgba(124,58,237,.18),rgba(96,165,250,.0));-webkit-mask:radial-gradient(circle,transparent 55%,#000 57%,#000 63%,transparent 65%);mask:radial-gradient(circle,transparent 55%,#000 57%,#000 63%,transparent 65%);filter:drop-shadow(0 4px 8px rgba(79,70,229,.12));animation:coreOrbit 12s linear infinite}
-.stat .val{color:#3447A5;text-shadow:0 1px 0 #fff}
-
-/* Queue board gets a luminous central focus. */
-.queue-board-item{overflow:hidden;transition:transform .18s,box-shadow .18s}
-.queue-board-item:hover{transform:translateY(-4px);box-shadow:0 28px 58px rgba(35,50,92,.18),inset 0 1px 0 #fff}
-.queue-board-item .num{color:#3E43A5;text-shadow:0 2px 0 #fff,0 5px 18px rgba(79,70,229,.12)}
-.queue-board-item.calling{border-color:rgba(124,58,237,.40);background:linear-gradient(145deg,rgba(238,234,255,.88),rgba(255,255,255,.56));box-shadow:0 0 0 2px rgba(124,58,237,.06),0 25px 55px rgba(79,70,229,.16)}
-
-/* Ticket becomes a floating medical pass. */
-.ticket{background:linear-gradient(125deg,#2563EB 0%,#4F46E5 58%,#7C3AED 100%);box-shadow:0 30px 62px rgba(58,53,169,.28),inset 0 2px 0 rgba(255,255,255,.52),inset 0 -5px 10px rgba(38,28,112,.22);overflow:hidden}
-.ticket::after{width:190px;height:190px;right:-55px;top:-68px;border:16px solid rgba(255,255,255,.13);box-shadow:0 0 0 10px rgba(255,255,255,.055),0 0 42px rgba(196,181,253,.14);animation:coreOrbit 14s linear infinite}
-
-/* Login: central Matching Core with depth and orbit. */
-.login-wrap{position:relative;isolation:isolate;background:radial-gradient(circle at 50% 38%,rgba(255,255,255,.66),transparent 34%)}
-.login-wrap::before{width:520px;height:520px;left:50%;top:48%;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(37,99,235,.13),rgba(79,70,229,.08) 40%,rgba(124,58,237,0) 70%);filter:blur(1px)}
-.login-wrap::after{width:340px;height:340px;left:calc(50% + 210px);top:calc(50% - 230px);border:24px solid rgba(124,58,237,.055);box-shadow:0 0 0 13px rgba(37,99,235,.035),0 0 55px rgba(124,58,237,.08),inset 0 0 30px rgba(124,58,237,.06);animation:coreOrbit 18s linear infinite}
-.login-panel{max-width:470px;border-radius:38px;background:linear-gradient(145deg,rgba(255,255,255,.86),rgba(239,246,255,.62));box-shadow:0 42px 95px rgba(31,50,93,.23),0 10px 24px rgba(31,50,93,.10),inset 0 2px 0 #fff;overflow:hidden;transform:translateZ(0)}
-.login-panel::after{content:"";position:absolute;inset:10px;border-radius:30px;border:1px solid rgba(255,255,255,.42);pointer-events:none}
-.login-hero{background:linear-gradient(125deg,#2563EB 0%,#4F46E5 55%,#7C3AED 100%);padding:36px 30px 28px;box-shadow:inset 0 2px 0 rgba(255,255,255,.30),inset 0 -10px 24px rgba(38,30,122,.12)}
-.login-hero::before{width:210px;height:210px;right:-55px;top:-82px;border:18px solid rgba(255,255,255,.13);box-shadow:0 0 0 10px rgba(255,255,255,.055),0 0 42px rgba(255,255,255,.10);animation:coreOrbit 15s linear infinite}
-.login-hero::after{width:120px;height:120px;left:-38px;bottom:-56px;border:11px solid rgba(255,255,255,.12);box-shadow:0 0 0 8px rgba(255,255,255,.045)}
-.login-body{padding:28px 30px 32px}
-.login-demo-section{background:linear-gradient(145deg,rgba(255,255,255,.70),rgba(237,243,253,.45));box-shadow:inset 0 2px 0 rgba(255,255,255,.86),0 8px 18px rgba(35,50,92,.06)}
-.chip{transition:transform .16s,box-shadow .16s!important}
-.chip:hover{transform:translateY(-3px) scale(1.01)!important;box-shadow:0 12px 24px rgba(35,50,92,.13),inset 0 1px 0 #fff!important}
-
-/* Patient journey: orbital nodes connected by a luminous gradient path. */
-.patient-flow{position:relative;padding:12px 4px 18px}
-.patient-flow::before{content:"";position:absolute;left:28px;right:28px;top:25px;height:3px;border-radius:99px;background:linear-gradient(90deg,#2563EB,#4F46E5,#7C3AED);opacity:.24;box-shadow:0 0 12px rgba(79,70,229,.18)}
-.patient-flow-step{position:relative;z-index:1}
-.patient-flow-step:not(:last-child)::after{background:linear-gradient(90deg,rgba(37,99,235,.32),rgba(124,58,237,.22));height:3px}
-.patient-flow-step span{width:34px;height:34px;background:rgba(255,255,255,.78);border:2px solid rgba(79,70,229,.15);box-shadow:0 7px 15px rgba(35,50,92,.10),inset 0 1px 0 #fff;font-size:10px}
-.patient-flow-step.done span{background:linear-gradient(135deg,#2563EB,#4F46E5);color:#fff;border-color:transparent;box-shadow:0 8px 18px rgba(65,67,195,.25),inset 0 1px 0 rgba(255,255,255,.45)}
-.patient-flow-step.active span{background:radial-gradient(circle,#60A5FA 0 10%,#2563EB 28%,#4F46E5 64%,#7C3AED 100%);color:#fff;border-color:#fff;box-shadow:0 0 0 5px rgba(79,70,229,.10),0 10px 24px rgba(79,70,229,.28);animation:corePulse 2.6s ease-in-out infinite}
-@keyframes corePulse{50%{box-shadow:0 0 0 9px rgba(79,70,229,.04),0 12px 28px rgba(79,70,229,.30)}}
-
-.journey-step,.inpatient-journey-step{background:linear-gradient(145deg,rgba(255,255,255,.78),rgba(238,244,253,.55));border-color:rgba(255,255,255,.84);box-shadow:0 9px 20px rgba(35,50,92,.07),inset 0 1px 0 #fff;transition:transform .16s,box-shadow .16s}
-.journey-step:hover,.inpatient-journey-step:hover{transform:translateY(-3px);box-shadow:0 15px 28px rgba(35,50,92,.12),inset 0 1px 0 #fff}
-.journey-step.active,.inpatient-journey-step.active{border-color:rgba(124,58,237,.40);box-shadow:0 0 0 2px rgba(124,58,237,.07),0 18px 34px rgba(79,70,229,.14),inset 0 1px 0 #fff}
-.journey-step.done,.inpatient-journey-step.done{border-color:rgba(37,99,235,.25);background:linear-gradient(145deg,rgba(235,243,255,.82),rgba(245,241,255,.60))}
-
-/* Modals / sheets retain depth without sacrificing readability. */
-.modal-overlay{background:rgba(25,36,61,.30);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
-.modal,.bottom-sheet{background:linear-gradient(145deg,rgba(255,255,255,.91),rgba(239,246,255,.74));box-shadow:0 38px 90px rgba(20,35,70,.25),0 10px 25px rgba(20,35,70,.10),inset 0 2px 0 #fff}
-
-/* Clinical tables stay solid/readable, but gain a spatial header. */
-table{background:rgba(255,255,255,.34);border-radius:16px;overflow:hidden}
-th{background:linear-gradient(120deg,rgba(230,239,255,.72),rgba(238,232,255,.60));box-shadow:inset 0 1px 0 #fff}
-tr.tr-click:hover{background:linear-gradient(90deg,rgba(37,99,235,.09),rgba(124,58,237,.08))}
-
-@media(max-width:600px){
-  .login-panel{border-radius:30px;margin:12px}
-  .login-hero{padding:28px 22px 23px}
-  .login-body{padding:22px}
-  .patient-flow::before{left:20px;right:20px}
-  .stat:hover,.panel:hover,.queue-board-item:hover{transform:none}
+/* Buttons: gradient face, while preserving their original dimensions. */
+.btn{box-shadow:var(--core-shadow)}
+.btn-primary{background:var(--core-gradient);box-shadow:0 7px 18px rgba(79,70,229,.24),inset 0 1px 0 rgba(255,255,255,.38)}
+.btn-primary:hover{background:linear-gradient(90deg,#3B82F6 0%,#4F46E5 62%,#7C3AED 100%)}
+.btn-outline{
+  border-color:transparent;
+  background:linear-gradient(var(--glass-bg),var(--glass-bg)) padding-box,var(--core-gradient) border-box;
 }
-@media(prefers-reduced-motion:reduce){
-  .brand-mark::after,.login-emblem::after,.avatar-btn::after,.login-wrap::after,.login-hero::before,.ticket::after,.stat::after{animation:none}
-  .patient-flow-step.active span{animation:none}
+.btn-outline:hover{border-color:transparent;background:linear-gradient(rgba(255,255,255,.72),rgba(255,255,255,.72)) padding-box,var(--core-gradient) border-box}
+.btn-success{background:linear-gradient(90deg,#15803D,#16A34A);}
+.btn-danger{background:linear-gradient(90deg,#B42318,#D0443B);}
+
+/* Inputs: a very thin blue-to-violet edge; no position/size changes. */
+input,select,textarea{
+  border-color:transparent;
+  background:linear-gradient(rgba(255,255,255,.72),rgba(255,255,255,.72)) padding-box,var(--core-gradient) border-box;
 }
+input:focus,select:focus,textarea:focus{
+  outline:2px solid rgba(79,70,229,.16);
+  border-color:transparent;
+  background:linear-gradient(rgba(255,255,255,.92),rgba(255,255,255,.92)) padding-box,var(--core-gradient) border-box;
+}
+
+/* Small controls/chips follow the same edge treatment. */
+.chip{
+  border-color:transparent;
+  background:linear-gradient(rgba(255,255,255,.55),rgba(255,255,255,.55)) padding-box,var(--core-gradient) border-box;
+}
+.chip:hover{border-color:transparent;color:#4F46E5}
+
+/* Medical ticket and queue focus use the core gradient without adding overlays. */
+.ticket{background:var(--core-gradient);box-shadow:0 12px 28px rgba(79,70,229,.22),inset 0 1px 0 rgba(255,255,255,.38)}
+.queue-board-item.calling{border-color:transparent;background:linear-gradient(rgba(255,255,255,.72),rgba(255,255,255,.72)) padding-box,var(--core-gradient) border-box}
+.queue-list-item.active{border-color:transparent;background:linear-gradient(rgba(245,248,255,.72),rgba(246,242,255,.72)) padding-box,var(--core-gradient) border-box}
+
+/* Login: keep the original V14.6.2 structure; only recolor the hero/core edge. */
+.login-panel{border-color:transparent}
+.login-hero{background:var(--core-gradient)}
+.login-emblem{box-shadow:0 5px 14px rgba(79,70,229,.18),inset 0 1px 0 rgba(255,255,255,.42)}
+
+/* Top-level identity marks get the same blue-left/violet-right core. */
+.brand-mark,.avatar-btn{background:var(--core-gradient)}
+
+/* Modal overlay stays functionally identical; only the material tint changes. */
+.modal-overlay{background:rgba(24,35,65,.30)}
+
+/* Clinical semantic colors stay green/red/amber where their meaning matters. */
+.badge-clinical{color:#244FC1;background:linear-gradient(90deg,rgba(219,234,254,.82),rgba(224,231,255,.70))}
