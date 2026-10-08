@@ -5,7 +5,7 @@
 const BIAYA_REGISTRASI = 10000;
 const BIAYA_LAB = 75000;
 const LOW_STOCK_THRESHOLD = 15;
-const PROTOTYPE_VERSION = 'v15.0.0';
+const PROTOTYPE_VERSION = 'v14.6.1';
 const PROTOTYPE_NAME = 'SIMRS PROTOTYPE';
 const PROTOTYPE_MODE = 'Portfolio / Demo';
 const QUEUE_JOURNEY = [
@@ -1678,19 +1678,19 @@ function downloadPatientTicket(bookingId){
   const svg=renderQrSvg(booking.kodeCheckIn,230);
   const canvas=document.createElement('canvas'), ctx=canvas.getContext('2d'), scale=2;
   canvas.width=900*scale; canvas.height=1250*scale; ctx.scale(scale,scale);
-  ctx.fillStyle='#f7faf9'; ctx.fillRect(0,0,900,1250);
-  ctx.fillStyle='#ffffff'; ctx.strokeStyle='#d8e5e1'; ctx.lineWidth=2;
+  ctx.fillStyle='#EEF4FB'; ctx.fillRect(0,0,900,1250);
+  ctx.fillStyle='#ffffff'; ctx.strokeStyle='#D9E3F2'; ctx.lineWidth=2;
   if(ctx.roundRect) ctx.roundRect(45,45,810,1160,30); else ctx.rect(45,45,810,1160); ctx.fill(); ctx.stroke();
-  ctx.fillStyle='#0e5c56'; ctx.font='700 30px Arial'; ctx.fillText('SIMRS PROTOTYPE',80,105);
-  ctx.fillStyle='#687773'; ctx.font='18px Arial'; ctx.fillText('TIKET RAWAT JALAN',80,145);
-  ctx.fillStyle='#263b37'; ctx.font='700 72px monospace'; ctx.fillText(booking.noAntrian,80,245);
+  ctx.fillStyle='#2563EB'; ctx.font='700 30px Arial'; ctx.fillText('SIMRS PROTOTYPE',80,105);
+  ctx.fillStyle='#5E6F86'; ctx.font='18px Arial'; ctx.fillText('TIKET RAWAT JALAN',80,145);
+  ctx.fillStyle='#18345F'; ctx.font='700 72px monospace'; ctx.fillText(booking.noAntrian,80,245);
   ctx.font='700 30px Arial'; ctx.fillText(poli.nama,80,300);
   ctx.font='20px Arial'; ctx.fillText(formatTanggalIndo(booking.tanggalKontrol)+' · '+(booking.jenisLayanan||poli.layanan),80,340);
   const dm=bookingDoctorMaster(booking); if(dm){ctx.fillText('Dokter: '+dm.nama,80,450);} if(booking.appointmentTime){ctx.fillText('Janji: '+booking.appointmentTime,80,485);}
   ctx.fillText('Pasien: '+p.nama,80,380);
   ctx.fillText('Penjamin: '+booking.jenisBayar,80,415);
   const img=new Image(); const blob=new Blob([svg],{type:'image/svg+xml'}); const url=URL.createObjectURL(blob);
-  img.onload=function(){ctx.drawImage(img,335,475,230,230);URL.revokeObjectURL(url);ctx.fillStyle='#687773';ctx.font='18px monospace';ctx.textAlign='center';ctx.fillText(booking.kodeCheckIn,450,750);ctx.font='18px Arial';ctx.fillText('Tunjukkan QR/barcode ini saat check-in di loket.',450,805);ctx.fillText('Simpan tiket ini di ponsel Anda.',450,840);ctx.textAlign='left';const a=document.createElement('a');a.download='Tiket-'+booking.noAntrian+'-'+booking.tanggalKontrol+'.png';a.href=canvas.toDataURL('image/png');a.click();showToast('Tiket berhasil diunduh.','success');};
+  img.onload=function(){ctx.drawImage(img,335,475,230,230);URL.revokeObjectURL(url);ctx.fillStyle='#5E6F86';ctx.font='18px monospace';ctx.textAlign='center';ctx.fillText(booking.kodeCheckIn,450,750);ctx.font='18px Arial';ctx.fillText('Tunjukkan QR/barcode ini saat check-in di loket.',450,805);ctx.fillText('Simpan tiket ini di ponsel Anda.',450,840);ctx.textAlign='left';const a=document.createElement('a');a.download='Tiket-'+booking.noAntrian+'-'+booking.tanggalKontrol+'.png';a.href=canvas.toDataURL('image/png');a.click();showToast('Tiket berhasil diunduh.','success');};
   img.onerror=function(){URL.revokeObjectURL(url);showToast('Tiket gagal diunduh. Silakan coba lagi.','danger');}; img.src=url;
 }
 function printPatientTicket(bookingId){
