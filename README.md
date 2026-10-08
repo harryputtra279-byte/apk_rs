@@ -1,7 +1,7 @@
 # SIMRS PROTOTYPE — Portfolio / Demo
 
-**Versi:** V14.6.2  
-**Baseline pengembangan:** V14.6.1  
+**Versi:** V15.0.0  
+**Baseline pengembangan:** V14.6.2  
 **Platform:** PWA / Web  
 **Status:** Prototype portfolio, bukan SIMRS produksi
 
@@ -11,7 +11,7 @@ SIMRS PROTOTYPE adalah proyek portfolio untuk memperlihatkan kemampuan analisis 
 
 ## 1. Baseline pengembangan
 
-Mulai V14.6.1, **V14.6.1 adalah baseline resmi terakhir** yang digunakan sebagai sumber perubahan.
+V15 dikembangkan langsung dari **V14.6.2** sebagai baseline fungsional dan tidak menggunakan V14.6.3/V14.6.4 sebagai fondasi UI.
 
 Aturan pengembangan proyek:
 
@@ -20,6 +20,13 @@ Aturan pengembangan proyek:
 3. Fitur yang sudah benar harus dipertahankan.
 4. Setiap perubahan harus melalui pemeriksaan syntax, UI, navigasi, role/RBAC, alur utama, dan regresi fitur sebelum ZIP diberikan.
 5. README hanya diperbarui setelah fungsi aplikasi cukup stabil untuk didokumentasikan.
+
+
+## 1A. V15.0.0 — Samsung Glass 3D × Medical Spatial UI
+
+V15 mempertahankan alur dan fungsi baseline V14.6.2, lalu menerapkan lapisan UI baru bergaya **Samsung Glass 3D / Medical Spatial UI** secara menyeluruh: login, sidebar, topbar, dashboard, kartu statistik, tombol, form, modal, tabel, monitor antrean, ticket, journey, dan navigasi mobile.
+
+Prinsip implementasi: **fungsi → keterbacaan → layout → estetika → efek 3D**. Efek kaca/depth tidak digunakan untuk menutupi atau mengganggu elemen klinis yang membutuhkan keterbacaan tinggi.
 
 ## 2. Perubahan V14.6.2 — Patient Journey & Mobile Responsive Fix
 
