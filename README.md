@@ -1,7 +1,7 @@
 # SIMRS PROTOTYPE — Portfolio / Demo
 
-**Versi:** V15.4.0  
-**Baseline pengembangan:** V15.4.0  
+**Versi:** V15.5.0  
+**Baseline pengembangan:** V15.5.0  
 **Platform:** PWA / Web  
 **Status:** Prototype portfolio, bukan SIMRS produksi
 
@@ -11,7 +11,7 @@ SIMRS PROTOTYPE adalah proyek portfolio untuk memperlihatkan kemampuan analisis 
 
 ## 1. Baseline pengembangan
 
-Mulai V15.4.0, baseline pengembangan adalah **V15.4.0 SIMRS Brighter Blue**. V15.4.0 memperbaiki hubungan resep dokter, antrean Farmasi Rawat Jalan, dan Perjalanan Saya pasien tanpa merombak struktur UI.
+Baseline untuk versi ini adalah **V15.4.0 SIMRS Integrasi Antarunit**. V15.5.0 dikembangkan di atas baseline tersebut; bukan kembali ke V15.3.0.
 
 Aturan pengembangan proyek:
 
@@ -20,6 +20,18 @@ Aturan pengembangan proyek:
 3. Fitur yang sudah benar harus dipertahankan.
 4. Setiap perubahan harus melalui pemeriksaan syntax, UI, navigasi, role/RBAC, alur utama, dan regresi fitur sebelum ZIP diberikan.
 5. README hanya diperbarui setelah fungsi aplikasi cukup stabil untuk didokumentasikan.
+
+## Perubahan V15.5.0 — Pengalaman Pasien & Akun Demo Bersih
+
+- Navbar pasien tepat lima menu: Beranda, Rawat Jalan, Informasi, Booking Saya, dan Riwayat. Rawat Inap dan Monitor tidak lagi menjadi menu tersendiri di navbar pasien; fungsi rawat inap tetap ditampilkan pada Perjalanan Saya.
+- Beranda memuat Profil Pasien dan satu komponen Perjalanan Saya untuk episode aktif. Prioritas perjalanan: Rawat Inap yang masih dirawat, lalu IGD aktif, lalu Rawat Jalan aktif. Tanpa episode aktif, tidak dibuat perjalanan palsu.
+- Perjalanan Rawat Jalan memuat nomor antrean, poli, dokter jika sudah dialokasikan, jam kunjungan, estimasi waktu, dan alur tahapan. Estimasi ditandai sebagai perkiraan.
+- Riwayat dipisahkan menjadi Rawat Jalan, Rawat Inap, dan IGD.
+- Informasi pasien satu arah; Chat Pelayanan dua arah dengan inbox staf. Admin dapat menerbitkan pengumuman umum. Perubahan booking atau penugasan dokter tetap harus disimpan oleh petugas berwenang pada alur operasional, tidak otomatis berubah hanya karena percakapan chat.
+- Lima akun demo Rawat Jalan dan lima akun demo Rawat Inap lama diganti menjadi sepuluh akun pasien fiktif bernomor 1–10. Setiap akun baru mulai tanpa booking, kunjungan, admisi, resep, atau riwayat. Satu akun terhubung ke identitas pasien yang sama pada episode layanan berikutnya.
+- Cache PWA dan query aset dinaikkan ke V15.5.0.
+
+> Batas prototype: data disimpan di localStorage per browser/perangkat. Chat, pengumuman, dan pembaruan data belum tersinkron ke perangkat lain tanpa backend bersama.
 
 ## Perbaikan V15.4.0 — Integrasi Resep → Farmasi → Perjalanan Saya
 
@@ -210,9 +222,9 @@ Menu utama menyesuaikan unit kerja akun, sehingga modul yang tidak relevan tidak
 | Admisi Rawat Inap | `admisi.ranap` | `admisi123` |
 | Dokter Rawat Inap | `dokter.ranap` | `dokter123` |
 | Perawat Rawat Inap | `perawat.ranap` | `perawat123` |
-| Pasien Demo | `pasien.demo` | `pasien123` |
+| Pasien Demo 1–10 | `pasien.demo1` s.d. `pasien.demo10` | `pasien123` |
 
-Akun tambahan tersedia untuk dokter/perawat per unit, dokter jaga dan perawat per shift, Farmasi/Kasir IGD, Farmasi/Kasir Rawat Inap, serta pasien demo Rawat Inap.
+Akun tambahan tersedia untuk dokter/perawat per unit, dokter jaga dan perawat per shift, Farmasi/Kasir IGD, Farmasi/Kasir Rawat Inap. Sepuluh akun pasien demo baru dimulai tanpa riwayat pelayanan.
 
 ## 7. Teknologi
 
