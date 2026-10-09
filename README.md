@@ -1,7 +1,7 @@
 # SIMRS PROTOTYPE — Portfolio / Demo
 
-**Versi:** V14.6.2  
-**Baseline pengembangan:** V14.6.1  
+**Versi:** V15.4.0  
+**Baseline pengembangan:** V15.4.0  
 **Platform:** PWA / Web  
 **Status:** Prototype portfolio, bukan SIMRS produksi
 
@@ -11,7 +11,7 @@ SIMRS PROTOTYPE adalah proyek portfolio untuk memperlihatkan kemampuan analisis 
 
 ## 1. Baseline pengembangan
 
-Mulai V14.6.1, **V14.6.1 adalah baseline resmi terakhir** yang digunakan sebagai sumber perubahan.
+Mulai V15.4.0, baseline pengembangan adalah **V15.4.0 SIMRS Brighter Blue**. V15.4.0 memperbaiki hubungan resep dokter, antrean Farmasi Rawat Jalan, dan Perjalanan Saya pasien tanpa merombak struktur UI.
 
 Aturan pengembangan proyek:
 
@@ -20,6 +20,17 @@ Aturan pengembangan proyek:
 3. Fitur yang sudah benar harus dipertahankan.
 4. Setiap perubahan harus melalui pemeriksaan syntax, UI, navigasi, role/RBAC, alur utama, dan regresi fitur sebelum ZIP diberikan.
 5. README hanya diperbarui setelah fungsi aplikasi cukup stabil untuk didokumentasikan.
+
+## Perbaikan V15.4.0 — Integrasi Resep → Farmasi → Perjalanan Saya
+
+- Relasi resep dan kunjungan diperiksa dua arah (`visit.resepId` dan `resep.visitId`) agar data lama yang salah satu tautannya kosong dapat dipulihkan.
+- Antrean Farmasi Rawat Jalan dibaca dari resep berstatus `menunggu` yang terhubung ke kunjungan, bukan hanya dari status kunjungan hari ini. Resep yang masih menunggu tidak hilang hanya karena tanggal kunjungan bukan hari ini.
+- Jika resep masih `menunggu` tetapi kunjungan salah tercatat sebagai `menunggu_bayar`, status dikembalikan ke `menunggu_farmasi` agar pasien tidak melewati proses farmasi.
+- Perjalanan Saya mencari resep lewat relasi kunjungan maupun ID resep; tahap Farmasi dan Pengambilan Obat ditampilkan sesuai statusnya.
+- Setelah farmasi menyiapkan obat, resep tetap terhubung ke kunjungan dan alur berlanjut ke kasir; setelah pembayaran, pasien muncul di daftar Obat Siap Diambil. Saat obat diserahkan, status resep menjadi `diambil`.
+- UI dan style.css tidak dirombak.
+
+> Catatan teknis: data prototype masih disimpan di `localStorage` browser/perangkat. Sinkronisasi antarperangkat atau antar-browser memerlukan backend/database bersama dan tidak bisa dijamin hanya dengan GitHub Pages statis.
 
 ## 2. Perubahan V14.6.2 — Patient Journey & Mobile Responsive Fix
 
@@ -320,3 +331,25 @@ Proyek ini dibuat untuk menunjukkan kemampuan dalam:
 
 **SIMRS PROTOTYPE — Portfolio / Demo**  
 Dibuat sebagai proyek portfolio Sistem Informasi untuk menunjukkan kemampuan analisis, desain, implementasi frontend, business logic, RBAC, PWA, dan pengujian alur aplikasi.
+
+## V15.4.0 — Integrasi alur antarunit (prototype)
+
+- Memperkuat tautan resep ↔ kunjungan/admisi dan memisahkan antrean farmasi Rawat Jalan, Rawat Inap, dan IGD.
+- Menambahkan permintaan/rujukan antarunit dengan status konfirmasi, termasuk rujukan Rawat Jalan ke IGD dan permintaan admisi dari IGD.
+- Menambahkan order Radiologi Rawat Jalan/IGD; order Rawat Inap tetap terikat ke admisi. Hasil dikembalikan ke episode sumber dan diberi notifikasi in-app.
+- Menambahkan alur asesmen/instruksi dasar IGD serta pendaftaran/penerimaan IGD pada prototype.
+- Mempertahankan UI utama V15.3.0; pembaruan cache PWA dinaikkan ke v15.4.0.
+
+**Batasan penting:** ini adalah prototype portofolio berbasis penyimpanan lokal per browser/perangkat, bukan SIMRS produksi dan belum sinkron antarperangkat. Status/antrean/notifikasi lintas perangkat membutuhkan backend bersama, kontrol akses server, audit trail yang kuat, validasi klinis, serta uji penerimaan pengguna rumah sakit. Tidak boleh dipakai untuk keputusan klinis nyata.
+
+## Validasi V15.4.0 yang dilakukan pada paket ini
+
+- Pemeriksaan sintaks JavaScript pada `app.js` dan `sw.js`.
+- Simulasi logika antrean resep untuk memastikan Rawat Jalan, Rawat Inap, dan IGD terpisah.
+- Simulasi perjalanan paralel Laboratorium + Radiologi + Farmasi agar satu permintaan tidak dianggap selesai hanya karena status unit lain berubah.
+- Simulasi rujukan internal IGD: episode IGD dibuat setelah unit IGD menerima rujukan.
+- Simulasi Farmasi IGD: resep → persiapan → pencatatan pemberian; stok tidak berkurang dua kali dan episode IGD tidak otomatis ditutup.
+- Simulasi item obat duplikat untuk memastikan jumlah total yang disiapkan dibatasi stok gabungan dan inventori tidak menjadi negatif.
+- Smoke test render markup untuk layar IGD (tanpa dan dengan kunjungan aktif), Laboratorium, dan Radiologi menggunakan DOM stub.
+
+Pengujian ini merupakan validasi sintaks dan logika terisolasi, **bukan** pengujian penerimaan klinis, keamanan produksi, atau validasi UI penuh pada perangkat nyata. Sebelum dipakai sebagai demonstrasi langsung kepada rumah sakit, lakukan uji manual semua akun demo dan skenario lintas unit pada browser/perangkat sasaran.

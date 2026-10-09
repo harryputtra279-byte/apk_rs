@@ -5,7 +5,7 @@
 const BIAYA_REGISTRASI = 10000;
 const BIAYA_LAB = 75000;
 const LOW_STOCK_THRESHOLD = 15;
-const PROTOTYPE_VERSION = 'v14.6.1';
+const PROTOTYPE_VERSION = 'v15.4.0';
 const PROTOTYPE_NAME = 'SIMRS PROTOTYPE';
 const PROTOTYPE_MODE = 'Portfolio / Demo';
 const QUEUE_JOURNEY = [
@@ -445,13 +445,13 @@ function seedData(){
       {id:'GED-DIAGNOSTIK', type:'gedung', nama:'Gedung Diagnostik Terpadu', parentId:null}
     ],
     meta:{ rmCounter:3, queueCounters:{ ['JAN-'+bookingTanggal]: 2 }, schemaVersion: DB_SCHEMA_VERSION,
-      settings:{avgWaitMinutes:8, doctorQuotaDefault:30, alertQueueThreshold:10, lowStockThreshold:LOW_STOCK_THRESHOLD, pharmacyOutpatientSlaMinutes:30, pharmacyInpatientSlaMinutes:60} }
+      settings:{avgWaitMinutes:8, doctorQuotaDefault:30, alertQueueThreshold:10, lowStockThreshold:LOW_STOCK_THRESHOLD, pharmacyOutpatientSlaMinutes:30, pharmacyInpatientSlaMinutes:60, pharmacyIgdSlaMinutes:15} }
   };
   return ensureOfficialCatalog(seed);
 }
 
 /* ---------------- persistence ---------------- */
-const DB_SCHEMA_VERSION = 20;
+const DB_SCHEMA_VERSION = 21;
 
 function ensureDivisionDemoUsers(data){
   if(!Array.isArray(data.users)) data.users=[];
@@ -648,8 +648,10 @@ function migrateData(data){
     alertQueueThreshold: 10,
     lowStockThreshold: LOW_STOCK_THRESHOLD
   }, data.meta.settings||{});
+  if(!Array.isArray(data.careRequests)) data.careRequests=[];
   if(!Array.isArray(data.prescriptions)) data.prescriptions=[];
   data.prescriptions.forEach(function(r){ if(r.unit===undefined) r.unit=r.admissionId?'rawat-inap':'rawat-jalan'; if(r.updatedAt===undefined) r.updatedAt=r.createdAt||nowISO(); if(r.siapAt===undefined) r.siapAt=null; if(r.diambilAt===undefined) r.diambilAt=null; if(r.jenisLayanan===undefined) r.jenisLayanan=r.admissionId?'rawat_inap':'rawat_jalan'; });
+  data.prescriptions.forEach(function(r){if(!r.admissionId){const v=r.visitId?data.visits.find(function(x){return x.id===r.visitId;}):data.visits.find(function(x){return x.resepId===r.id;});if(v&&v.unit==='igd'){r.unit='igd';r.jenisLayanan='igd';r.patientId=r.patientId||v.patientId;}}});
   if(Array.isArray(data.visits)) data.visits.forEach(function(v){
     if(v.unit===undefined) v.unit='rawat-jalan';
     if(!v.workflow) v.workflow={bookedAt:v.createdAt||null, checkinAt:null, screeningAt:null, doctorStartAt:null, supportingAt:null, reviewAt:null, completedAt:null};
@@ -695,7 +697,7 @@ function migrateData(data){
   data.visits.forEach(function(v){ if(v.dokterId===undefined) v.dokterId=null; if(v.sessionId===undefined) v.sessionId=null; });
   ensureDivisionDemoUsers(data);
   data.users.forEach(function(u){if(u.doctorMasterId){const d=data.doctors.find(function(x){return x.id===u.doctorMasterId;});if(d){u.nama=d.nama;}}});
-  data.meta.settings = Object.assign({pharmacyOutpatientSlaMinutes:30, pharmacyInpatientSlaMinutes:60}, data.meta.settings||{});
+  data.meta.settings = Object.assign({pharmacyOutpatientSlaMinutes:30, pharmacyInpatientSlaMinutes:60, pharmacyIgdSlaMinutes:15}, data.meta.settings||{});
   return data;
 }
 
@@ -743,7 +745,39 @@ function getPatient(id){ return Store.data.patients.find(p=>p.id===id); }
 function getVisit(id){ return Store.data.visits.find(v=>v.id===id); }
 function getUserById(id){ return Store.data.users.find(u=>u.id===id); }
 function getResep(id){ return Store.data.prescriptions.find(r=>r.id===id); }
-function getResepByVisit(visitId){ return Store.data.prescriptions.find(r=>r.visitId===visitId); }
+function getResepByVisit(visitId){
+  const visit=getVisit(visitId);
+  return (visit && visit.resepId ? getResep(visit.resepId) : null) || Store.data.prescriptions.find(r=>r.visitId===visitId) || null;
+}
+function linkPrescriptionToVisit(resep, visit){
+  if(!resep || !visit) return false;
+  let changed=false;
+  if(!resep.visitId){resep.visitId=visit.id;changed=true;}
+  if(!visit.resepId){visit.resepId=resep.id;changed=true;}
+  if(!resep.unit){resep.unit=resep.admissionId?'rawat-inap':(visit.unit||'rawat-jalan');changed=true;}
+  if(!resep.jenisLayanan){resep.jenisLayanan=resep.admissionId?'rawat-inap':(visit.unit||'rawat-jalan');changed=true;}
+  return changed;
+}
+function reconcileOutpatientPrescriptions(){
+  let changed=false;
+  (Store.data.prescriptions||[]).forEach(function(resep){
+    if(resep.admissionId || (resep.unit && !['rawat-jalan','rawat_jalan'].includes(resep.unit))) return;
+    const visit=resep.visitId?getVisit(resep.visitId):Store.data.visits.find(function(v){return v.resepId===resep.id;});
+    if(!visit) return;
+    if(linkPrescriptionToVisit(resep,visit)) changed=true;
+    const unit=visit.unit||'rawat-jalan';
+    if(unit==='rawat-jalan' && resep.status==='menunggu' && visit.status!=='dibatalkan' && !['menunggu_lab','menunggu_penunjang','menunggu_review','menunggu_rujukan_igd','rujuk_ranap'].includes(visit.status)){
+      if(visit.status!=='menunggu_farmasi' || visit.nextStep!=='Farmasi Rawat Jalan'){
+        visit.status='menunggu_farmasi'; visit.nextStep='Farmasi Rawat Jalan'; visit.updatedAt=nowISO(); changed=true;
+      }
+    }
+    if(unit==='rawat-jalan' && resep.status==='disiapkan' && !['menunggu_bayar','obat_siap','selesai','menunggu_lab','menunggu_penunjang','menunggu_review','menunggu_rujukan_igd','rujuk_ranap'].includes(visit.status)){
+      visit.status='menunggu_bayar'; visit.nextStep='Billing / Kasir Rawat Jalan'; visit.updatedAt=nowISO(); changed=true;
+    }
+  });
+  if(changed) Store.save();
+  return changed;
+}
 function visitsToday(){ const t = todayStr(); return Store.data.visits.filter(v=>v.tanggal===t); }
 function patientVisits(patientId){
   return Store.data.visits.filter(v=>v.patientId===patientId).sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
@@ -790,15 +824,21 @@ function pharmacyWaitMinutes(resep){
   return Math.max(0, Math.round((new Date(end).getTime()-new Date(resep.createdAt).getTime())/60000));
 }
 function pharmacyMetrics(kind, poliId){
-  const isInpatient=kind==='rawat_inap';
+  const isInpatient=kind==='rawat_inap' || kind==='rawat-inap';
+  const isIgd=kind==='igd';
   const settings=(Store.data&&Store.data.meta&&Store.data.meta.settings)||{};
-  const sla=isInpatient?(settings.pharmacyInpatientSlaMinutes||60):(settings.pharmacyOutpatientSlaMinutes||30);
+  const sla=isInpatient?(settings.pharmacyInpatientSlaMinutes||60):(isIgd?(settings.pharmacyIgdSlaMinutes||15):(settings.pharmacyOutpatientSlaMinutes||30));
   let list=[];
-  if(isInpatient){ list=Store.data.prescriptions.filter(function(r){return r.admissionId && r.status==='menunggu';}); }
-  else { list=Store.data.prescriptions.filter(function(r){ const v=getVisit(r.visitId); return v && (!poliId || samePoli(v.poliId,poliId)) && v.tanggal===todayStr() && !r.admissionId; }); }
+  if(isInpatient){ list=Store.data.prescriptions.filter(function(r){return !!r.admissionId && ['menunggu','disiapkan'].includes(r.status) && (r.distribusiStatus!=='diberikan');}); }
+  else { list=Store.data.prescriptions.filter(function(r){
+    const v=getVisit(r.visitId || (Store.data.visits.find(function(x){return x.resepId===r.id;})||{}).id);
+    const unit=(r.unit || r.jenisLayanan || (v&&v.unit) || 'rawat-jalan').replace('_','-');
+    const expected=isIgd?'igd':'rawat-jalan';
+    return !!v && unit===expected && (!poliId || samePoli(v.poliId,poliId)) && ['menunggu','disiapkan'].includes(r.status) && !r.admissionId;
+  }); }
   const waits=list.map(pharmacyWaitMinutes).filter(function(x){return x!==null;});
   const maxWait=waits.length?Math.max.apply(null,waits):0;
-  return {pending:list.length,maxWait:maxWait,sla:sla,overSla:list.filter(function(r){const w=pharmacyWaitMinutes(r); return w!==null && w>sla;}).length};
+  return {pending:list.filter(function(r){return r.status==='menunggu';}).length,maxWait:maxWait,sla:sla,overSla:list.filter(function(r){const w=pharmacyWaitMinutes(r); return r.status==='menunggu' && w!==null && w>sla;}).length};
 }
 function alternativeDoctors(poliId){
   const current = getDoctorForPoli(poliId);
@@ -1392,10 +1432,19 @@ function renderDashboard(){
   const btn=document.getElementById('btn-dashboard-refresh'); if(btn) btn.addEventListener('click',renderDashboard);
 }
 
+function getPatientActiveIgdVisit(patientId){
+  const active=['menunggu_poli','dipanggil','diperiksa','menunggu_lab','menunggu_penunjang','menunggu_review','menunggu_farmasi','obat_siap','menunggu_bayar'];
+  return Store.data.visits.filter(function(v){return v.patientId===patientId&&v.unit==='igd'&&active.includes(v.status);}).sort(function(a,b){return new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt);})[0]||null;
+}
 function getPatientActiveVisit(patientId){
-  const activeStatuses=['menunggu_screening','screening','menunggu_dokter','dipanggil','diperiksa','menunggu_lab','menunggu_penunjang','menunggu_review','menunggu_farmasi','menunggu_bayar','obat_siap'];
-  const list=visitsToday().filter(function(v){return v.patientId===patientId && v.unit==='rawat-jalan' && activeStatuses.includes(v.status);});
-  return list.sort(function(a,b){return new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt);})[0] || null;
+  const activeStatuses=['menunggu_screening','screening','menunggu_dokter','dipanggil','diperiksa','menunggu_lab','menunggu_penunjang','menunggu_review','menunggu_farmasi','menunggu_bayar','obat_siap','menunggu_rujukan_igd','rujuk_ranap'];
+  const list=Store.data.visits.filter(function(v){
+    if(v.patientId!==patientId || (v.unit||'rawat-jalan')!=='rawat-jalan' || ['dibatalkan','tidak_hadir'].includes(v.status)) return false;
+    const resep=getResepByVisit(v.id);
+    const resepMasihBerjalan=!!(resep && ['menunggu','disiapkan'].includes(resep.status));
+    return activeStatuses.includes(v.status) || resepMasihBerjalan;
+  });
+  return list.sort(function(a,b){return new Date(b.updatedAt||b.createdAt||b.tanggal)-new Date(a.updatedAt||a.createdAt||a.tanggal);})[0] || null;
 }
 function queueNumberValue(no){ const m=String(no||'').match(/(\d+)$/); return m?parseInt(m[1],10):null; }
 function getPatientQueueState(visit){
@@ -1760,7 +1809,8 @@ function renderPatientRawatInap(){
 
 function renderPatientDashboard(){
   setPageTitle('Dashboard Pasien');
-  const u=Session.currentUser, p=getPatient(u.patientId), v=getPatientActiveVisit(u.patientId), a=getPatientActiveAdmission(u.patientId);
+  reconcileOutpatientPrescriptions();
+  const u=Session.currentUser, p=getPatient(u.patientId), a=getPatientActiveAdmission(u.patientId), igdV=getPatientActiveIgdVisit(u.patientId), v=a?null:(igdV?null:getPatientActiveVisit(u.patientId));
   if(!p){ document.getElementById('main-content').innerHTML='<div class="empty">Data pasien tidak ditemukan.</div>'; return; }
   const upcoming=Store.data.bookings.filter(function(b){return b.patientId===u.patientId && b.tanggalKontrol>=todayStr() && ['terjadwal','checked_in'].includes(b.status);}).sort(function(a,b){return a.tanggalKontrol.localeCompare(b.tanggalKontrol)||a.noAntrian.localeCompare(b.noAntrian);})[0];
   const permission=('Notification' in window)?Notification.permission:'unsupported';
@@ -1782,13 +1832,14 @@ function renderPatientDashboard(){
     liveHtml='<section class="panel patient-live-queue patient-live-blue"><div class="panel-head"><div><div class="ops-eyebrow">LIVE QUEUE MONITOR</div><h2>📍 Menunggu Check-in</h2><div class="hint">Setelah pasien datang dan QR/barcode diverifikasi di loket, posisi antrean akan tampil otomatis di sini.</div></div></div><div class="patient-live-status"><strong>🔵 Tiket Anda sudah tersimpan.</strong><span>Silakan lakukan check-in di rumah sakit sesuai jadwal kunjungan.</span></div></section>';
   }
   const ticketHtml=upcoming?'<button type="button" class="patient-ticket patient-ticket-clickable" onclick="openPatientBookingTicket(\''+upcoming.id+'\')"><span>Jadwal Berikutnya · Tap untuk buka tiket</span><strong>'+esc(upcoming.noAntrian)+'</strong><b>'+esc(getPoli(upcoming.poliId).nama)+'</b><small>'+formatTanggalIndo(upcoming.tanggalKontrol)+' · '+esc(upcoming.jenisBayar)+'</small><span class="ticket-reopen-hint">🎫 QR/barcode dapat dibuka kembali kapan saja</span></button>':'<div class="empty"><div class="big">🎫</div>Belum ada booking aktif.</div>';
-  const journeyHtml=v?'<section class="panel"><div class="panel-head"><div><h2>📍 Perjalanan Anda</h2><div class="hint">Anda boleh meninggalkan area tunggu sementara, tetapi tetap pantau status ini.</div></div></div><div class="panel-body"><div class="patient-flow">'+patientFlow(v)+'</div></div></section>':'';
+  const journeyHtml=v?'<section class="panel"><div class="panel-head"><div><h2>📍 Perjalanan Saya — RAWAT JALAN</h2><div class="hint">Anda boleh meninggalkan area tunggu sementara, tetapi tetap pantau status ini.</div></div></div><div class="panel-body"><div class="patient-flow">'+patientFlow(v)+'</div></div></section>':'';
   const inpatientJourney=a?patientInpatientJourney(a):'';
+  const igdJourney=(!a&&igdV)?'<section class="panel"><div class="panel-head"><div><div class="ops-eyebrow">PERJALANAN SAYA</div><h2>🚑 IGD</h2><div class="hint">Episode IGD aktif · '+esc(igdV.noAntrian||igdV.id)+'</div></div><span class="badge badge-sage">'+esc((STATUS_MAP[igdV.status]||{label:igdV.status}).label)+'</span></div><div class="panel-body"><div class="patient-flow"><div class="patient-flow-step done"><span>✓</span><div><strong>Rujukan / Kedatangan</strong><small>Episode IGD tercatat</small></div></div><div class="patient-flow-step active"><span>🚑</span><div><strong>Triase dan Pelayanan IGD</strong><small>Ikuti instruksi petugas IGD</small></div></div>'+(igdV.labRequest?'<div class="patient-flow-step '+(igdV.labRequest.status==='selesai'?'done':'active')+'"><span>🧪</span><div><strong>Laboratorium IGD</strong><small>'+esc(igdV.labRequest.status)+'</small></div></div>':'')+(igdV.radiologyRequest?'<div class="patient-flow-step '+(igdV.radiologyRequest.status==='selesai'?'done':'active')+'"><span>☢️</span><div><strong>Radiologi IGD</strong><small>'+esc(igdV.radiologyRequest.status)+'</small></div></div>':'')+(getResepByVisit(igdV.id)?'<div class="patient-flow-step '+(['diberikan','diambil','selesai'].includes(getResepByVisit(igdV.id).status)?'done':'active')+'"><span>💊</span><div><strong>Farmasi IGD</strong><small>Status obat: '+esc(getResepByVisit(igdV.id).status)+'</small></div></div>':'')+'</div></div></section>':'';
   document.getElementById('main-content').innerHTML=
     '<div class="patient-hero ops-hero"><div><div class="ops-eyebrow">PATIENT EXPERIENCE</div><h2>Halo, '+esc(p.nama)+'</h2><p>RM '+esc(p.id)+' · Dashboard hanya menampilkan informasi pelayanan milik Anda.</p></div><div><span class="badge badge-sage">Privasi Aktif</span></div></div>'+liveHtml+
     '<div class="ops-grid-main"><section class="panel"><div class="panel-head"><div><h2>🎫 Tiket Aktif</h2><div class="hint">Tiket dapat dibuka kembali tanpa screenshot.</div></div></div><div class="panel-body">'+ticketHtml+'</div></section>'+
     '<section class="panel"><div class="panel-head"><div><h2>🔔 Notifikasi Antrean</h2><div class="hint">Pasien diberi tahu saat antrean mendekati nomor Anda.</div></div></div><div class="panel-body"><div class="ops-alert '+(v&&getPatientQueueState(v).ahead<=3?'warning':'')+'"><span class="ops-alert-icon">🔔</span><div><strong>Notifikasi 3 pasien sebelum giliran</strong><div>Ketika nomor Anda dipanggil, indikator akan berubah menjadi hijau agar Anda segera masuk ke poli.</div></div></div><div style="margin-top:12px"><button class="btn btn-primary" id="btn-patient-notif">'+(permission==='granted'?'✓ Notifikasi HP Aktif':'🔔 Aktifkan Notifikasi HP')+'</button></div></div></section></div>'+
-    journeyHtml+inpatientJourney;
+    journeyHtml+inpatientJourney+igdJourney;
   const nb=document.getElementById('btn-patient-notif'); if(nb) nb.addEventListener('click',enablePatientNotifications);
   maybeNotifyPatientQueue();
   if(window.__patientPoll) clearInterval(window.__patientPoll);
@@ -1801,11 +1852,9 @@ function patientJourneyDefinition(v){
   // Patient Journey bersifat dinamis: unit yang tidak dibutuhkan pasien tidak ditampilkan.
   // Jalur aktual ditentukan oleh tindakan/permintaan dokter, bukan sekadar poli.
   const hasLab=!!(v && v.labRequest);
-  // Resep dianggap aktif jika visit memiliki resepId atau sudah masuk status
-  // yang hanya mungkin terjadi setelah resep Rawat Jalan dibuat.
-  // Fallback status ini menjaga Patient Journey tetap muncul pada data lama/migrasi
-  // yang mungkin belum memiliki resepId tersimpan.
-  const hasRx=!!(v && (v.resepId || ['menunggu_farmasi','obat_siap'].includes(v.status)));
+  const hasRad=!!(v && v.radiologyRequest);
+  const rx=v?getResepByVisit(v.id):null;
+  const hasRx=!!(v && (rx || v.resepId || ['menunggu_farmasi','menunggu_bayar','obat_siap'].includes(v.status)));
   const steps=[
     {key:'booking',label:'Pendaftaran',icon:'📅'},
     {key:'checkin',label:'Check-in',icon:'✓'},
@@ -1816,6 +1865,9 @@ function patientJourneyDefinition(v){
     steps.push({key:'lab',label:'Laboratorium',icon:'🧪'});
     steps.push({key:'review',label:'Review Dokter',icon:'📋'});
   }
+  if(hasRad){steps.push({key:'radiology',label:'Radiologi',icon:'☢️'});steps.push({key:'review_rad',label:'Review Hasil Radiologi',icon:'📋'});}
+  if((v.referrals||[]).some(function(r){return r.destination==='igd';}) || v.status==='menunggu_rujukan_igd') steps.push({key:'igd_referral',label:'Konfirmasi Rujukan IGD',icon:'🚑'});
+  if((v.referrals||[]).some(function(r){return r.destination==='rawat-inap';}) || v.status==='rujuk_ranap') steps.push({key:'rawat_inap_referral',label:'Konfirmasi Admisi Rawat Inap',icon:'🏥'});
   if(hasRx){
     steps.push({key:'pharmacy_prepare',label:'Farmasi',sub:'Siapkan obat',icon:'💊'});
   }
@@ -1828,13 +1880,18 @@ function patientJourneyDefinition(v){
 }
 function patientJourneyIndex(v,steps){
   if(!v) return 0;
-  const status=v.status;
+  const rx=getResepByVisit(v.id);
+  let status=v.status;
+  if(rx && rx.status==='menunggu' && !['dibatalkan','menunggu_lab','menunggu_penunjang','menunggu_review','menunggu_rujukan_igd'].includes(status)) status='menunggu_farmasi';
+  if(rx && rx.status==='disiapkan' && !['obat_siap','selesai','menunggu_lab','menunggu_penunjang','menunggu_review','menunggu_rujukan_igd'].includes(status)) status='menunggu_bayar';
   const key= status==='terjadwal' ? 'booking' :
     status==='checked_in' ? 'checkin' :
     ['menunggu_screening','screening'].includes(status) ? 'screening' :
     ['menunggu_dokter','dipanggil','diperiksa'].includes(status) ? 'doctor' :
     status==='menunggu_lab' ? 'lab' :
-    status==='menunggu_review' ? 'review' :
+    status==='menunggu_penunjang' ? 'radiology' :
+    status==='menunggu_rujukan_igd' ? 'igd_referral' :
+    status==='menunggu_review' ? (v.radiologyRequest&&v.radiologyRequest.status==='selesai'?'review_rad':'review') :
     status==='menunggu_farmasi' ? 'pharmacy_prepare' :
     status==='menunggu_bayar' ? 'payment' :
     status==='obat_siap' ? 'pharmacy_pickup' :
@@ -1842,18 +1899,37 @@ function patientJourneyIndex(v,steps){
   const idx=steps.findIndex(function(x){return x.key===key;});
   return idx>=0?idx:Math.min(steps.length-1,1);
 }
+function patientJourneyStepState(v, step){
+  if(!v)return 'pending';
+  const rx=getResepByVisit(v.id),status=v.status||'';
+  const active=['menunggu_screening','screening','menunggu_dokter','dipanggil','diperiksa','menunggu_lab','menunggu_penunjang','menunggu_review','menunggu_farmasi','menunggu_bayar','obat_siap','menunggu_rujukan_igd'].includes(status);
+  if(step.key==='booking')return v.workflow&&v.workflow.bookedAt?'done':'done';
+  if(step.key==='checkin')return (v.workflow&&v.workflow.checkinAt)||v.status!=='terjadwal'?'done':'active';
+  if(step.key==='screening')return (v.workflow&&v.workflow.screeningAt)?'done':(['menunggu_screening','screening'].includes(status)?'active':(active?'done':'done'));
+  if(step.key==='doctor')return ['diperiksa','menunggu_lab','menunggu_penunjang','menunggu_review','menunggu_farmasi','menunggu_bayar','obat_siap','selesai','menunggu_rujukan_igd'].includes(status)?'done':(['menunggu_dokter','dipanggil'].includes(status)?'active':'pending');
+  if(step.key==='lab')return !v.labRequest?'pending':(v.labRequest.status==='selesai'?'done':'active');
+  if(step.key==='radiology')return !v.radiologyRequest?'pending':(v.radiologyRequest.status==='selesai'?'done':'active');
+  if(step.key==='review')return !v.labRequest?'pending':(v.labRequest.status!=='selesai'?'pending':((v.workflow&&v.workflow.reviewAt)?'done':'active'));
+  if(step.key==='review_rad')return !v.radiologyRequest?'pending':(v.radiologyRequest.status!=='selesai'?'pending':((v.workflow&&v.workflow.reviewAt)?'done':'active'));
+  if(step.key==='rawat_inap_referral'){const req=(Store.data.careRequests||[]).find(function(r){return r.sourceVisitId===v.id&&r.destination==='rawat-inap';});return req&&req.status==='selesai'?'done':(req&&['menunggu_konfirmasi','sedang_diproses'].includes(req.status)?'active':(status==='rujuk_ranap'?'active':'pending'));}
+  if(step.key==='igd_referral'){
+    const req=(Store.data.careRequests||[]).find(function(r){return r.sourceVisitId===v.id&&r.destination==='igd';});
+    return req&&req.status==='diterima'?'done':(req&&req.status==='menunggu_konfirmasi'?'active':(status==='menunggu_rujukan_igd'?'active':'pending'));
+  }
+  if(step.key==='pharmacy_prepare')return !rx?'pending':(['diambil','diberikan','selesai'].includes(rx.status)?'done':(rx.status==='menunggu'?'active':(rx.status==='disiapkan'?'done':'pending')));
+  if(step.key==='payment')return status==='menunggu_bayar'?'active':(['obat_siap','selesai'].includes(status)?'done':'pending');
+  if(step.key==='pharmacy_pickup')return !rx?'pending':(rx.status==='diambil'?'done':(status==='obat_siap'?'active':'pending'));
+  if(step.key==='done')return status==='selesai'?'done':'pending';
+  return 'pending';
+}
 function patientFlow(v){
   const steps=patientJourneyDefinition(v);
-  const idx=patientJourneyIndex(v,steps);
-  const completed=v && v.status==='selesai' ? steps.length : idx;
-  return steps.map(function(s,i){
-    const isDone=i<completed || (v && v.status==='selesai');
-    const isActive=!isDone && i===idx;
-    const sub=s.sub?'<small>'+esc(s.sub)+'</small>':'<small>'+esc(s.key.toUpperCase())+'</small>';
-    return '<div class="patient-flow-step '+(isDone?'done ':'')+(isActive?'active ':'')+'"><span>'+(isDone?'✓':s.icon)+'</span><div><strong>'+esc(s.label)+'</strong>'+sub+'</div></div>';
+  return steps.map(function(step){
+    const state=patientJourneyStepState(v,step),isDone=state==='done',isActive=state==='active';
+    const sub=step.sub?'<small>'+esc(step.sub)+'</small>':'<small>'+esc(step.key.toUpperCase())+'</small>';
+    return '<div class="patient-flow-step '+(isDone?'done ':'')+(isActive?'active ':'')+' '+(state==='pending'?'pending':'')+'"><span>'+(isDone?'✓':step.icon)+'</span><div><strong>'+esc(step.label)+'</strong>'+sub+'</div></div>';
   }).join('');
 }
-
 function enablePatientNotifications(){
   if(!('Notification' in window)){ showToast('Browser ini tidak mendukung notifikasi sistem','warning'); return; }
   Notification.requestPermission().then(function(permission){ if(permission==='granted'){ showToast('Notifikasi HP aktif','success'); maybeNotifyPatientQueue(); renderPatientDashboard(); } else showToast('Izin notifikasi belum diberikan','warning'); });
@@ -3037,6 +3113,7 @@ function bukaPeriksa(visitId){
   if(!visit)return;
   if(Session.currentUser.role==='dokter') visit.dokterId=Session.currentUser.id;
   if(!['menunggu_dokter','dipanggil','menunggu_review','menunggu_poli'].includes(visit.status)){ showToast('Pasien belum siap untuk pemeriksaan.','warning'); return; }
+  if(visit.status==='menunggu_review')visit.reviewPending=true;
   visit.status='diperiksa'; visit.workflow=visit.workflow||{}; visit.workflow.doctorStartAt=nowISO(); visit.updatedAt=nowISO();
   Store.save(); refreshPoliQueue(); if(window.__rjRerender)window.__rjRerender(); poliState.resepItems=[]; renderFormPeriksa(visit);
 }
@@ -3082,8 +3159,12 @@ function renderFormPeriksa(visit){
       '<div class="field"><label>Diagnosis</label><input type="text" id="px-diagnosis" value="'+esc(visit.diagnosis)+'" required></div>'+
       '<div class="field"><label>Catatan / Tindakan</label><textarea id="px-catatan">'+esc(visit.catatan)+'</textarea></div>'+
       '<div class="field"><label>Rencana / Next Step</label><select id="px-next-step"><option value="selesai" '+(nextStepValue==='selesai'?'selected':'')+'>Selesai / Pulang</option><option value="farmasi" '+(nextStepValue==='farmasi'?'selected':'')+'>Resep → Farmasi Rawat Jalan</option><option value="kontrol" '+(nextStepValue==='kontrol'?'selected':'')+'>Jadwal Kontrol</option><option value="penunjang" '+(nextStepValue==='penunjang'?'selected':'')+'>Pemeriksaan Penunjang</option><option value="ranap" '+(nextStepValue==='ranap'?'selected':'')+'>Admisi Rawat Inap</option><option value="rujuk" '+(nextStepValue==='rujuk'?'selected':'')+'>Rujuk Keluar</option></select></div>'+
-      '<div class="field checkbox-row"><input type="checkbox" id="px-rujuk-lab" '+(visit.labRequest?'checked disabled':'')+'><label for="px-rujuk-lab" style="margin:0">Rujuk ke Laboratorium / Penunjang</label></div>'+
-      '<div class="field hidden" id="px-lab-jenis-wrap"><label>Jenis Pemeriksaan</label><input type="text" id="px-lab-jenis" placeholder="contoh: Darah Lengkap, Rontgen Thorax"></div>'+
+      '<div class="field checkbox-row"><input type="checkbox" id="px-rujuk-lab" '+(visit.labRequest?'checked disabled':'')+'><label for="px-rujuk-lab" style="margin:0">Permintaan Laboratorium</label></div>'+
+      '<div class="field hidden" id="px-lab-jenis-wrap"><label>Jenis Pemeriksaan Laboratorium</label><input type="text" id="px-lab-jenis" placeholder="contoh: Darah Lengkap"></div>'+
+      '<div class="field checkbox-row"><input type="checkbox" id="px-rujuk-rad" '+(visit.radiologyRequest?'checked disabled':'')+'><label for="px-rujuk-rad" style="margin:0">Permintaan Radiologi</label></div>'+
+      '<div class="field hidden" id="px-rad-jenis-wrap"><label>Jenis Pemeriksaan Radiologi</label><input type="text" id="px-rad-jenis" placeholder="contoh: Foto Thorax"></div>'+
+      '<div class="field checkbox-row"><input type="checkbox" id="px-rujuk-igd" '+((visit.referrals||[]).some(function(r){return r.destination==='igd'&&r.status!=='ditolak'&&r.status!=='dibatalkan';})?'checked disabled':'')+'><label for="px-rujuk-igd" style="margin:0">Rujukan ke IGD (berdasarkan keputusan klinis)</label></div>'+
+      '<div class="field hidden" id="px-igd-alasan-wrap"><label>Alasan / ringkasan rujukan IGD</label><textarea id="px-igd-alasan" placeholder="Ringkasan klinis untuk serah terima ke IGD"></textarea></div>'+
       '<div id="px-resep-section">'+resepSectionHtml()+'</div>'+
       '<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-outline" id="btn-simpan-draft-periksa">💾 Simpan Data Pemeriksaan</button><button type="submit" class="btn btn-primary">✅ Selesaikan Pemeriksaan &amp; Panggil Berikutnya</button>'+
       '<button type="button" class="btn btn-outline" id="btn-rujuk-ranap">🏥 Admisi Rawat Inap</button></div>'+
@@ -3095,6 +3176,11 @@ function renderFormPeriksa(visit){
   const rujukChk = document.getElementById('px-rujuk-lab');
   const labWrap = document.getElementById('px-lab-jenis-wrap');
   if(visit.labRequest){ labWrap.classList.remove('hidden'); document.getElementById('px-lab-jenis').value = visit.labRequest.jenis; document.getElementById('px-lab-jenis').disabled = true; }
+  const radChk=document.getElementById('px-rujuk-rad'), radWrap=document.getElementById('px-rad-jenis-wrap'), igdChk=document.getElementById('px-rujuk-igd'), igdWrap=document.getElementById('px-igd-alasan-wrap');
+  if(visit.radiologyRequest){radWrap.classList.remove('hidden');document.getElementById('px-rad-jenis').value=visit.radiologyRequest.jenis;document.getElementById('px-rad-jenis').disabled=true;}
+  if(igdChk && igdChk.checked){igdWrap.classList.remove('hidden');}
+  if(radChk)radChk.addEventListener('change',function(){radWrap.classList.toggle('hidden',!this.checked);});
+  if(igdChk)igdChk.addEventListener('change',function(){igdWrap.classList.toggle('hidden',!this.checked);});
   rujukChk.addEventListener('change', function(){
     labWrap.classList.toggle('hidden', !this.checked);
     document.getElementById('px-resep-section').classList.toggle('hidden', this.checked);
@@ -3212,6 +3298,20 @@ function finishQueueAndCallNext(visitId, source){
   showToast(next?'Pasien selesai — '+next.noAntrian+' otomatis dipanggil.':'Pasien selesai — belum ada pasien berikutnya.','success');
 }
 
+function notifyCareUnit(patientId, unit, title, body){
+  const p=getPatient(patientId); if(!p)return;
+  pushNotification('info',title,body,unit,null);
+  pushNotification('info',title,body,p.id,null);
+}
+function createCareRequest(visit, destination, kind, detail){
+  if(!Array.isArray(Store.data.careRequests))Store.data.careRequests=[];
+  const request={id:uid('REQ'),patientId:visit.patientId,sourceVisitId:visit.id,sourceUnit:visit.unit||'rawat-jalan',destination:destination,kind:kind,detail:detail,status:'menunggu_konfirmasi',createdAt:nowISO(),createdBy:Session.currentUser?Session.currentUser.id:null,acceptedAt:null,acceptedBy:null,completedAt:null,result:null};
+  Store.data.careRequests.unshift(request);
+  if(!Array.isArray(visit.careRequestIds))visit.careRequestIds=[];
+  visit.careRequestIds.push(request.id);
+  notifyCareUnit(visit.patientId,destination,'Permintaan pelayanan baru',detail+' · menunggu konfirmasi '+({lab:'Laboratorium',radiologi:'Radiologi',igd:'IGD',rawat_inap:'Admisi Rawat Inap'}[destination]||destination));
+  return request;
+}
 function selesaiPeriksa(visitId){
   const visit = getVisit(visitId);
   visit.keluhan = document.getElementById('px-keluhan').value.trim();
@@ -3223,33 +3323,46 @@ function selesaiPeriksa(visitId){
   visit.diagnosis = document.getElementById('px-diagnosis').value.trim();
   visit.nextStep = document.getElementById('px-next-step') ? document.getElementById('px-next-step').value : visit.nextStep;
   visit.catatan = document.getElementById('px-catatan').value.trim();
+  if(visit.reviewPending){visit.workflow=visit.workflow||{};visit.workflow.reviewAt=nowISO();visit.reviewPending=false;}
   visit.billing.konsultasi = getPoli(visit.poliId).biaya;
 
   const rujukLab = document.getElementById('px-rujuk-lab').checked && !visit.labRequest;
+  const rujukRad = document.getElementById('px-rujuk-rad') && document.getElementById('px-rujuk-rad').checked && !visit.radiologyRequest;
+  const rujukIgd = document.getElementById('px-rujuk-igd') && document.getElementById('px-rujuk-igd').checked && !(visit.referrals||[]).some(function(r){return r.destination==='igd'&&r.status!=='ditolak'&&r.status!=='dibatalkan';});
   if(rujukLab){
-    const jenis = document.getElementById('px-lab-jenis').value.trim();
-    if(!jenis){ showToast('Isi jenis pemeriksaan laboratorium', 'danger'); return; }
-    visit.labRequest = {jenis, status:'menunggu', hasil:null};
-    visit.billing.lab = BIAYA_LAB;
-    visit.status = 'menunggu_lab'; visit.nextStep='Pemeriksaan penunjang — hasil kembali ke dokter untuk review'; visit.workflow.supportingAt=nowISO();
-    Store.save();
-    logAudit('rujuk_lab', visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama)+' → '+jenis);
-    showToast('Pasien dirujuk ke laboratorium', 'success');
-  } else if(poliState.resepItems.length>0){
-    const resep = {id:uid('RSP'), visitId:visit.id, items:[...poliState.resepItems], status:'menunggu', jenisLayanan:'rawat_jalan', createdAt:nowISO(), updatedAt:nowISO(), siapAt:null, diambilAt:null};
-    Store.data.prescriptions.push(resep);
-    visit.resepId = resep.id;
-    visit.billing.obat = resep.items.reduce((s,it)=>s+it.jumlah*it.hargaSatuan,0);
-    visit.status = 'menunggu_farmasi'; visit.nextStep='Farmasi Rawat Jalan';
-    Store.save();
-    logAudit('selesai_periksa', visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama)+' · Dx: '+esc(visit.diagnosis));
-    showToast('Pemeriksaan selesai — resep dikirim ke farmasi', 'success');
-  } else {
-    visit.status = 'menunggu_bayar'; visit.nextStep='Billing / Kasir Rawat Jalan';
-    Store.save();
-    logAudit('selesai_periksa', visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama)+' · Dx: '+esc(visit.diagnosis));
-    showToast('Pemeriksaan selesai — pasien diarahkan ke kasir', 'success');
+    const jenis=document.getElementById('px-lab-jenis').value.trim();
+    if(!jenis){showToast('Isi jenis pemeriksaan laboratorium','danger');return;}
+    visit.labRequest={id:uid('LAB'),jenis:jenis,status:'menunggu',hasil:null,requestedAt:nowISO(),requestedBy:Session.currentUser?Session.currentUser.id:null,unit:'rawat-jalan'};
+    visit.billing.lab=BIAYA_LAB;
+    createCareRequest(visit,'lab','laboratorium',jenis);
   }
+  if(rujukRad){
+    const jenisRad=document.getElementById('px-rad-jenis').value.trim();
+    if(!jenisRad){showToast('Isi jenis pemeriksaan radiologi','danger');return;}
+    visit.radiologyRequest={id:uid('RAD'),jenis:jenisRad,status:'menunggu',hasil:null,requestedAt:nowISO(),requestedBy:Session.currentUser?Session.currentUser.id:null,unit:'rawat-jalan'};
+    createCareRequest(visit,'radiologi','radiologi',jenisRad);
+  }
+  if(rujukIgd){
+    const alasan=(document.getElementById('px-igd-alasan').value||'').trim();
+    if(!alasan){showToast('Isi ringkasan klinis rujukan IGD','danger');return;}
+    if(!Array.isArray(visit.referrals))visit.referrals=[];
+    const ref=createCareRequest(visit,'igd','rujukan_igd',alasan); visit.referrals.push(ref);
+    visit.nextStep='Menunggu konfirmasi penerimaan IGD';
+  }
+  if(poliState.resepItems.length>0){
+    const resep={id:uid('RSP'),visitId:visit.id,patientId:visit.patientId,unit:'rawat-jalan',items:[...poliState.resepItems],status:'menunggu',jenisLayanan:'rawat-jalan',createdAt:nowISO(),updatedAt:nowISO(),siapAt:null,diambilAt:null};
+    Store.data.prescriptions.push(resep); visit.resepId=resep.id;
+    visit.billing.obat=resep.items.reduce((sum,it)=>sum+it.jumlah*it.hargaSatuan,0);
+    notifyCareUnit(visit.patientId,'farmasi-rawat-jalan','Resep Rawat Jalan masuk antrean','Resep dari '+getPoli(visit.poliId).nama+' · antrean '+visit.noAntrian);
+  }
+  if(rujukLab){visit.status='menunggu_lab';visit.nextStep='Laboratorium Rawat Jalan — menunggu konfirmasi/pemeriksaan';visit.workflow.supportingAt=nowISO();}
+  else if(rujukRad){visit.status='menunggu_penunjang';visit.nextStep='Radiologi Rawat Jalan — menunggu konfirmasi/pemeriksaan';visit.workflow.supportingAt=nowISO();}
+  else if(rujukIgd){visit.status='menunggu_rujukan_igd';}
+  else if(poliState.resepItems.length>0){visit.status='menunggu_farmasi';visit.nextStep='Farmasi Rawat Jalan';}
+  else {visit.status='menunggu_bayar';visit.nextStep='Loket/Kasir Rawat Jalan sesuai ketentuan';}
+  Store.save();
+  logAudit('selesai_periksa',visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama)+' · Dx: '+esc(visit.diagnosis));
+  showToast('Pemeriksaan dan instruksi antarunit tersimpan sesuai pilihan','success');
   visit.updatedAt = nowISO();
   visit.queueReadyToAdvance = false;
   visit.workflow = visit.workflow || {}; visit.workflow.completedAt = nowISO();
@@ -3267,30 +3380,34 @@ function selesaiPeriksa(visitId){
    ================================================================= */
 function renderLab(){
   setPageTitle('Laboratorium');
-  const visits=visitsToday().filter(v=>v.status==='menunggu_lab').sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+  const visits=visitsToday().filter(v=>v.labRequest&&v.labRequest.status==='menunggu'&&['rawat-jalan','igd'].includes(v.unit||'rawat-jalan')).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
   const admissions=Store.data.admissions.filter(function(a){return a.status==='dirawat'&&Array.isArray(a.orders)&&a.orders.some(function(o){return o.jenis==='lab'&&o.status==='menunggu';});});
-  document.getElementById('main-content').innerHTML=pageIntro('Laboratorium memproses rujukan Rawat Jalan dan order Laboratorium Rawat Inap. Hasil disimpan kembali ke episode pasien.')+
-    '<div class="panel"><div class="panel-head"><h2>Rawat Jalan — Menunggu Pemeriksaan ('+visits.length+')</h2></div><div class="panel-body" id="lab-rajal-area"></div></div>'+
+  document.getElementById('main-content').innerHTML=pageIntro('Laboratorium menerima permintaan Rawat Jalan dan IGD serta order Rawat Inap. Setiap hasil dikembalikan ke episode pasien yang benar.')+
+    '<div class="panel"><div class="panel-head"><h2>Rawat Jalan / IGD — Menunggu Pemeriksaan ('+visits.length+')</h2></div><div class="panel-body" id="lab-rajal-area"></div></div>'+
     '<div class="panel" style="margin-top:12px"><div class="panel-head"><h2>Rawat Inap — Menunggu Pemeriksaan ('+admissions.length+')</h2></div><div class="panel-body" id="lab-ranap-area"></div></div>';
   renderLabList(visits); renderLabRanapList(admissions);
 }
 function renderLabList(list){
   const area=document.getElementById('lab-rajal-area');
-  if(!list.length){area.innerHTML='<div class="empty">Tidak ada rujukan Rawat Jalan.</div>';return;}
-  area.innerHTML=list.map(function(v){const p=getPatient(v.patientId),poli=getPoli(v.poliId);return '<div class="panel" style="margin-bottom:10px"><div class="panel-body"><strong>'+esc(p.nama)+'</strong> <span class="mono">('+p.id+')</span><div class="hint">Rujukan '+esc(poli.nama)+' · '+esc(v.labRequest.jenis)+'</div><div class="field"><label>Hasil Pemeriksaan</label><textarea id="hasil-'+v.id+'"></textarea></div><div class="result-actions"><button class="btn btn-primary btn-sm" data-submit-lab="'+v.id+'">Kirim Hasil ke Dokter</button></div></div></div>';}).join('');
+  if(!list.length){area.innerHTML='<div class="empty">Tidak ada permintaan Laboratorium Rawat Jalan / IGD.</div>';return;}
+  area.innerHTML=list.map(function(v){const p=getPatient(v.patientId),poli=getPoli(v.poliId),asal=v.unit==='igd'?'IGD':poli.nama,req=(Store.data.careRequests||[]).find(function(r){return r.sourceVisitId===v.id&&r.destination==='lab'&&r.status==='menunggu_konfirmasi';});return '<div class="panel" style="margin-bottom:10px"><div class="panel-body"><strong>'+esc(p.nama)+'</strong> <span class="mono">('+p.id+')</span><div class="hint">Asal: '+esc(asal)+' · '+esc(v.labRequest.jenis)+'</div>'+(req?'<button class="btn btn-outline btn-sm" data-lab-accept="'+req.id+'">Konfirmasi Penerimaan Laboratorium</button>':'<span class="badge badge-sage">Permintaan diterima</span>')+'<div class="field"><label>Hasil Pemeriksaan</label><textarea id="hasil-'+v.id+'"></textarea></div><div class="result-actions"><button class="btn btn-primary btn-sm" data-submit-lab="'+v.id+'">Kirim Hasil ke Dokter</button></div></div></div>';}).join('');
+  area.querySelectorAll('[data-lab-accept]').forEach(function(btn){btn.addEventListener('click',function(){confirmCareRequest(this.dataset.labAccept,'terima');renderLab();});});
   area.querySelectorAll('[data-submit-lab]').forEach(function(btn){btn.addEventListener('click',function(){submitHasilLab(this.dataset.submitLab);});});
 }
 function submitHasilLab(visitId){
+  if(!Session.currentUser||!['lab','admin'].includes(Session.currentUser.role)){showToast('Hasil Laboratorium hanya dapat disimpan petugas Laboratorium atau admin demo.','danger');return;}
   const el=document.getElementById('hasil-'+visitId),hasil=el?el.value.trim():''; if(!hasil){showToast('Isi hasil pemeriksaan terlebih dahulu','danger');return;}
-  const visit=getVisit(visitId); if(!visit)return; visit.labRequest.hasil=hasil; visit.labRequest.status='selesai'; visit.status='menunggu_review'; visit.workflow=visit.workflow||{}; visit.workflow.reviewAt=nowISO(); visit.updatedAt=nowISO(); visit.nextStep='Dokter meninjau hasil laboratorium'; Store.save(); logAudit('hasil_lab',visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama)); showToast('Hasil lab terkirim ke dokter','success'); renderLab();
+  const visit=getVisit(visitId); if(!visit||!visit.labRequest)return; const reqCheck=(Store.data.careRequests||[]).find(function(r){return r.sourceVisitId===visit.id&&r.destination==='lab'&&r.status!=='ditolak';});if(reqCheck&&reqCheck.status!=='diterima'){showToast('Laboratorium harus mengonfirmasi penerimaan sebelum mengirim hasil.','warning');return;}if(visit.labRequest.status==='selesai'){showToast('Hasil Laboratorium sudah disimpan.','warning');return;} visit.labRequest.hasil=hasil; visit.labRequest.status='selesai'; visit.status='menunggu_review'; visit.workflow=visit.workflow||{}; visit.workflow.resultReceivedAt=nowISO(); visit.updatedAt=nowISO(); visit.nextStep='Dokter meninjau hasil laboratorium'; const req=(Store.data.careRequests||[]).find(function(r){return r.sourceVisitId===visit.id&&r.destination==='lab'&&r.status!=='ditolak';});if(req){req.status='selesai';req.completedAt=nowISO();req.result=hasil;} pushNotification('info','Hasil laboratorium tersedia','Hasil pemeriksaan '+visit.labRequest.jenis+' telah dikirim kepada dokter.',visit.patientId,null); Store.save(); logAudit('hasil_lab',visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama)); showToast('Hasil lab terkirim ke dokter','success'); renderLab();
 }
 function renderLabRanapList(list){
   const area=document.getElementById('lab-ranap-area'); if(!list.length){area.innerHTML='<div class="empty">Tidak ada order Lab Rawat Inap.</div>';return;}
-  area.innerHTML=list.map(function(a){const p=getPatient(a.patientId),ward=Store.data.wards.find(function(w){return w.id===a.wardId;}),bed=Store.data.beds.find(function(b){return b.id===a.bedId;});return '<div class="panel" style="margin-bottom:10px"><div class="panel-body"><strong>'+esc(p.nama)+'</strong> <span class="mono">('+p.id+')</span><div class="hint">'+esc(ward?ward.nama:'-')+' · '+esc(bed?bed.noKamar+bed.noBed:'-')+'</div>'+a.orders.filter(function(o){return o.jenis==='lab'&&o.status==='menunggu';}).map(function(o){return '<div class="alert alert-info" style="margin-top:10px"><strong>Order:</strong> '+esc(o.detail)+'<div class="field" style="margin-top:8px"><label>Hasil Pemeriksaan</label><textarea id="hasil-lab-ri-'+o.id+'"></textarea></div><div class="result-actions"><button class="btn btn-primary btn-sm" data-submit-lab-ri="'+o.id+'" data-adm="'+a.id+'">Kirim Hasil ke EMR</button></div></div>';}).join('')+'</div></div>';}).join('');
+  area.innerHTML=list.map(function(a){const p=getPatient(a.patientId),ward=Store.data.wards.find(function(w){return w.id===a.wardId;}),bed=Store.data.beds.find(function(b){return b.id===a.bedId;});return '<div class="panel" style="margin-bottom:10px"><div class="panel-body"><strong>'+esc(p.nama)+'</strong> <span class="mono">('+p.id+')</span><div class="hint">'+esc(ward?ward.nama:'-')+' · '+esc(bed?bed.noKamar+bed.noBed:'-')+'</div>'+a.orders.filter(function(o){return o.jenis==='lab'&&o.status==='menunggu';}).map(function(o){const req=(Store.data.careRequests||[]).find(function(r){return r.admissionId===a.id&&r.orderId===o.id&&r.destination==='lab'&&r.status==='menunggu_konfirmasi';});return '<div class="alert alert-info" style="margin-top:10px"><strong>Order:</strong> '+esc(o.detail)+(req?'<div><button class="btn btn-outline btn-sm" data-lab-accept="'+req.id+'">Konfirmasi Penerimaan</button></div>':'')+'<div class="field" style="margin-top:8px"><label>Hasil Pemeriksaan</label><textarea id="hasil-lab-ri-'+o.id+'"></textarea></div><div class="result-actions"><button class="btn btn-primary btn-sm" data-submit-lab-ri="'+o.id+'" data-adm="'+a.id+'">Kirim Hasil ke EMR</button></div></div>';}).join('')+'</div></div>';}).join('');
+  area.querySelectorAll('[data-lab-accept]').forEach(function(btn){btn.addEventListener('click',function(){confirmCareRequest(this.dataset.labAccept,'terima');renderLab();});});
   area.querySelectorAll('[data-submit-lab-ri]').forEach(function(btn){btn.addEventListener('click',function(){submitHasilLabRanap(this.dataset.adm,this.dataset.submitLabRi);});});
 }
 function submitHasilLabRanap(admissionId,orderId){
-  const a=Store.data.admissions.find(function(x){return x.id===admissionId;});if(!a)return;const o=a.orders.find(function(x){return x.id===orderId;});if(!o)return;const el=document.getElementById('hasil-lab-ri-'+orderId),hasil=el?el.value.trim():'';if(!hasil){showToast('Isi hasil Lab terlebih dahulu','danger');return;}o.status='selesai';o.hasil=hasil;o.selesaiAt=nowISO();o.dilakukanOleh=Session.currentUser?Session.currentUser.nama:'';a.billing.biayaPenunjang=(a.billing.biayaPenunjang||0)+50000;a.updatedAt=nowISO();Store.save();logAudit('hasil_lab_ranap',esc(getPatient(a.patientId).nama)+' — '+esc(o.detail));showToast('Hasil Lab Rawat Inap tersimpan ke EMR','success');renderLab();
+  if(!Session.currentUser||!['lab','admin'].includes(Session.currentUser.role)){showToast('Hasil Laboratorium hanya dapat disimpan petugas Laboratorium atau admin demo.','danger');return;}
+  const a=Store.data.admissions.find(function(x){return x.id===admissionId;});if(!a)return;const o=a.orders.find(function(x){return x.id===orderId;});if(!o)return;const el=document.getElementById('hasil-lab-ri-'+orderId),hasil=el?el.value.trim():'';if(!hasil){showToast('Isi hasil Lab terlebih dahulu','danger');return;}const reqCheck=(Store.data.careRequests||[]).find(function(r){return r.admissionId===a.id&&r.orderId===o.id;});if(reqCheck&&reqCheck.status!=='diterima'){showToast('Laboratorium harus mengonfirmasi penerimaan sebelum mengirim hasil.','warning');return;}if(o.status==='selesai'){showToast('Hasil Laboratorium sudah disimpan.','warning');return;}o.status='selesai';o.hasil=hasil;o.selesaiAt=nowISO();o.dilakukanOleh=Session.currentUser?Session.currentUser.nama:'';const req=(Store.data.careRequests||[]).find(function(r){return r.admissionId===a.id&&r.orderId===o.id;});if(req){req.status='selesai';req.completedAt=nowISO();req.result=hasil;}pushNotification('info','Hasil laboratorium tersedia','Hasil pemeriksaan Rawat Inap telah dikirim kepada dokter.',a.patientId,null);a.billing.biayaPenunjang=(a.billing.biayaPenunjang||0)+50000;a.updatedAt=nowISO();Store.save();logAudit('hasil_lab_ranap',esc(getPatient(a.patientId).nama)+' — '+esc(o.detail));showToast('Hasil Lab Rawat Inap tersimpan ke EMR','success');renderLab();
 }
 
 /* =================================================================
@@ -3298,25 +3415,36 @@ function submitHasilLabRanap(admissionId,orderId){
    ================================================================= */
 function renderRadiologi(){
   setPageTitle('Radiologi');
-  const admissions=Store.data.admissions.filter(function(a){return a.status==='dirawat' && Array.isArray(a.orders) && a.orders.some(function(o){return o.jenis==='radiologi' && o.status==='menunggu';});});
-  document.getElementById('main-content').innerHTML=pageIntro('Order radiologi rawat inap diproses oleh petugas radiologi. Hasil disimpan pada episode pasien dan dapat ditinjau dokter.')+
-    '<div class="panel"><div class="panel-head"><h2>Order Radiologi Rawat Inap ('+admissions.length+')</h2></div><div class="panel-body" id="radiologi-list-area"></div></div>';
+  const visits=Store.data.visits.filter(function(v){return ['rawat-jalan','igd'].includes(v.unit||'rawat-jalan')&&v.radiologyRequest&&v.radiologyRequest.status==='menunggu';});
+  const admissions=Store.data.admissions.filter(function(a){return a.status==='dirawat'&&Array.isArray(a.orders)&&a.orders.some(function(o){return o.jenis==='radiologi'&&o.status==='menunggu';});});
+  document.getElementById('main-content').innerHTML=pageIntro('Radiologi menerima permintaan Rawat Jalan dan Rawat Inap. Setiap permintaan terikat ke kunjungan/admisi sumber; hasil dikirim kembali ke rekam medis.')+
+    '<div class="panel"><div class="panel-head"><h2>Rawat Jalan / IGD — Menunggu ('+visits.length+')</h2></div><div class="panel-body" id="radiologi-rajal-area"></div></div>'+ 
+    '<div class="panel" style="margin-top:12px"><div class="panel-head"><h2>Rawat Inap — Menunggu ('+admissions.length+')</h2></div><div class="panel-body" id="radiologi-list-area"></div></div>';
+  const rj=document.getElementById('radiologi-rajal-area');
+  rj.innerHTML=visits.length?visits.map(function(v){const p=getPatient(v.patientId),req=(Store.data.careRequests||[]).find(function(r){return r.sourceVisitId===v.id&&r.destination==='radiologi'&&r.kind==='radiologi'&&r.status!=='ditolak';});return '<div class="history-item"><strong>'+esc(p?p.nama:'Pasien')+'</strong> · '+esc(v.noAntrian||v.id)+'<div class="hint">'+esc(v.radiologyRequest.jenis)+' · '+esc(v.status)+'</div>'+(req&&req.status==='menunggu_konfirmasi'?'<button class="btn btn-outline btn-sm" data-rad-accept="'+req.id+'">Konfirmasi Penerimaan</button>':'')+'<div class="field"><label>Hasil Radiologi</label><textarea id="hasil-rad-rj-'+v.id+'"></textarea></div><button class="btn btn-primary btn-sm" data-rad-rj-submit="'+v.id+'">Simpan Hasil &amp; Kirim ke Dokter</button></div>';}).join(''):'<div class="empty">Tidak ada permintaan radiologi Rawat Jalan.</div>';
+  rj.querySelectorAll('[data-rad-accept]').forEach(function(b){b.addEventListener('click',function(){confirmCareRequest(this.dataset.radAccept,'terima');renderRadiologi();});});
+  rj.querySelectorAll('[data-rad-rj-submit]').forEach(function(b){b.addEventListener('click',function(){submitHasilRadiologiRJ(this.dataset.radRjSubmit);});});
   const area=document.getElementById('radiologi-list-area');
-  if(!admissions.length){area.innerHTML='<div class="empty"><div class="big">✓</div>Tidak ada order radiologi rawat inap yang menunggu.</div>';return;}
-  area.innerHTML=admissions.map(function(a){
-    const p=getPatient(a.patientId), ward=Store.data.wards.find(function(w){return w.id===a.wardId;}), bed=Store.data.beds.find(function(b){return b.id===a.bedId;});
-    const orders=a.orders.filter(function(o){return o.jenis==='radiologi'&&o.status==='menunggu';});
-    return '<div class="panel" style="margin-bottom:10px"><div class="panel-body"><strong>'+esc(p.nama)+'</strong> <span class="mono">('+p.id+')</span><div class="hint">'+esc(ward?ward.nama:'-')+' · '+esc(bed?bed.noKamar+bed.noBed:'-')+'</div>'+
-      orders.map(function(o){return '<div class="alert alert-info" style="margin-top:10px"><strong>Order:</strong> '+esc(o.detail)+'<br><span class="hint">Dokter: '+esc(o.dokterNama||'-')+'</span><div class="field" style="margin-top:8px"><label>Hasil Pemeriksaan</label><textarea id="hasil-rad-'+o.id+'" placeholder="Tuliskan hasil radiologi..."></textarea></div><div class="result-actions"><button class="btn btn-primary btn-sm" data-submit-rad="'+o.id+'" data-adm="'+a.id+'">Kirim Hasil ke EMR</button></div></div>';}).join('')+
-    '</div></div>';
-  }).join('');
+  if(!admissions.length){area.innerHTML='<div class="empty">Tidak ada order Radiologi Rawat Inap.</div>';return;}
+  area.innerHTML=admissions.map(function(a){const p=getPatient(a.patientId),ward=Store.data.wards.find(function(w){return w.id===a.wardId;}),bed=Store.data.beds.find(function(b){return b.id===a.bedId;});return '<div class="panel" style="margin-bottom:10px"><div class="panel-body"><strong>'+esc(p?p.nama:'Pasien')+'</strong> <span class="mono">('+esc(a.patientId)+')</span><div class="hint">'+esc(ward?ward.nama:'-')+' · '+esc(bed?bed.noKamar+bed.noBed:'-')+'</div>'+a.orders.filter(function(o){return o.jenis==='radiologi'&&o.status==='menunggu';}).map(function(o){return '<div class="alert alert-info" style="margin-top:10px"><strong>Order:</strong> '+esc(o.detail)+'<div class="field" style="margin-top:8px"><label>Hasil Pemeriksaan</label><textarea id="hasil-rad-'+o.id+'"></textarea></div><button class="btn btn-primary btn-sm" data-submit-rad="'+o.id+'" data-adm="'+a.id+'">Kirim Hasil ke EMR</button></div>';}).join('')+'</div></div>';}).join('');
+  area.querySelectorAll('[data-rad-accept]').forEach(function(btn){btn.addEventListener('click',function(){confirmCareRequest(this.dataset.radAccept,'terima');renderRadiologi();});});
   area.querySelectorAll('[data-submit-rad]').forEach(function(btn){btn.addEventListener('click',function(){submitHasilRadiologi(this.dataset.adm,this.dataset.submitRad);});});
 }
+function submitHasilRadiologiRJ(visitId){
+  if(!Session.currentUser||!['radiologi','admin'].includes(Session.currentUser.role)){showToast('Hasil Radiologi hanya dapat disimpan petugas Radiologi atau admin demo.','danger');return;}
+  const v=getVisit(visitId);if(!v||!v.radiologyRequest)return;
+  const el=document.getElementById('hasil-rad-rj-'+visitId),hasil=el?el.value.trim():'';if(!hasil){showToast('Isi hasil radiologi terlebih dahulu','danger');return;}const reqCheck=(Store.data.careRequests||[]).find(function(r){return r.sourceVisitId===v.id&&r.destination==='radiologi'&&r.status!=='ditolak';});if(reqCheck&&reqCheck.status!=='diterima'){showToast('Radiologi harus mengonfirmasi penerimaan sebelum mengirim hasil.','warning');return;}if(v.radiologyRequest.status==='selesai'){showToast('Hasil Radiologi sudah disimpan.','warning');return;}
+  v.radiologyRequest.hasil=hasil;v.radiologyRequest.status='selesai';v.radiologyRequest.selesaiAt=nowISO();v.radiologyRequest.dilakukanOleh=Session.currentUser?Session.currentUser.nama:'';v.status='menunggu_review';v.nextStep='Dokter meninjau hasil radiologi';v.workflow=v.workflow||{};v.workflow.resultReceivedAt=nowISO();v.updatedAt=nowISO();
+  const req=(Store.data.careRequests||[]).find(function(r){return r.sourceVisitId===v.id&&r.destination==='radiologi'&&r.kind==='radiologi'&&r.status!=='ditolak';});if(req){req.status='selesai';req.completedAt=nowISO();req.result=hasil;}
+  pushNotification('info','Hasil radiologi tersedia','Hasil pemeriksaan '+v.radiologyRequest.jenis+' telah dikirim kepada dokter.',v.patientId,null);Store.save();logAudit('hasil_radiologi_rj',esc(getPatient(v.patientId).nama)+' — '+esc(v.radiologyRequest.jenis));showToast('Hasil radiologi Rawat Jalan tersimpan dan dikirim ke dokter','success');renderRadiologi();
+}
+
 function submitHasilRadiologi(admissionId,orderId){
+  if(!Session.currentUser||!['radiologi','admin'].includes(Session.currentUser.role)){showToast('Hasil Radiologi hanya dapat disimpan petugas Radiologi atau admin demo.','danger');return;}
   const a=Store.data.admissions.find(function(x){return x.id===admissionId;}); if(!a)return;
   const o=a.orders.find(function(x){return x.id===orderId;}); if(!o)return;
-  const el=document.getElementById('hasil-rad-'+orderId),hasil=el?el.value.trim():''; if(!hasil){showToast('Isi hasil radiologi terlebih dahulu','danger');return;}
-  o.status='selesai'; o.hasil=hasil; o.selesaiAt=nowISO(); o.dilakukanOleh=Session.currentUser?Session.currentUser.nama:'';
+  const el=document.getElementById('hasil-rad-'+orderId),hasil=el?el.value.trim():''; if(!hasil){showToast('Isi hasil radiologi terlebih dahulu','danger');return;}const reqCheck=(Store.data.careRequests||[]).find(function(r){return r.admissionId===a.id&&r.orderId===o.id;});if(reqCheck&&reqCheck.status!=='diterima'){showToast('Radiologi harus mengonfirmasi penerimaan sebelum mengirim hasil.','warning');return;}if(o.status==='selesai'){showToast('Hasil Radiologi sudah disimpan.','warning');return;}
+  o.status='selesai'; o.hasil=hasil; o.selesaiAt=nowISO(); o.dilakukanOleh=Session.currentUser?Session.currentUser.nama:''; const req=(Store.data.careRequests||[]).find(function(r){return r.admissionId===a.id&&r.orderId===o.id;});if(req){req.status='selesai';req.completedAt=nowISO();req.result=hasil;}pushNotification('info','Hasil radiologi tersedia','Hasil radiologi Rawat Inap telah dikirim kepada dokter.',a.patientId,null);
   a.billing.biayaPenunjang=(a.billing.biayaPenunjang||0)+75000; a.updatedAt=nowISO(); Store.save();
   logAudit('hasil_radiologi',esc(getPatient(a.patientId).nama)+' — '+esc(o.detail)); showToast('Hasil radiologi tersimpan ke EMR','success'); renderRadiologi();
 }
@@ -3350,15 +3478,21 @@ function switchFarmasiTab(tab){
 }
 function renderFarmasiResepTab(){
   const ctx = routeContext(currentRoute()) || 'rawat-jalan';
-  const list = visitsToday().filter(v=>v.status==='menunggu_farmasi' && (ctx==='igd' ? v.unit==='igd' : ctx==='rawat-inap' ? false : (v.unit||'rawat-jalan')==='rawat-jalan')).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+  reconcileOutpatientPrescriptions();
+  const list = Store.data.visits.filter(function(v){
+    const unit=v.unit||'rawat-jalan', resep=getResepByVisit(v.id);
+    const matchesUnit=ctx==='igd'?unit==='igd':ctx==='rawat-inap'?false:unit==='rawat-jalan';
+    return matchesUnit && resep && resep.status==='menunggu' && !resep.admissionId && v.status!=='dibatalkan';
+  }).sort((a,b)=>new Date(a.createdAt||a.tanggal)-new Date(b.createdAt||b.tanggal));
   const area = document.getElementById('farmasi-tab-area');
   if(list.length===0){ area.innerHTML = '<div class="panel"><div class="panel-body"><div class="empty"><div class="big">✓</div>Tidak ada resep yang menunggu diracik.</div></div></div>'; return; }
   area.innerHTML = list.map(v=>{
-    const p = getPatient(v.patientId), poli = getPoli(v.poliId), resep = getResep(v.resepId);
+    const p = getPatient(v.patientId), poli = getPoli(v.poliId), resep = getResepByVisit(v.id), asal = v.unit==='igd'?'IGD':poli.nama;
+    if(!p || !resep) return '';
     return '<div class="panel" style="margin-bottom:10px"><div class="panel-body">'+
       '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">'+
         '<div><strong>'+esc(p.nama)+'</strong> <span class="mono" style="color:var(--ink-soft)">('+p.id+')</span><br>'+
-        '<span style="font-size:13px;color:var(--ink-soft)">Dari '+esc(poli.nama)+' &middot; No. Antrian '+v.noAntrian+'</span></div>'+badgeStatus('menunggu_farmasi')+
+        '<span style="font-size:13px;color:var(--ink-soft)">Dari '+esc(asal)+' &middot; No. Antrian '+v.noAntrian+'</span></div>'+badgeStatus('menunggu_farmasi')+
       '</div>'+
       '<div class="table-wrap"><table><thead><tr><th>Obat</th><th>Diminta</th><th>Stok Tersedia</th><th>Disiapkan</th><th>Aturan Pakai</th></tr></thead><tbody>'+
       resep.items.map((it,idx)=>{
@@ -3375,23 +3509,38 @@ function renderFarmasiResepTab(){
   area.querySelectorAll('[data-siapkan]').forEach(btn=> btn.addEventListener('click', ()=> siapkanObat(btn.dataset.siapkan, btn.dataset.visit)));
 }
 function siapkanObat(resepId, visitId){
+  if(!Session.currentUser||!['farmasi','admin'].includes(Session.currentUser.role)){showToast('Pemrosesan resep hanya dapat dilakukan petugas Farmasi atau admin demo.','danger');return;}
   const resep = getResep(resepId), visit = getVisit(visitId);
-  let totalObat = 0;
-  resep.items.forEach((it,idx)=>{
-    const input = document.getElementById('siap-'+resepId+'-'+idx);
-    const jumlahSiap = Math.max(0, Math.min(parseInt(input.value)||0, getMedicine(it.medicineId).stok));
-    getMedicine(it.medicineId).stok -= jumlahSiap;
-    it.jumlahDisiapkan = jumlahSiap;
-    totalObat += jumlahSiap * it.hargaSatuan;
-  });
+  if(!resep || !visit || getResepByVisit(visitId)?.id!==resepId){showToast('Resep dan kunjungan pasien tidak terhubung. Muat ulang antrean farmasi.','danger');return;}
+  if(resep.status!=='menunggu'){showToast('Resep ini sudah diproses; cegah stok terpotong dua kali.','warning');return;}
+  let totalObat=0;const reservedByMedicine={};
+  for(let idx=0;idx<resep.items.length;idx++){
+    const it=resep.items[idx],input=document.getElementById('siap-'+resepId+'-'+idx),med=getMedicine(it.medicineId);
+    if(!med){showToast('Master obat tidak ditemukan: '+it.nama,'danger');return;}
+    const available=Math.max(0,(parseInt(med.stok,10)||0)-(reservedByMedicine[it.medicineId]||0));
+    const jumlahSiap=Math.max(0,Math.min(parseInt(input&&input.value,10)||0,available,parseInt(it.jumlah,10)||0));
+    if(jumlahSiap<=0){showToast('Jumlah obat yang disiapkan harus lebih dari nol dan tidak boleh melebihi stok gabungan.','danger');return;}
+    it.jumlahDisiapkan=jumlahSiap;reservedByMedicine[it.medicineId]=(reservedByMedicine[it.medicineId]||0)+jumlahSiap;totalObat+=jumlahSiap*(Number(it.hargaSatuan)||0);
+  }
+  resep.items.forEach(function(it){getMedicine(it.medicineId).stok-=it.jumlahDisiapkan;});
   resep.status = 'disiapkan';
+  resep.unit=resep.unit||'rawat-jalan'; resep.jenisLayanan=resep.jenisLayanan||'rawat-jalan';
   resep.siapAt = nowISO(); resep.updatedAt = resep.siapAt;
+  visit.resepId=resep.id; resep.visitId=visit.id;
+  visit.billing=visit.billing||{registrasi:BIAYA_REGISTRASI,konsultasi:0,obat:0,lab:0};
   visit.billing.obat = totalObat;
-  visit.status = 'menunggu_bayar'; visit.nextStep='Billing / Kasir Rawat Jalan';
-  visit.updatedAt = nowISO();
-  Store.save();
-  logAudit('obat_disiapkan', visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama));
-  showToast('Obat disiapkan — pasien diarahkan ke kasir', 'success');
+  const unit=(visit.unit||resep.unit||'rawat-jalan').replace('_','-');
+  if(unit==='igd'){
+    visit.status='obat_siap'; visit.nextStep='Farmasi IGD — menunggu penyerahan/pemberian sesuai instruksi';
+    resep.unit='igd'; resep.jenisLayanan='igd';
+    pushNotification('info','Obat IGD siap diproses','Obat untuk kunjungan IGD Anda siap diproses sesuai instruksi.',visit.patientId,null);
+  }else{
+    visit.status='menunggu_bayar'; visit.nextStep='Kasir Rawat Jalan — sesuai ketentuan pembayaran';
+    pushNotification('info','Resep Rawat Jalan disiapkan','Silakan ikuti petunjuk pembayaran dan pengambilan obat dari petugas.',visit.patientId,null);
+  }
+  visit.updatedAt=nowISO(); Store.save();
+  logAudit('obat_disiapkan',visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama));
+  showToast(unit==='igd'?'Obat IGD disiapkan — ikuti alur pemberian IGD':'Obat disiapkan — pasien diarahkan sesuai alur Rawat Jalan','success');
   renderFarmasiResepTab();
 }
 function renderFarmasiRanapTab(){
@@ -3419,6 +3568,7 @@ function renderFarmasiRanapTab(){
   area.querySelectorAll('[data-siapkan-ranap]').forEach(function(btn){ btn.addEventListener('click', function(){ const id=this.dataset.siapkanRanap; const r=getResep(id); if(r && r.status==='menunggu') siapkanObatRanap(id); else serahkanObatKePerawatRanap(id); }); });
 }
 function siapkanObatRanap(resepId){
+  if(!Session.currentUser||!['farmasi','admin'].includes(Session.currentUser.role)){showToast('Pemrosesan instruksi obat hanya dapat dilakukan petugas Farmasi atau admin demo.','danger');return;}
   const resep = getResep(resepId);
   const a = Store.data.admissions.find(x=>x.id===resep.admissionId);
   let total = 0;
@@ -3438,12 +3588,14 @@ function siapkanObatRanap(resepId){
   renderFarmasiRanapTab();
 }
 function serahkanObatKePerawatRanap(resepId){
+  if(!Session.currentUser||!['farmasi','admin'].includes(Session.currentUser.role)){showToast('Distribusi obat hanya dapat dicatat petugas Farmasi atau admin demo.','danger');return;}
   const resep=getResep(resepId); if(!resep)return;
   const a=Store.data.admissions.find(function(x){return x.id===resep.admissionId;}); if(!a)return;
   resep.distribusiStatus='diserahkan'; resep.diserahkanAt=nowISO(); resep.diserahkanOleh=Session.currentUser?Session.currentUser.nama:''; resep.updatedAt=nowISO();
   a.updatedAt=nowISO(); Store.save(); logAudit('serah_obat_ranap',esc(getPatient(a.patientId).nama)+' — obat diserahkan ke unit/perawat'); showToast('Obat diserahkan ke perawat ruang','success'); renderFarmasiRanapTab();
 }
 function administrasikanObatRanap(resepId){
+  if(!Session.currentUser||!['perawat_ranap','admin'].includes(Session.currentUser.role)){showToast('Pencatatan pemberian obat Rawat Inap hanya dapat dilakukan perawat berwenang atau admin demo.','danger');return;}
   const resep=getResep(resepId); if(!resep)return;
   const a=Store.data.admissions.find(function(x){return x.id===resep.admissionId;}); if(!a||a.status!=='dirawat')return;
   resep.status='diambil'; resep.distribusiStatus='diberikan'; resep.diambilAt=nowISO(); resep.diberikanAt=nowISO(); resep.diberikanOleh=Session.currentUser?Session.currentUser.nama:''; resep.updatedAt=nowISO();
@@ -3453,24 +3605,33 @@ function administrasikanObatRanap(resepId){
 
 function renderFarmasiSiapTab(){
   const ctx = routeContext(currentRoute()) || 'rawat-jalan';
-  const list = visitsToday().filter(v=>v.status==='obat_siap' && (ctx==='igd' ? v.unit==='igd' : (v.unit||'rawat-jalan')===ctx)).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+  const list = Store.data.visits.filter(v=>v.status==='obat_siap' && (ctx==='igd' ? v.unit==='igd' : (v.unit||'rawat-jalan')===ctx) && !!getResepByVisit(v.id)).sort((a,b)=>new Date(a.createdAt||a.tanggal)-new Date(b.createdAt||b.tanggal));
   const area = document.getElementById('farmasi-tab-area');
   if(list.length===0){ area.innerHTML = '<div class="panel"><div class="panel-body"><div class="empty"><div class="big">—</div>Belum ada obat yang menunggu diambil.</div></div></div>'; return; }
   area.innerHTML = '<div class="panel"><div class="panel-body"><div class="table-wrap"><table><thead><tr><th>No. Antrian</th><th>Pasien</th><th>Poli</th><th></th></tr></thead><tbody>'+
     list.map(v=>{ const p = getPatient(v.patientId), poli = getPoli(v.poliId);
       return '<tr><td class="mono" style="font-weight:700">'+v.noAntrian+'</td><td>'+esc(p.nama)+'</td><td>'+esc(poli.nama)+'</td>'+
-        '<td><button class="btn btn-success btn-sm" data-serahkan="'+v.id+'">Serahkan Obat</button></td></tr>'; }).join('')+
+        '<td><button class="btn btn-success btn-sm" data-serahkan="'+v.id+'">'+(ctx==='igd'?'Catat Pemberian / Penyerahan':'Serahkan Obat')+'</button></td></tr>'; }).join('')+
     '</tbody></table></div></div></div>';
   area.querySelectorAll('[data-serahkan]').forEach(btn=> btn.addEventListener('click', ()=> serahkanObat(btn.dataset.serahkan)));
 }
 function serahkanObat(visitId){
-  const visit = getVisit(visitId);
-  visit.status = 'selesai'; visit.updatedAt = nowISO();
-  const resep=getResepByVisit(visitId); if(resep){ resep.diambilAt=visit.updatedAt; resep.updatedAt=visit.updatedAt; }
-  Store.save();
-  logAudit('obat_diserahkan', visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama));
-  showToast('Obat telah diserahkan ke pasien. Kunjungan selesai.', 'success');
-  renderFarmasiSiapTab();
+  if(!Session.currentUser||!['farmasi','admin'].includes(Session.currentUser.role)){showToast('Penyerahan/pemberian obat hanya dapat dicatat petugas Farmasi atau admin demo.','danger');return;}
+  const visit=getVisit(visitId);if(!visit){showToast('Kunjungan pasien tidak ditemukan.','danger');return;}
+  const resep=getResepByVisit(visitId);if(!resep){showToast('Resep pasien tidak ditemukan; obat tidak dapat diserahkan.','danger');return;}
+  if(resep.status!=='disiapkan'){showToast('Resep bukan dalam status siap diserahkan.','warning');return;}
+  visit.updatedAt=nowISO();resep.diambilAt=visit.updatedAt;resep.updatedAt=visit.updatedAt;
+  const unit=(visit.unit||resep.unit||'rawat-jalan').replace('_','-');
+  if(unit==='igd'){
+    resep.status='diberikan';resep.diberikanAt=visit.updatedAt;resep.diberikanOleh=Session.currentUser?Session.currentUser.nama:'';
+    visit.status='diperiksa';visit.nextStep='Lanjutkan observasi dan keputusan klinis IGD';
+    pushNotification('info','Pemberian obat IGD tercatat','Petugas telah mencatat pemenuhan obat pada episode IGD.',visit.patientId,null);
+  }else{
+    resep.status='diambil';visit.status='selesai';visit.nextStep='Pelayanan Rawat Jalan selesai';
+    pushNotification('info','Obat diserahkan','Obat Rawat Jalan telah diserahkan oleh petugas farmasi.',visit.patientId,null);
+  }
+  Store.save();logAudit('obat_diserahkan',visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama));
+  showToast(unit==='igd'?'Pemberian obat IGD tercatat; episode IGD tetap aktif':'Obat Rawat Jalan diserahkan; kunjungan selesai','success');renderFarmasiSiapTab();
 }
 function renderFarmasiStokTab(){
   const area = document.getElementById('farmasi-tab-area');
@@ -3708,11 +3869,13 @@ function switchRanapTab(tab){
 function renderRanapPasienTab(){
   const area = document.getElementById('ranap-tab-area');
   const aktif = Store.data.admissions.filter(a=>a.status==='dirawat').sort((a,b)=> new Date(a.tanggalMasuk)-new Date(b.tanggalMasuk));
+  const pendingRef=(Store.data.careRequests||[]).filter(function(r){return r.destination==='rawat-inap'&&['menunggu_konfirmasi','sedang_diproses'].includes(r.status);});
   area.innerHTML =
     (Session.currentUser && ['admisi_ranap','admin'].includes(Session.currentUser.role) ? '<div style="margin-bottom:14px"><button class="btn btn-primary btn-sm" id="btn-admisi-baru">+ Admisi Baru</button></div>' : '')+
-    (aktif.length===0 ? '<div class="panel"><div class="panel-body"><div class="empty"><div class="big">🏨</div>Tidak ada pasien dirawat saat ini.</div></div></div>' :
-    aktif.map(a=>ranapCardHtml(a)).join(''));
+    (pendingRef.length?'<div class="panel" style="margin-bottom:12px"><div class="panel-head"><h2>Permintaan Admisi dari Unit Lain ('+pendingRef.length+')</h2></div><div class="panel-body">'+pendingRef.map(function(r){const p=getPatient(r.patientId);return '<div class="history-item"><strong>'+esc(p?p.nama:'Pasien')+'</strong><div class="hint">'+esc(r.sourceUnit)+' · '+esc(r.detail)+'</div><button class="btn btn-primary btn-sm" data-accept-ri="'+r.id+'">Terima &amp; Proses Admisi</button></div>';}).join('')+'</div></div>':'')+
+    (aktif.length===0 ? '<div class="panel"><div class="panel-body"><div class="empty"><div class="big">🏨</div>Tidak ada pasien dirawat saat ini.</div></div></div>' : aktif.map(a=>ranapCardHtml(a)).join(''));
   const btnAdm=document.getElementById('btn-admisi-baru'); if(btnAdm) btnAdm.addEventListener('click', function(){ admisiBaruState={patientId:null,visitId:null}; openAdmisiBaruSheet(); });
+  area.querySelectorAll('[data-accept-ri]').forEach(function(b){b.addEventListener('click',function(){acceptInpatientReferral(this.dataset.acceptRi);});});
   area.querySelectorAll('[data-buka-admisi]').forEach(el=> el.addEventListener('click', function(){ bukaAdmisi(this.dataset.bukaAdmisi); }));
 }
 function ranapCardHtml(a){
@@ -4027,7 +4190,12 @@ function submitOrder(admissionId){
     const biaya = jenis==='tindakan' ? (parseInt(document.getElementById('ord-biaya').value)||0) : 0;
     if(biaya>0){ a.billing.biayaTindakan = (a.billing.biayaTindakan||0) + biaya; }
     const status = (jenis==='lab'||jenis==='radiologi') ? 'menunggu' : (jenis==='tindakan'?'selesai':'aktif');
-    a.orders.push({id:uid('ORD'), waktu:nowISO(), dokterNama, jenis, detail, status, biaya, hasil:null});
+    const order={id:uid('ORD'), waktu:nowISO(), dokterNama, jenis, detail, status, biaya, hasil:null}; a.orders.push(order);
+    if(jenis==='lab'||jenis==='radiologi'){
+      if(!Array.isArray(Store.data.careRequests))Store.data.careRequests=[];
+      const req={id:uid('REQ'),patientId:a.patientId,admissionId:a.id,orderId:order.id,sourceUnit:'rawat-inap',destination:jenis==='lab'?'lab':'radiologi',kind:jenis,detail:detail,status:'menunggu_konfirmasi',createdAt:nowISO(),createdBy:Session.currentUser?Session.currentUser.id:null,acceptedAt:null,acceptedBy:null,completedAt:null,result:null};
+      Store.data.careRequests.unshift(req); pushNotification('info','Order penunjang Rawat Inap',detail+' · menunggu konfirmasi '+(jenis==='lab'?'Laboratorium':'Radiologi'),jenis==='lab'?'lab':'radiologi',null); pushNotification('info','Permintaan pemeriksaan tercatat',detail+' · mengikuti alur Rawat Inap',a.patientId,null);
+    }
     logAudit('instruksi_ranap', patNama+' — '+jenis+': '+detail+(biaya?' ('+formatRupiah(biaya)+')':''));
     showToast((jenis==='lab'?'Order lab terkirim ke Laboratorium':jenis==='radiologi'?'Order radiologi terkirim ke Radiologi':'Instruksi tersimpan')+(biaya?' — biaya masuk tagihan':''), 'success');
   }
@@ -4138,6 +4306,7 @@ function openAdmisiBaruSheet(){
   srcSel.addEventListener('change',refreshAdmissionRules); paySel.addEventListener('change',refreshAdmissionRules); refreshAdmissionRules();
 }
 function submitAdmisiBaru(){
+  if(!Session.currentUser||!['admin','admisi_ranap'].includes(Session.currentUser.role)){showToast('Konfirmasi admisi hanya dapat dilakukan petugas Admisi Rawat Inap atau admin demo.','danger');return;}
   if(!admisiBaruState.patientId){ showToast('Pilih pasien terlebih dahulu', 'danger'); return; }
   const bedId = document.getElementById('ab-bed').value;
   if(!bedId){ showToast('Tidak ada tempat tidur tersedia', 'danger'); return; }
@@ -4161,6 +4330,8 @@ function submitAdmisiBaru(){
     billing:{biayaObat:0, biayaTindakan:0, biayaPenunjang:0, statusBayar:'belum_bayar'}, discharge:{status:'belum_direncanakan',rencanaTanggal:null,kondisi:null}, createdAt: nowISO(), updatedAt: nowISO()
   };
   Store.data.admissions.push(admission);
+  const sourceReferral=(Store.data.careRequests||[]).find(function(r){return r.destination==='rawat-inap'&&r.patientId===admission.patientId&&r.sourceVisitId===admission.visitId&&r.status==='sedang_diproses';});
+  if(sourceReferral){sourceReferral.status='selesai';sourceReferral.admissionId=admission.id;sourceReferral.completedAt=nowISO();pushNotification('info','Perjalanan Rawat Inap aktif','Admisi Rawat Inap telah dikonfirmasi. Perjalanan pasien sekarang mengikuti episode Rawat Inap.',admission.patientId,null);}
   bed.status = 'terisi';
   if(admisiBaruState.visitId){
     const srcVisit=Store.data.visits.find(function(v){return v.id===admisiBaruState.visitId;});
@@ -4174,22 +4345,20 @@ function submitAdmisiBaru(){
   if(currentRoute()==='ranap') renderRanapPasienTab();
 }
 function rujukRawatInap(visitId){
-  const visit = getVisit(visitId);
-  visit.diagnosis = (document.getElementById('px-diagnosis').value||'').trim() || visit.diagnosis;
-  visit.catatan = (document.getElementById('px-catatan').value||'').trim() || visit.catatan;
-  visit.billing.konsultasi = getPoli(visit.poliId).biaya;
-  visit.status = 'rujuk_ranap';
-  visit.updatedAt = nowISO();
-  Store.save();
-  logAudit('rujuk_ranap', visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama));
-  poliState.activeVisitId = null;
-  refreshPoliQueue(); refreshQueueControlPanel();
-  document.getElementById('poli-exam-area').innerHTML = '<div class="panel"><div class="panel-body"><div class="empty"><div class="big">🩺</div>Pilih pasien dari antrian untuk memulai pemeriksaan.</div></div></div>';
-  admisiBaruState = {patientId: visit.patientId, visitId: visit.id};
-  openAdmisiBaruSheet();
-  setTimeout(function(){ const d=document.getElementById('ab-diagnosis'); if(d) d.value = visit.diagnosis || ''; }, 30);
+  if(!Session.currentUser||!['dokter','admin'].includes(Session.currentUser.role)){showToast('Permintaan Rawat Inap hanya dapat dibuat dokter penanggung jawab.','danger');return;}
+  const visit=getVisit(visitId);if(!visit)return;
+  visit.diagnosis=(document.getElementById('px-diagnosis').value||'').trim()||visit.diagnosis;
+  visit.catatan=(document.getElementById('px-catatan').value||'').trim()||visit.catatan;
+  visit.billing.konsultasi=getPoli(visit.poliId).biaya;
+  if(!Array.isArray(visit.referrals))visit.referrals=[];
+  const existing=(Store.data.careRequests||[]).find(function(r){return r.sourceVisitId===visit.id&&r.destination==='rawat-inap'&&!['ditolak','dibatalkan'].includes(r.status);});
+  if(!existing){const req=createCareRequest(visit,'rawat-inap','admisi_rawat_inap','Permintaan Rawat Inap dari '+getPoli(visit.poliId).nama+' · diagnosis: '+(visit.diagnosis||'belum diisi'));visit.referrals.push(req);}
+  visit.status='rujuk_ranap';visit.nextStep='Menunggu konfirmasi Admisi Rawat Inap';visit.updatedAt=nowISO();Store.save();
+  logAudit('rujuk_ranap',visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama));
+  poliState.activeVisitId=null;refreshPoliQueue();refreshQueueControlPanel();
+  document.getElementById('poli-exam-area').innerHTML='<div class="panel"><div class="panel-body"><div class="empty"><div class="big">🏥</div>Permintaan Rawat Inap telah dikirim ke Admisi. Perjalanan Rawat Inap aktif setelah admisi dikonfirmasi.</div></div></div>';
+  showToast('Permintaan dikirim ke Admisi Rawat Inap; menunggu konfirmasi unit tujuan.','success');
 }
-
 /* =================================================================
    MODULE: RIWAYAT PEMERIKSAAN DOKTER
    ================================================================= */
@@ -4467,6 +4636,76 @@ function toggleKioskMode(){
   document.getElementById('btn-kiosk').textContent = document.body.classList.contains('kiosk-on') ? '⛶ Keluar Layar Penuh' : '⛶ Mode Layar Penuh';
 }
 
+function confirmCareRequest(requestId, decision){
+  const actor=Session.currentUser||{},allowed=({igd:['admin','dokter_igd','perawat_igd'],lab:['admin','lab'],radiologi:['admin','radiologi'],'rawat-inap':['admin','admisi_ranap']});
+  const req=(Store.data.careRequests||[]).find(function(x){return x.id===requestId;}); if(!req)return;
+  if(allowed[req.destination]&&!allowed[req.destination].includes(actor.role)){showToast('Konfirmasi hanya dapat dilakukan oleh unit tujuan yang berwenang.','danger');return;}
+  if(req.status!=='menunggu_konfirmasi'){showToast('Permintaan ini sudah dikonfirmasi sebelumnya.','warning');return;}
+  req.status=decision==='terima'?'diterima':'ditolak'; req.acceptedAt=nowISO(); req.acceptedBy=Session.currentUser?Session.currentUser.id:null;
+  const patient=getPatient(req.patientId);
+  pushNotification('info',decision==='terima'?'Permintaan diterima':'Permintaan tidak diterima',req.detail+' · '+(decision==='terima'?'diterima oleh ':'ditolak oleh ')+(Session.currentUser?Session.currentUser.nama:'petugas'),req.patientId,null);
+  if(decision==='terima' && req.destination==='igd'){
+    if(!Array.isArray(Store.data.visits))Store.data.visits=[];
+    const existing=Store.data.visits.find(function(v){return v.sourceCareRequestId===req.id;});
+    if(!existing){
+      const count=Store.data.visits.filter(function(v){return v.unit==='igd'&&v.tanggal===todayStr();}).length+1;
+      const igdVisit={id:uid('VIS'),patientId:req.patientId,tanggal:todayStr(),poliId:'RJ-UMU',dokterId:null,jenisBayar:(getVisit(req.sourceVisitId)||{}).jenisBayar||'Umum',noBpjs:(getVisit(req.sourceVisitId)||{}).noBpjs||'',noAntrian:'IGD-'+String(count).padStart(3,'0'),keluhan:req.detail,status:'menunggu_poli',unit:'igd',sourceVisitId:req.sourceVisitId,sourceCareRequestId:req.id,vital:null,diagnosis:'',catatan:'Rujukan internal dari '+(req.sourceUnit||'unit asal'),labRequest:null,resepId:null,billing:{registrasi:0,konsultasi:0,obat:0,lab:0},prioritas:true,screening:null,workflow:{bookedAt:nowISO(),checkinAt:nowISO(),screeningAt:null,doctorStartAt:null,supportingAt:null,reviewAt:null,completedAt:null},createdAt:nowISO(),updatedAt:nowISO(),demo:false};
+      Store.data.visits.push(igdVisit); req.igdVisitId=igdVisit.id;
+    }
+    req.status='diterima'; req.acceptedAt=nowISO();
+    pushNotification('info','Rujukan IGD diterima','Silakan menuju IGD sesuai instruksi petugas.',req.patientId,null);
+  }
+  Store.save(); showToast('Konfirmasi unit tersimpan','success');
+}
+function registerDirectIgdPatient(){
+  const patientId=document.getElementById('igd-reg-patient').value, complaint=document.getElementById('igd-reg-complaint').value.trim();
+  if(!patientId||!complaint){showToast('Pilih pasien dan isi keluhan utama IGD.','danger');return;}
+  if(Store.data.visits.some(function(v){return v.patientId===patientId&&v.unit==='igd'&&!['selesai','dibatalkan'].includes(v.status);})){showToast('Pasien ini sudah memiliki episode IGD aktif; buka episode tersebut agar tidak membuat pendaftaran ganda.','warning');return;}
+  const count=Store.data.visits.filter(function(v){return v.unit==='igd'&&v.tanggal===todayStr();}).length+1;
+  const v={id:uid('VIS'),patientId:patientId,tanggal:todayStr(),poliId:'RJ-UMU',dokterId:null,jenisBayar:'Umum',noBpjs:'',noAntrian:'IGD-'+String(count).padStart(3,'0'),keluhan:complaint,status:'menunggu_poli',unit:'igd',sourceVisitId:null,sourceCareRequestId:null,vital:null,diagnosis:'',catatan:'Pendaftaran langsung IGD',labRequest:null,radiologyRequest:null,resepId:null,billing:{registrasi:0,konsultasi:0,obat:0,lab:0},prioritas:true,screening:null,workflow:{bookedAt:nowISO(),checkinAt:nowISO(),screeningAt:null,doctorStartAt:null,supportingAt:null,reviewAt:null,completedAt:null},createdAt:nowISO(),updatedAt:nowISO(),demo:false};
+  Store.data.visits.push(v);logAudit('pendaftaran_igd',esc(getPatient(patientId).nama)+' — '+v.noAntrian);pushNotification('info','Pendaftaran IGD tercatat','Nomor IGD '+v.noAntrian+' · silakan lanjut triase.',patientId,null);Store.save();showToast('Episode IGD berhasil dibuat; lanjutkan triase dan asesmen.','success');renderIGD();
+}
+function renderIgdClinicalHtml(){
+  const list=visitsToday().filter(function(v){return v.unit==='igd'&&!['selesai','dibatalkan'].includes(v.status);});
+  if(!list.length)return '<div class="empty">Belum ada pasien IGD aktif.</div>';
+  return list.map(function(v){const p=getPatient(v.patientId),rx=getResepByVisit(v.id);return '<div class="history-item"><div><strong>'+esc(p?p.nama:'Pasien')+'</strong> · '+esc(v.noAntrian||v.id)+' <span class="badge badge-sage">'+esc(v.status)+'</span></div><div class="hint">Rujukan asal: '+esc(v.sourceVisitId||'Kedatangan langsung')+' · Keluhan: '+esc(v.keluhan||'-')+'</div>'+(rx?'<div class="alert alert-info">Resep IGD: '+esc((rx.items||[]).map(function(x){return x.nama+' ×'+x.jumlah;}).join(', '))+' · '+esc(rx.status)+'</div>':'')+(v.labRequest?'<div class="alert alert-info"><strong>Laboratorium · '+esc(v.labRequest.jenis)+'</strong><div>Status: '+esc(v.labRequest.status)+'</div>'+(v.labRequest.hasil?'<div>Hasil: '+esc(v.labRequest.hasil)+'</div>':'')+'</div>':'')+(v.radiologyRequest?'<div class="alert alert-info"><strong>Radiologi · '+esc(v.radiologyRequest.jenis)+'</strong><div>Status: '+esc(v.radiologyRequest.status)+'</div>'+(v.radiologyRequest.hasil?'<div>Hasil: '+esc(v.radiologyRequest.hasil)+'</div>':'')+'</div>':'')+'<div class="field"><label>Diagnosis / asesmen IGD</label><input id="igd-dx-'+v.id+'" value="'+esc(v.diagnosis||'')+'" placeholder="Diagnosis atau asesmen klinis"></div><div class="field"><label>Catatan klinis / rencana</label><textarea id="igd-note-'+v.id+'" placeholder="Rencana tindak lanjut, observasi, atau disposisi">'+esc(v.catatan||'')+'</textarea></div><div class="field"><label>Resep obat (opsional)</label><select id="igd-med-'+v.id+'"><option value="">Tidak menambah resep</option>'+Store.data.medicines.map(function(m){return '<option value="'+m.id+'">'+esc(m.nama)+' · stok '+m.stok+'</option>';}).join('')+'</select><div class="field-row"><input id="igd-qty-'+v.id+'" type="number" min="1" value="1" aria-label="Jumlah obat"><input id="igd-rule-'+v.id+'" placeholder="Aturan pakai / instruksi pemberian"></div></div><div class="field checkbox-row"><input type="checkbox" id="igd-lab-'+v.id+'"><label for="igd-lab-'+v.id+'">Minta Laboratorium</label></div><div class="field hidden" id="igd-lab-wrap-'+v.id+'"><input id="igd-lab-detail-'+v.id+'" placeholder="Jenis pemeriksaan laboratorium"></div><div class="field checkbox-row"><input type="checkbox" id="igd-rad-'+v.id+'"><label for="igd-rad-'+v.id+'">Minta Radiologi</label></div><div class="field hidden" id="igd-rad-wrap-'+v.id+'"><input id="igd-rad-detail-'+v.id+'" placeholder="Jenis pemeriksaan radiologi"></div><div class="field checkbox-row"><input type="checkbox" id="igd-ri-'+v.id+'"><label for="igd-ri-'+v.id+'">Ajukan admisi Rawat Inap (jika diputuskan dokter)</label></div><button class="btn btn-primary btn-sm" data-save-igd="'+v.id+'">Simpan Asesmen &amp; Instruksi</button></div>';}).join('');
+}
+function saveIgdClinicalOrders(visitId){
+  if(!Session.currentUser||!['dokter_igd','admin'].includes(Session.currentUser.role)){showToast('Instruksi klinis dan resep IGD hanya dapat dibuat dokter IGD atau admin demo.','danger');return;}
+  const v=getVisit(visitId);if(!v||v.unit!=='igd')return;
+  const wasReview=v.status==='menunggu_review';
+  const dx=document.getElementById('igd-dx-'+visitId).value.trim(),note=document.getElementById('igd-note-'+visitId).value.trim();
+  const medId=document.getElementById('igd-med-'+visitId).value,labChk=document.getElementById('igd-lab-'+visitId).checked,radChk=document.getElementById('igd-rad-'+visitId).checked,riChk=document.getElementById('igd-ri-'+visitId).checked;
+  const labDetail=labChk?document.getElementById('igd-lab-detail-'+visitId).value.trim():'',radDetail=radChk?document.getElementById('igd-rad-detail-'+visitId).value.trim():'';
+  const rule=medId?document.getElementById('igd-rule-'+visitId).value.trim():'';
+  if(!dx){showToast('Isi diagnosis/asesmen IGD terlebih dahulu.','danger');return;}
+  if(medId && getResepByVisit(visitId)){showToast('Resep untuk episode ini sudah ada. Jangan membuat resep ganda; tinjau resep yang ada.','warning');return;}
+  if(medId&&!rule){showToast('Isi instruksi/aturan pemberian obat.','danger');return;}
+  if(labChk&&!labDetail){showToast('Isi jenis pemeriksaan Laboratorium.','danger');return;}
+  if(radChk&&!radDetail){showToast('Isi jenis pemeriksaan Radiologi.','danger');return;}
+  if(v.labRequest&&labChk){showToast('Permintaan Laboratorium sudah ada pada episode ini.','warning');return;}
+  if(v.radiologyRequest&&radChk){showToast('Permintaan Radiologi sudah ada pada episode ini.','warning');return;}
+  v.diagnosis=dx;v.catatan=note;v.status='diperiksa';v.updatedAt=nowISO();v.workflow=v.workflow||{};v.workflow.doctorStartAt=v.workflow.doctorStartAt||nowISO();if(wasReview)v.workflow.reviewAt=nowISO();
+  if(medId){const med=getMedicine(medId),qty=Math.max(1,parseInt(document.getElementById('igd-qty-'+visitId).value,10)||1);const rx={id:uid('RSP'),visitId:v.id,patientId:v.patientId,unit:'igd',jenisLayanan:'igd',items:[{medicineId:med.id,nama:med.nama,jumlah:qty,hargaSatuan:med.harga,aturanPakai:rule}],status:'menunggu',createdAt:nowISO(),updatedAt:nowISO(),siapAt:null,diambilAt:null};Store.data.prescriptions.push(rx);v.resepId=rx.id;notifyCareUnit(v.patientId,'farmasi-igd','Instruksi obat IGD baru','Obat '+med.nama+' · '+v.noAntrian+' · menunggu penerimaan Farmasi IGD');}
+  if(labChk){v.labRequest={id:uid('LAB'),jenis:labDetail,status:'menunggu',hasil:null,unit:'igd',requestedAt:nowISO()};createCareRequest(v,'lab','laboratorium',labDetail);}
+  if(radChk){v.radiologyRequest={id:uid('RAD'),jenis:radDetail,status:'menunggu',hasil:null,unit:'igd',requestedAt:nowISO()};createCareRequest(v,'radiologi','radiologi',radDetail);}
+  if(riChk){createCareRequest(v,'rawat-inap','admisi_rawat_inap','Permintaan evaluasi admisi Rawat Inap dari IGD: '+dx);}
+  if(!labChk&&!radChk&&!medId&&!riChk)pushNotification('info','Asesmen IGD diperbarui','Asesmen IGD telah disimpan.',v.patientId,null);
+  Store.save();logAudit('asesmen_igd',esc(getPatient(v.patientId).nama)+' — '+esc(dx));showToast('Asesmen IGD tersimpan; instruksi dikirim ke unit terkait.','success');renderIGD();
+}
+function acceptInpatientReferral(requestId){
+  if(!Session.currentUser||!['admin','admisi_ranap'].includes(Session.currentUser.role)){showToast('Penerimaan rujukan Rawat Inap hanya dapat dilakukan petugas Admisi atau admin demo.','danger');return;}
+  const req=(Store.data.careRequests||[]).find(function(r){return r.id===requestId&&r.destination==='rawat-inap'&&['menunggu_konfirmasi','sedang_diproses'].includes(r.status);});if(!req)return;
+  req.status='sedang_diproses';req.acceptedAt=nowISO();req.acceptedBy=Session.currentUser?Session.currentUser.id:null;Store.save();
+  admisiBaruState={patientId:req.patientId,visitId:req.sourceVisitId||null};openAdmisiBaruSheet();
+  setTimeout(function(){const hint=document.getElementById('ab-sumber-hint'),src=document.getElementById('ab-sumber');if(src){src.value=req.sourceUnit==='igd'?'IGD':(req.sourceUnit==='rawat-jalan'?'Rawat Jalan':'Rujukan');src.dispatchEvent(new Event('change'));}if(hint)hint.textContent='Rujukan internal diterima. Admisi belum aktif sampai petugas menyelesaikan formulir dan mengonfirmasi kamar/bed.';},30);
+  pushNotification('info','Rujukan Rawat Inap diterima','Petugas admisi mulai memproses penerimaan Rawat Inap.',req.patientId,null);Store.save();
+}
+function renderIgdReferralsHtml(){
+  const refs=(Store.data.careRequests||[]).filter(function(r){return r.destination==='igd'&&r.status==='menunggu_konfirmasi';});
+  if(!refs.length)return '<div class="empty">Tidak ada rujukan internal IGD yang menunggu konfirmasi.</div>';
+  return refs.map(function(r){const p=getPatient(r.patientId),v=getVisit(r.sourceVisitId);return '<div class="history-item"><strong>'+(p?esc(p.nama):'Pasien tidak ditemukan')+'</strong> · '+esc(p?p.id:r.patientId)+'<div class="hint">Asal: '+esc(r.sourceUnit)+' · '+esc(r.detail)+'</div><div class="result-actions"><button class="btn btn-primary btn-sm" data-igd-accept="'+r.id+'">Terima &amp; Buat Episode IGD</button><button class="btn btn-outline btn-sm" data-igd-reject="'+r.id+'">Tolak / Minta Klarifikasi</button></div></div>';}).join('');
+}
 /* =================================================================
    MODULE: IGD
    ================================================================= */
@@ -4477,7 +4716,8 @@ function renderIGD(){
   const exam = visits.filter(v=>v.status==='diperiksa').length;
   const done = visits.filter(v=>v.status==='selesai').length;
   document.getElementById('main-content').innerHTML =
-    pageIntro('Dashboard operasional IGD. Detail triase, tindakan, farmasi IGD, dan kasir IGD akan kita lengkapi saat review divisi IGD.')+
+    pageIntro('Dashboard operasional IGD prototype. Rujukan internal perlu dikonfirmasi IGD; episode, instruksi, dan obat dipisahkan dari Rawat Jalan/Rawat Inap.')+
+    ((Session.currentUser&&['admin','perawat_igd','dokter_igd'].includes(Session.currentUser.role))?'<div class="panel" style="margin-bottom:12px"><div class="panel-head"><h2>Pendaftaran / Penerimaan IGD</h2></div><div class="panel-body"><div class="field-row"><div class="field"><label>Pasien terdaftar</label><select id="igd-reg-patient"><option value="">Pilih pasien</option>'+Store.data.patients.map(function(p){return '<option value="'+p.id+'">'+esc(p.nama)+' · '+esc(p.id)+'</option>';}).join('')+'</select></div><div class="field"><label>Keluhan utama / alasan datang</label><input id="igd-reg-complaint" placeholder="Keluhan utama dan informasi awal"></div></div><button type="button" class="btn btn-primary btn-sm" id="btn-igd-register">Daftarkan / Buat Episode IGD</button><div class="hint">Pendaftaran hanya membuat episode dan nomor antrean; triase serta prioritas klinis tetap harus dilakukan petugas.</div></div></div>':'')+
     '<div class="ops-kpi-grid">'+
       '<div class="ops-kpi"><div class="kpi-label">Pasien IGD Hari Ini</div><div class="kpi-value">'+visits.length+'</div></div>'+
       '<div class="ops-kpi"><div class="kpi-label">Menunggu</div><div class="kpi-value">'+waiting+'</div></div>'+
@@ -4485,7 +4725,12 @@ function renderIGD(){
       '<div class="ops-kpi"><div class="kpi-label">Selesai</div><div class="kpi-value">'+done+'</div></div>'+
     '</div>'+ 
     '<div class="ops-grid-main"><div class="panel"><div class="panel-head"><h2>Zona IGD</h2></div><div class="panel-body"><div class="ops-queue-grid"><div class="ops-queue-card"><strong>Zona Merah</strong><div class="hint">Prioritas kegawatan tinggi</div></div><div class="ops-queue-card"><strong>Zona Kuning</strong><div class="hint">Prioritas sesuai hasil triase</div></div></div></div></div>'+ 
-    '<div class="panel"><div class="panel-head"><h2>Integrasi Layanan</h2></div><div class="panel-body"><div class="hint">Farmasi IGD dan Kasir IGD tersedia sebagai menu terpisah agar alur IGD tidak tercampur dengan Rawat Jalan/Rawat Inap.</div></div></div></div>';
+    '<div class="panel"><div class="panel-head"><h2>Integrasi Layanan</h2></div><div class="panel-body"><div class="hint">Farmasi IGD dan Kasir IGD dipisahkan. Pasien rujukan internal baru menjadi episode IGD setelah penerimaan dikonfirmasi.</div></div></div></div>'+
+    '<div class="panel" style="margin-top:12px"><div class="panel-head"><h2>Rujukan Internal Menunggu Konfirmasi ('+((Store.data.careRequests||[]).filter(function(r){return r.destination==='igd'&&r.status==='menunggu_konfirmasi';}).length)+')</h2></div><div class="panel-body" id="igd-referral-list">'+renderIgdReferralsHtml()+'</div></div>'+
+    '<div class="panel" style="margin-top:12px"><div class="panel-head"><h2>Asesmen &amp; Instruksi Klinis IGD</h2></div><div class="panel-body" id="igd-clinical-list">'+renderIgdClinicalHtml()+'</div></div>';
+  const directReg=document.getElementById('btn-igd-register');if(directReg)directReg.addEventListener('click',registerDirectIgdPatient);
+  const refArea=document.getElementById('igd-referral-list'); if(refArea){refArea.querySelectorAll('[data-igd-accept]').forEach(function(b){b.addEventListener('click',function(){confirmCareRequest(this.dataset.igdAccept,'terima');renderIGD();});});refArea.querySelectorAll('[data-igd-reject]').forEach(function(b){b.addEventListener('click',function(){confirmCareRequest(this.dataset.igdReject,'tolak');renderIGD();});});}
+  const clinical=document.getElementById('igd-clinical-list');if(clinical){clinical.querySelectorAll('[data-save-igd]').forEach(function(b){b.addEventListener('click',function(){saveIgdClinicalOrders(this.dataset.saveIgd);});});clinical.querySelectorAll('[id^="igd-lab-"]').forEach(function(el){if(el.type==='checkbox')el.addEventListener('change',function(){const w=document.getElementById('igd-lab-wrap-'+this.id.replace('igd-lab-',''));if(w)w.classList.toggle('hidden',!this.checked);});});clinical.querySelectorAll('[id^="igd-rad-"]').forEach(function(el){if(el.type==='checkbox')el.addEventListener('change',function(){const w=document.getElementById('igd-rad-wrap-'+this.id.replace('igd-rad-',''));if(w)w.classList.toggle('hidden',!this.checked);});});}
 }
 
 function renderRiwayatAdmin(){
@@ -4528,15 +4773,22 @@ function runSystemAudit(){
   check('nav-unit-module-primary','Farmasi/Kasir menampilkan modul unit sebagai navbar utama',['farmasi','kasir'].every(function(r){return primaryNavHashesForUser({role:r,unit:'rawat-jalan'}).length===2;}),'Tidak ada tombol Lainnya hanya untuk memuat satu modul unit.');
   check('admin-folder-no-patient-menu','Booking Saya/Riwayat pasien tidak bocor ke folder Admin',!['pasien-booking-saya','pasien-riwayat','pasien-dashboard','pasien-booking','pasien-rawat-inap'].some(function(h){return ['pendaftaran','booking','igd','lab','radiologi','farmasi-rawat-jalan','farmasi-rawat-inap','farmasi-igd','kasir-rawat-jalan','kasir-rawat-inap','kasir-igd','rekam-medis','riwayat-admin','master-data','audit-sistem','cek-antrian','monitor-antrean'].includes(h);}), 'Folder Admin memakai whitelist modul staf.');
   check('inpatient-journey','Journey Rawat Inap memiliki alur utama dan aktivitas dinamis', typeof patientInpatientJourney==='function' && typeof inpatientJourneyForAdmission==='function','Admisi · Kamar/Bed · Perawatan · Evaluasi · Pulang + aktivitas pendukung sesuai order.');
+  check('care-request-schema','Skema permintaan antarunit tersedia',Array.isArray(Store.data.careRequests)&&typeof createCareRequest==='function'&&typeof confirmCareRequest==='function','Permintaan memiliki unit sumber/tujuan, status konfirmasi, dan jejak waktu.');
+  check('pharmacy-unit-separation','Farmasi memiliki pemisahan konteks unit',typeof pharmacyMetrics==='function'&&typeof getResepByVisit==='function','Rawat Jalan, Rawat Inap, dan IGD menggunakan konteks resep/episode masing-masing.');
+  check('igd-referral-acceptance','Penerimaan rujukan IGD tersedia',typeof renderIgdReferralsHtml==='function'&&typeof confirmCareRequest==='function','Rujukan internal baru membuat episode IGD setelah diterima.');
+  check('radiology-outpatient','Radiologi menerima order Rawat Jalan dan IGD',typeof submitHasilRadiologiRJ==='function'&&typeof renderRadiologi==='function','Order memiliki status dan hasil kembali ke episode sumber.');
+  check('prescription-episode-links','Resep tertaut ke kunjungan atau admisi',Store.data.prescriptions.every(function(r){return !!r.admissionId || !!r.visitId || Store.data.visits.some(function(v){return v.resepId===r.id;});}),'Resep tanpa episode sumber dianggap tidak konsisten dan perlu diperbaiki.');
+  check('pharmacy-routing-isolation','Uji isolasi antrean Farmasi RJ/RI/IGD',(function(){const original=Store.data;try{const now=nowISO(),today=todayStr();Store.data={visits:[{id:'T-RJ',unit:'rawat-jalan',tanggal:today,poliId:'T',resepId:'RX-RJ'},{id:'T-IGD',unit:'igd',tanggal:today,poliId:'T',resepId:'RX-IGD'}],prescriptions:[{id:'RX-RJ',visitId:'T-RJ',unit:'rawat-jalan',status:'menunggu',createdAt:now},{id:'RX-IGD',visitId:'T-IGD',unit:'igd',status:'menunggu',createdAt:now},{id:'RX-RI',admissionId:'T-ADM',unit:'rawat-inap',status:'menunggu',createdAt:now}],meta:{settings:{}}};return pharmacyMetrics('rawat-jalan').pending===1&&pharmacyMetrics('igd').pending===1&&pharmacyMetrics('rawat_inap').pending===1;}catch(e){return false;}finally{Store.data=original;}})(),'Skenario sintetis memastikan resep satu unit tidak masuk antrean unit lain.');
+  check('concurrent-journey-states','Perjalanan pasien mempertahankan status beberapa permintaan sekaligus',(function(){const original=Store.data;try{Store.data={prescriptions:[{id:'T-RX',visitId:'T-VIS',status:'menunggu',unit:'rawat-jalan'}],careRequests:[]};const v={id:'T-VIS',unit:'rawat-jalan',status:'menunggu_lab',labRequest:{status:'menunggu'},radiologyRequest:{status:'menunggu'},workflow:{bookedAt:nowISO(),checkinAt:nowISO()}};const steps=patientJourneyDefinition(v);return patientJourneyStepState(v,steps.find(function(x){return x.key==='lab';}))==='active'&&patientJourneyStepState(v,steps.find(function(x){return x.key==='radiology';}))==='active'&&patientJourneyStepState(v,steps.find(function(x){return x.key==='pharmacy_prepare';}))==='active';}catch(e){return false;}finally{Store.data=original;}})(),'Laboratorium, Radiologi, dan Farmasi dapat sama-sama aktif tanpa saling menandai selesai.');
   check('demo-data','Tidak ada identitas pasien nyata pada akun demo',Store.data.patients.filter(function(p){return String(p.id).startsWith('RM-DEMO-');}).every(function(p){return String(p.alamat||'').includes('bukan data pasien nyata')||String(p.nik||'').startsWith('DEMO');}), 'Akun demo menggunakan data fiktif.');
   return checks;
 }
 function renderAuditSistem(){
   setPageTitle('Audit Sistem');
   const checks=runSystemAudit(), pass=checks.filter(function(x){return x.pass;}).length;
-  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V14.6.1 untuk memastikan jalur utama, data demo, antrean, QR, dan batas prototype tetap konsisten.')+
+  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V15.4.0 untuk memeriksa jalur utama, data demo, antrean, permintaan antarunit, dan batas prototype.')+
     '<div class="ops-kpi-grid"><div class="ops-kpi"><div class="kpi-label">Lulus</div><div class="kpi-value">'+pass+'</div></div><div class="ops-kpi"><div class="kpi-label">Diperiksa</div><div class="kpi-value">'+checks.length+'</div></div><div class="ops-kpi"><div class="kpi-label">Status</div><div class="kpi-value" style="font-size:20px">'+(pass===checks.length?'SIAP':'PERLU REVIEW')+'</div></div></div>'+
-    '<div class="panel"><div class="panel-head"><div><h2>🧪 Self-Test V14.6.1</h2><div class="hint">Ini adalah audit data/aturan sisi client, bukan pengganti pengujian keamanan backend.</div></div><button class="btn btn-outline btn-sm" onclick="renderAuditSistem()">↻ Jalankan Lagi</button></div><div class="panel-body">'+
+    '<div class="panel"><div class="panel-head"><div><h2>🧪 Self-Test V15.4.0</h2><div class="hint">Ini adalah audit data/aturan sisi client, bukan pengganti pengujian keamanan backend.</div></div><button class="btn btn-outline btn-sm" onclick="renderAuditSistem()">↻ Jalankan Lagi</button></div><div class="panel-body">'+
     '<div class="table-wrap"><table><thead><tr><th>Status</th><th>Pemeriksaan</th><th>Detail</th></tr></thead><tbody>'+checks.map(function(c){return '<tr><td>'+(c.pass?'<span class="badge badge-sage">✓ LULUS</span>':'<span class="badge badge-brick">✕ GAGAL</span>')+'</td><td><strong>'+esc(c.label)+'</strong></td><td>'+esc(c.detail)+'</td></tr>';}).join('')+'</tbody></table></div></div></div>'+
     '<div class="alert alert-warning"><strong>Batas prototype:</strong> localStorage hanya untuk simulasi. Untuk produksi dibutuhkan backend, database terpusat, autentikasi server, otorisasi server, audit trail terpusat, enkripsi, backup, dan integrasi resmi.</div>';
 }
