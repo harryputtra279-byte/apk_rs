@@ -836,3 +836,17 @@ input:focus,select:focus,textarea:focus{
 
 /* Clinical semantic colors stay green/red/amber where their meaning matters. */
 .badge-clinical{color:#244FC1;background:linear-gradient(90deg,rgba(219,234,254,.82),rgba(224,231,255,.70))}
+
+/* V15.7: Chat global dan monitor ruang rawat inap */
+.topbar-left{display:flex;align-items:center;gap:10px;min-width:0;}
+.staff-chat-top-btn{flex:none;}
+.inpatient-room-section{margin-top:16px;}
+.inpatient-bed-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px;}
+.inpatient-bed-card{border:1px solid var(--glass-border);border-radius:14px;padding:12px;background:rgba(255,255,255,.32);min-width:0;}
+.inpatient-bed-card>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.inpatient-bed-patient{display:flex;flex-direction:column;gap:3px;margin-top:9px;min-height:38px;}
+.inpatient-bed-patient small{font-size:12px;color:var(--ink-soft);}
+.ward-master-card .field-row3{margin-top:10px;}
+@media(max-width:600px){.topbar-left{gap:6px}.staff-chat-top-btn{padding:7px 10px}.prototype-badge{max-width:42vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.inpatient-bed-grid{grid-template-columns:1fr;}}
+
+@media(max-width:600px){.topbar .prototype-badge{display:none!important}.admin-topbar{grid-template-columns:76px minmax(0,1fr) auto!important}.admin-topbar .staff-chat-top-btn{height:38px!important;padding:0 8px!important;font-size:11px!important;width:auto!important}.admin-topbar .topbar-left{width:72px!important;overflow:visible!important}}

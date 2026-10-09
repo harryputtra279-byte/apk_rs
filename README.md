@@ -1,7 +1,7 @@
 # SIMRS PROTOTYPE — Portfolio / Demo
 
-**Versi:** V15.6.0  
-**Baseline pengembangan:** V15.5.0  
+**Versi:** V15.7.0  
+**Baseline pengembangan:** V15.6.0  
 **Platform:** PWA / Web  
 **Status:** Prototype portfolio, bukan SIMRS produksi
 
@@ -11,7 +11,7 @@ SIMRS PROTOTYPE adalah proyek portfolio untuk memperlihatkan kemampuan analisis 
 
 ## 1. Baseline pengembangan
 
-Baseline untuk versi ini adalah **V15.5.0 SIMRS Patient Journey Integration**, yang sebelumnya dikembangkan dari V15.4.0 SIMRS Integrasi Antarunit. V15.6.0 mempertahankan fitur tersebut dan menerapkan aturan booking/antrean terbaru; bukan kembali ke versi lama.
+Baseline untuk versi ini adalah **V15.6.0 SIMRS Booking & Antrean Terpadu**, dengan lineage sebelumnya dari V15.5.0 Patient Journey Integration dan V15.4.0 Integrasi Antarunit. V15.7.0 mempertahankan alur booking, antrean, perjalanan pasien, dan integrasi antarunit yang sudah ada sambil menambahkan monitor terikat penugasan, master ruang/shift, dan standar navigasi petugas.
 
 Aturan pengembangan proyek:
 
@@ -21,7 +21,7 @@ Aturan pengembangan proyek:
 4. Setiap perubahan harus melalui pemeriksaan syntax, UI, navigasi, role/RBAC, alur utama, dan regresi fitur sebelum ZIP diberikan.
 5. README hanya diperbarui setelah fungsi aplikasi cukup stabil untuk didokumentasikan.
 
-## Perubahan V15.6.0 — Aturan Booking & Antrean Bersama
+## Riwayat V15.6.0 — Aturan Booking & Antrean Bersama
 
 - Booking Rawat Jalan Reguler online dibatasi pada H-1, H-2, dan H-3. Untuk tanggal kunjungan H+3, pemesanan mulai dibuka pukul 00.01 WIB pada hari H-3. Booking hari H untuk pasien reguler ditolak oleh validasi dan diarahkan untuk datang ke loket RS.
 - Booking Rawat Jalan Eksekutif mengikuti pembukaan H-3 pukul 00.01 WIB, bisa memilih dokter, dan dapat dipesan pada hari H sampai pukul 12.00 WIB. Booking hanya dapat berhasil jika jadwal dokter dan slot/kuota masih tersedia; slot eksekutif yang jamnya sudah lewat tidak ditawarkan untuk booking hari H.
@@ -423,3 +423,22 @@ Dibuat sebagai proyek portfolio Sistem Informasi untuk menunjukkan kemampuan ana
 - Smoke test render markup untuk layar IGD (tanpa dan dengan kunjungan aktif), Laboratorium, dan Radiologi menggunakan DOM stub.
 
 Pengujian ini merupakan validasi sintaks dan logika terisolasi, **bukan** pengujian penerimaan klinis, keamanan produksi, atau validasi UI penuh pada perangkat nyata. Sebelum dipakai sebagai demonstrasi langsung kepada rumah sakit, lakukan uji manual semua akun demo dan skenario lintas unit pada browser/perangkat sasaran.
+
+
+## V15.7.0 — Monitor per unit, struktur ruang rawat inap, dan navbar petugas
+
+- Monitor rawat jalan untuk dokter/perawat yang login mengunci poli berdasarkan penugasan akun; parameter URL tidak dapat mengganti poli akun.
+- Monitor rawat inap mengikuti `wardId`/`wardIds` akun dan menampilkan semua kamar/bed dalam ruang yang ditugaskan, termasuk bed kosong dan status bed.
+- Struktur awal: 3 gedung, masing-masing 4 lantai reguler dengan 3 ruang per lantai (36 ruang reguler; 10 kamar × 3 bed), ditambah Gedung A lantai 5 dan 6 sebagai dua ruang VVIP (20 kamar × 1 bed).
+- Master Data memiliki tab Ruangan & Shift untuk mengedit nama gedung, lantai, ruangan, label kamar/bed, fasilitas, kepala ruang, ketua shift, nama perawat, dan jam shift. Setiap ruang mendapat roster awal berbeda; ruang demo Meranti menghubungkan ketua shift dengan akun perawat demo yang relevan.
+- Chat dipindahkan ke tombol topbar kiri untuk semua akun; Chat tidak menjadi item navbar. Navbar maksimal enam item dan tidak menampilkan menu Lainnya.
+- Akun IGD tidak menggunakan monitor antrean poli.
+- Batasan tetap: penyimpanan localStorage adalah simulasi lokal dan tidak menyediakan sinkronisasi lintas perangkat atau autentikasi backend produksi.
+
+
+### Validasi V15.7.0
+
+- Audit logika internal mencakup 54 pemeriksaan pada source yang dibundel.
+- Browser smoke test memeriksa navbar/chat pada akun Admin, dokter, triase IGD, laboratorium, radiologi, farmasi, kasir, loket, pasien; monitor poli; monitor ruang rawat inap; penyimpanan edit master ruang/shift; dan akses cepat Admin.
+- Uji migrasi dari struktur V15.6.0 menjaga jumlah booking, kunjungan, admisi, resep, serta referensi bed admisi aktif.
+- Seluruh hasil adalah pengujian prototype client-side; belum menggantikan UAT rumah sakit, pengujian backend, dan integrasi sistem eksternal.
