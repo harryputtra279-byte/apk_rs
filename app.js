@@ -5,7 +5,7 @@
 const BIAYA_REGISTRASI = 10000;
 const BIAYA_LAB = 75000;
 const LOW_STOCK_THRESHOLD = 15;
-const PROTOTYPE_VERSION = 'v15.7.2';
+const PROTOTYPE_VERSION = 'v15.8.0';
 const PROTOTYPE_NAME = 'SIMRS PROTOTYPE';
 const PROTOTYPE_MODE = 'Portfolio / Demo';
 const QUEUE_JOURNEY = [
@@ -992,6 +992,13 @@ function routeContext(route){
    NAVIGASI V13.1 — satu katalog menu, lalu disaring oleh RBAC.
    Urutan sengaja dibuat agar menu klinis utama muncul lebih dulu.
    ================================================================ */
+const ADMIN_SERVICE_MENU_ROUTES = [
+  'pendaftaran','booking','igd','lab','radiologi',
+  'farmasi-rawat-jalan','farmasi-rawat-inap','farmasi-igd',
+  'kasir-rawat-jalan','kasir-rawat-inap','kasir-igd',
+  'rekam-medis','master-data','audit-sistem','cek-antrian','monitor-antrean'
+];
+
 const NAV_ITEMS = [
   {hash:'dashboard',label:'Dashboard',ic:'▦'},
   {hash:'beranda',label:'Beranda',ic:'⌂'},
@@ -1175,7 +1182,7 @@ function renderShell(route){
      '</aside>'+
      '<div class="main-area">'+
        '<div class="topbar '+(u.role==='admin'?'admin-topbar':'')+'">'+
-         '<div class="topbar-left"><button class="btn btn-outline btn-sm staff-chat-top-btn" id="btn-top-chat" title="Buka Chat">💬 Chat</button><div class="prototype-badge">🧪 '+PROTOTYPE_NAME+' · '+PROTOTYPE_VERSION+' · '+PROTOTYPE_MODE+'</div></div>'+
+         '<div class="topbar-left">'+(u.role==='admin'?'<button class="btn btn-outline btn-sm admin-top-menu-btn" id="btn-admin-service-menu" title="Buka menu Pelayanan" aria-label="Buka menu Pelayanan"><span class="admin-menu-hamburger" aria-hidden="true">☰</span><span class="admin-menu-label">Pelayanan</span></button>':'')+'<button class="btn btn-outline btn-sm staff-chat-top-btn" id="btn-top-chat" title="Buka Chat" aria-label="Buka Chat"><span aria-hidden="true">💬</span><span class="chat-top-label">Chat</span></button></div>'+
          '<h1 id="page-title"></h1>'+
          '<div class="topbar-right">'+
            '<button class="btn btn-outline btn-sm hidden" id="btn-install">⭳ Pasang</button>'+
@@ -1207,6 +1214,8 @@ function bindShellEvents(overflow){
   if(moreBtn) moreBtn.addEventListener('click', ()=> openMoreSheet(overflow));
   const topChat = document.getElementById('btn-top-chat');
   if(topChat) topChat.addEventListener('click', ()=> navigate(Session.currentUser && Session.currentUser.role==='pasien' ? 'pasien-chat' : 'chat-pasien'));
+  const adminServiceMenu = document.getElementById('btn-admin-service-menu');
+  if(adminServiceMenu) adminServiceMenu.addEventListener('click', ()=> openAdminMenuFolder());
 
   const acctBtn = document.getElementById('btn-account');
   if(acctBtn) acctBtn.addEventListener('click', ()=> openAccountSheet(logoutHandler));
@@ -1236,21 +1245,14 @@ function openNotifications(){
   getVisibleNotifications().forEach(function(n){n.read=true;});
   Store.save();
 }
-function openAdminMenuFolder(overflow){
-  // Admin folder memakai daftar whitelist sendiri; tidak mengambil route pasien/dokter.
-  // Set juga dideduplikasi lagi sebagai pengaman terakhir sebelum DOM dibuat.
-  overflow = (overflow||[]).filter(function(n,i,arr){return n && arr.findIndex(function(x){return x.hash===n.hash;})===i;});
-  const groups = [
-    {title:'Pelayanan', items:['pendaftaran','booking','igd','lab','radiologi','farmasi-rawat-jalan','farmasi-rawat-inap','farmasi-igd']},
-    {title:'Administrasi & Monitoring', items:['kasir-rawat-jalan','kasir-rawat-inap','kasir-igd','rekam-medis','riwayat-admin','master-data','audit-sistem','cek-antrian','monitor-antrean']}
-  ];
-  const ordered=[];
-  groups.forEach(g=>g.items.forEach(h=>{const n=overflow.find(x=>x.hash===h); if(n && !ordered.some(x=>x.hash===n.hash)) ordered.push(n);}));
-  // Tidak ada penambahan menu lain di luar whitelist Admin Folder.
+function openAdminMenuFolder(){
+  // Menu Pelayanan superuser: tepat 16 akses cepat dalam grid 4×4.
+  // Semua route tetap terdaftar di sidebar desktop; kartu di sini adalah akses cepat.
+  const ordered = ADMIN_SERVICE_MENU_ROUTES.map(function(h){return NAV_ITEMS.find(function(n){return n.hash===h;});}).filter(Boolean);
   const cards=ordered.map(function(n){return '<button class="admin-folder-item" data-nav="'+n.hash+'"><span class="admin-folder-icon">'+n.ic+'</span><span>'+esc(n.label)+'</span></button>';}).join('');
   document.getElementById('modal-root').innerHTML =
     '<div class="sheet-overlay admin-folder-overlay" id="modal-overlay"><div class="admin-menu-folder">'+
-      '<div class="admin-folder-head"><div><div class="ops-eyebrow">MENU ADMINISTRASI</div><h2>Menu Lainnya</h2><div class="hint">Pilih modul melalui folder glass 4×4.</div></div><button class="btn btn-ghost btn-icon" id="btn-close-admin-folder">✕</button></div>'+
+      '<div class="admin-folder-head"><div><div class="ops-eyebrow">AKSES CEPAT SUPERUSER</div><h2>Pelayanan</h2><div class="hint">16 modul dalam susunan ikon 4 × 4.</div></div><button class="btn btn-ghost btn-icon" id="btn-close-admin-folder" aria-label="Tutup menu Pelayanan">✕</button></div>'+
       '<div class="admin-folder-grid">'+cards+'</div>'+
     '</div></div>';
   document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target.id==='modal-overlay')closeModal();});
@@ -1265,7 +1267,7 @@ function openMoreSheet(overflow){
   document.getElementById('modal-root').innerHTML =
     '<div class="sheet-overlay" id="modal-overlay"><div class="bottom-sheet">'+
       '<div class="sheet-handle"></div>'+
-      '<h2 style="padding:0 6px 8px">Menu Lainnya</h2>'+listHtml+
+      '<h2 style="padding:0 6px 8px">Akses Modul</h2>'+listHtml+
     '</div></div>';
   document.getElementById('modal-overlay').addEventListener('click', function(e){ if(e.target.id==='modal-overlay') closeModal(); });
   document.querySelectorAll('.sheet-item[data-nav]').forEach(b=>{
@@ -1679,8 +1681,7 @@ function renderPatientBooking(){
   }
   function refreshDoctors(){
     const isEx=layanan==='Poliklinik Eksekutif';
-    const now=new Date(), currentToday=todayStr(now), tomorrow=addDaysISODate(currentToday,1), latest=patientBookingMaxDate(now);
-    const earliest=isEx && (now.getHours()*60+now.getMinutes())<=12*60 ? currentToday : tomorrow;
+    const currentToday=todayStr(), earliest=isEx?currentToday:addDaysISODate(currentToday,1), latest=patientBookingMaxDate();
     tanggal.min=earliest; tanggal.max=latest;
     if(!tanggal.value || tanggal.value<earliest || tanggal.value>latest) tanggal.value=earliest;
     dokterWrap.classList.toggle('hidden',!isEx);
@@ -2720,7 +2721,7 @@ function bookingFormHtml(jenisBayar){
     '<div class="field-row">'+
       '<div class="field"><label>Poli Tujuan</label><select id="bk-poli" required></select></div>'+
       '<div class="field hidden" id="bk-dokter-wrap"><label>Dokter / Sesi Praktik</label><select id="bk-dokter"></select><div class="hint">Pilihan dokter hanya untuk Poli Eksekutif. Poli Reguler menggunakan alokasi dokter/sesi otomatis.</div></div>'+
-      '<div class="field"><label>Tanggal Kontrol</label><input type="date" id="bk-tanggal" min="'+dateOffset(1)+'" max="'+dateOffset(3)+'" value="'+dateOffset(1)+'" required></div>'+
+      '<div class="field"><label>Tanggal Kontrol</label><input type="date" id="bk-tanggal" min="'+dateOffset(0)+'" max="'+dateOffset(7)+'" value="'+dateOffset(1)+'" required></div>'+
     '</div><div id="bk-service-note" class="alert alert-info"></div>'+
     (isBpjs ? '<div class="field"><label>No. Kartu BPJS</label><input type="text" id="bk-nobpjs" placeholder="0001234567890" required></div>' : '')+
     '<button type="submit" class="btn btn-primary" disabled id="btn-submit-booking">'+(isBpjs?'Simulasikan Booking Masuk':'Buat Booking')+'</button>'+
@@ -2771,19 +2772,7 @@ function bindBookingFormEvents(jenisBayar){
   const bkPoli=document.getElementById('bk-poli'), bkDate=document.getElementById('bk-tanggal'), bkDok=document.getElementById('bk-dokter'), bkDokWrap=document.getElementById('bk-dokter-wrap');
   let bkService='Poliklinik Spesialis';
   function refreshBkPoli(){const opts=Store.data.poli.filter(p=>p.official&&p.layanan===bkService).sort((a,b)=>a.nama.localeCompare(b.nama));bkPoli.innerHTML=opts.map(p=>'<option value="'+p.id+'">'+esc(p.nama)+'</option>').join('');refreshBkDoctors();}
-  function refreshBkDoctors(){
-    const isEx=bkService==='Poliklinik Eksekutif', now=new Date(), todayW=todayStr(now), tomorrowW=dateOffset(1), maxW=dateOffset(3);
-    const minW=isEx && (now.getHours()*60+now.getMinutes())<=12*60 ? todayW : tomorrowW;
-    bkDate.min=minW; bkDate.max=maxW;
-    if(!bkDate.value || bkDate.value<minW) bkDate.value=minW;
-    if(bkDate.value>maxW) bkDate.value=maxW;
-    bkDokWrap.classList.toggle('hidden',!isEx);bkDok.required=isEx;
-    const list=getDoctorSchedulesForDate(bkPoli.value,bkDate.value);
-    if(isEx){bkDok.innerHTML='<option value="AUTO">⚡ Otomatis — sistem memilih dokter/sesi yang masih tersedia</option>'+list.map(sc=>{const d=Store.data.users.find(u=>u.doctorMasterId===sc.doctorId)||Store.data.users.find(u=>u.id===sc.doctorId)||doctorMasterById(sc.doctorId);return d?'<option value="'+(d.id||sc.doctorId)+'">'+esc(d.nama)+' · '+esc(sc.jamMulai)+'–'+esc(sc.jamSelesai)+' · '+esc(sc.ruang||'')+'</option>':'';}).join('');}
-    else{bkDok.innerHTML='<option value="AUTO">⚡ Sistem memilih dokter/sesi otomatis</option>';}
-    bkDok.value='AUTO';const note=document.getElementById('bk-service-note');
-    if(note)note.innerHTML=isEx?'<strong>Eksekutif:</strong> booking dibuka mulai 00.01 WIB pada H-3, dapat dilakukan hari H sampai pukul 12.00 WIB jika dokter dan kuota tersedia.':'<strong>Reguler:</strong> booking online hanya H-1, H-2, atau H-3 mulai 00.01 WIB; hari H harus melalui loket. Dokter/sesi ditentukan otomatis.';
-  }
+  function refreshBkDoctors(){const isEx=bkService==='Poliklinik Eksekutif';bkDokWrap.classList.toggle('hidden',!isEx);bkDok.required=isEx;const list=getDoctorSchedulesForDate(bkPoli.value,bkDate.value);if(isEx){bkDok.innerHTML='<option value="AUTO">⚡ Otomatis — sistem memilih dokter/sesi yang masih tersedia</option>'+list.map(sc=>{const d=Store.data.users.find(u=>u.doctorMasterId===sc.doctorId)||Store.data.users.find(u=>u.id===sc.doctorId)||doctorMasterById(sc.doctorId);return d?'<option value="'+(d.id||sc.doctorId)+'">'+esc(d.nama)+' · '+esc(sc.jamMulai)+'–'+esc(sc.jamSelesai)+' · '+esc(sc.ruang||'')+'</option>':'';}).join('');}else{bkDok.innerHTML='<option value="AUTO">⚡ Sistem memilih dokter/sesi otomatis</option>';}bkDok.value='AUTO';const note=document.getElementById('bk-service-note');if(note)note.innerHTML=isEx?'<strong>Eksekutif:</strong> booking dibatasi H-1 atau hari H sesuai jendela sesi dokter; pasien tidak digabung dengan antrean Reguler.':'<strong>Reguler:</strong> booking masuk antrean Poliklinik Spesialis dan dokter/sesi ditentukan otomatis berdasarkan jadwal dan kapasitas.';}
   document.querySelectorAll('[data-bk-service]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-bk-service]').forEach(x=>x.classList.remove('active'));btn.classList.add('active');bkService=btn.dataset.bkService;refreshBkPoli();}));
   bkPoli.addEventListener('change',refreshBkDoctors); bkDate.addEventListener('change',refreshBkDoctors); refreshBkPoli();
   document.getElementById('form-booking').addEventListener('submit', function(e){ e.preventDefault(); submitBooking(jenisBayar); });
@@ -2791,11 +2780,14 @@ function bindBookingFormEvents(jenisBayar){
 function isExecutivePoli(poliId){ const p=getPoli(poliId); return !!(p&&p.layanan==='Poliklinik Eksekutif'); }
 function executiveBookingAllowed(poliId,dateStr,doctorId){
   if(!isExecutivePoli(poliId)) return {ok:true};
-  if(!patientBookingWindowValid(dateStr,'Poliklinik Eksekutif')) return {ok:false,message:'Booking Eksekutif hanya dapat dilakukan mulai H-3 pukul 00.01 WIB sampai H+3; booking hari H ditutup pukul 12.00 WIB.'};
+  const today=todayStr(), tomorrow=dateOffset(1);
+  if(dateStr!==today && dateStr!==tomorrow) return {ok:false,message:'Booking Poliklinik Eksekutif mengikuti ketentuan H-1 atau sampai 1 jam sebelum praktik dimulai.'};
   const sessions=getSessionCandidates(poliId,dateStr).filter(function(sc){return !doctorId||sc.doctorId===doctorId;});
-  if(!sessions.length) return {ok:false,message:'Tidak ada jadwal dokter Eksekutif yang sesuai pada tanggal tersebut.'};
-  const available=sessions.some(function(sc){return queueLoadForSession(poliId,dateStr,sc.id).total<sessionCapacity(sc);});
-  return available?{ok:true}:{ok:false,message:'Kuota sesi dokter Eksekutif sudah penuh. Silakan pilih tanggal atau dokter lain.'};
+  if(!sessions.length) return {ok:false,message:'Belum ada jadwal dokter Eksekutif pada tanggal tersebut.'};
+  if(dateStr===tomorrow) return {ok:true};
+  const now=new Date(), mins=now.getHours()*60+now.getMinutes();
+  const allowed=sessions.some(function(sc){const a=String(sc.jamMulai).split(':').map(Number);return mins < (a[0]*60+a[1]-60);});
+  return allowed?{ok:true}:{ok:false,message:'Batas booking Eksekutif untuk sesi dokter yang dipilih sudah lewat. Silakan pilih sesi/dokter lain.'};
 }
 function submitBooking(jenisBayar){
   if(!bookingSearchPatientId){ showToast('Pilih pasien terlebih dahulu', 'danger'); return; }
@@ -2805,16 +2797,6 @@ function submitBooking(jenisBayar){
   const noBpjs = jenisBayar==='BPJS' ? document.getElementById('bk-nobpjs').value.trim() : '';
   if(jenisBayar==='BPJS' && !noBpjs){ showToast('Isi nomor kartu BPJS', 'danger'); return; }
   if(!tanggalKontrol){ showToast('Pilih tanggal kontrol', 'danger'); return; }
-  const layananBooking=isExecutivePoli(poliId)?'Poliklinik Eksekutif':'Poliklinik Spesialis';
-  if(!patientBookingWindowValid(tanggalKontrol,layananBooking)){
-    const now=new Date(), today=todayStr(now), h3=addDaysISODate(today,3);
-    let msg='Tanggal booking tidak valid. Maksimal hanya sampai H+3.';
-    if(tanggalKontrol>h3) msg='Booking tidak dapat dibuat lebih dari 3 hari ke depan (maksimal H+3).';
-    else if(!isExecutivePoli(poliId) && tanggalKontrol<=today) msg='Booking Reguler hari H tidak diperbolehkan. Silakan daftarkan pasien langsung di loket.';
-    else if(tanggalKontrol===h3 && now.getHours()*60+now.getMinutes()<1) msg='Booking H+3 baru dibuka pukul 00.01 WIB.';
-    else if(isExecutivePoli(poliId) && tanggalKontrol===today && now.getHours()*60+now.getMinutes()>12*60) msg='Booking Eksekutif hari H ditutup pukul 12.00 WIB.';
-    showToast(msg,'danger'); return;
-  }
   const execWindow=executiveBookingAllowed(poliId,tanggalKontrol,(dokterId&&dokterId!=='AUTO')?dokterId:null);
   if(!execWindow.ok){ showToast(execWindow.message,'danger'); return; }
   const kuota = totalCapacityForPoliDate(poliId, tanggalKontrol);
@@ -5012,11 +4994,6 @@ function runSystemAudit(){
       patientBookingWindowValid('2026-10-12','Poliklinik Eksekutif',new Date('2026-10-09T10:00:00')) &&
       !patientBookingWindowValid('2026-10-13','Poliklinik Eksekutif',new Date('2026-10-09T10:00:00'));
   })(),'Eksekutif bisa booking hari H hingga 12.00, serta H-1/H-2/H-3; di luar rentang ditolak.');
-  check('staff-booking-window','Form petugas membatasi H+3 dan memvalidasi tanggal saat submit',(function(){
-    const formSource=bookingFormHtml.toString();
-    const start=submitBooking.toString();
-    return formSource.includes('dateOffset(3)') && !formSource.includes('dateOffset(7)') && start.includes('patientBookingWindowValid(tanggalKontrol,layananBooking)') && start.includes('tanggalKontrol>h3');
-  })(),'Kalender petugas maksimum H+3 dan jalur submit memvalidasi jendela booking, termasuk tanggal H+4 atau lebih.');
   check('queue-shared-channels','Nomor antrean baru melanjutkan booking lintas kanal pada poli/tanggal sama',(function(){
     const original=Store.data;
     try{
@@ -5095,6 +5072,8 @@ function runSystemAudit(){
   check('inpatient-staffing-roster','Semua ruang memiliki kepala ruang dan tiga roster shift',Store.data.wards.filter(function(w){return w.locationManaged;}).length===38&&Store.data.wards.filter(function(w){return w.locationManaged;}).every(function(w){return !!w.headNurseName&&['PAGI','SORE','MALAM'].every(function(k){const sh=w.shiftAssignments&&w.shiftAssignments[k];return !!sh&&!!sh.ketuaShift&&!!sh.jamMulai&&!!sh.jamSelesai&&Array.isArray(sh.perawat)&&sh.perawat.length>0&&sh.perawat.includes(sh.ketuaShift);});})&&new Set(Store.data.wards.filter(function(w){return w.locationManaged;}).map(function(w){return w.headNurseName;})).size===38,'Setiap ruang mempunyai kepala ruang dan roster petugas per shift yang dapat diedit.');
   check('inpatient-nurse-assignment','Akun perawat rawat inap memiliki ruang dan shift yang valid',['perawat.ranap.pagi','perawat.ranap.sore','perawat.ranap.malam'].every(function(name){const u=Store.data.users.find(function(x){return x.username===name;});return !!u&&!!u.wardId&&!!u.shiftId&&Store.data.wards.some(function(w){return w.id===u.wardId;});}),'Akun shift tidak boleh masuk ke monitor tanpa penugasan ruang.');
   check('navbar-max-six','Semua navbar role dibatasi maksimal enam menu',Object.keys(PRIMARY_NAV_BY_ROLE).every(function(role){return PRIMARY_NAV_BY_ROLE[role].length<=6;})&&!NAV_ITEMS.some(function(n){return n.label==='Lainnya'||n.hash==='chat-pasien'||n.hash==='pasien-chat';}),'Chat tidak dihitung sebagai menu navbar; tidak ada menu Lainnya.');
+  check('admin-service-menu-4x4','Superuser memiliki tombol Pelayanan dengan 16 ikon akses cepat',typeof openAdminMenuFolder==='function'&&ADMIN_SERVICE_MENU_ROUTES.length===16&&new Set(ADMIN_SERVICE_MENU_ROUTES).size===16&&ADMIN_SERVICE_MENU_ROUTES.every(function(h){return NAV_ITEMS.some(function(n){return n.hash===h;});}),'Tombol ☰ Pelayanan membuka grid 4×4; Chat tetap menjadi tombol terpisah.');
+  check('topbar-chat-title-layout','Topbar menggunakan elemen terpisah untuk Chat dan judul halaman',/id=\"btn-top-chat\"/.test(renderShell.toString())&&/btn-admin-service-menu/.test(renderShell.toString()),'Chat tidak menimpa label judul halaman; tombol Pelayanan hanya untuk Admin.');
 
   check('monitor-poli-lock','Monitor tidak bisa diganti melalui parameter URL untuk akun poli',resolveMonitorPoliId({role:'perawat',poliId:'ANA'},'SP-JAN','SP-JAN')==='SP-ANA'&&resolveMonitorPoliId({role:'dokter',poliId:'GIG'},'SP-JAN',null)==='SP-GIG'&&resolveMonitorPoliId({role:'perawat'},'SP-JAN',null)===null,'Akun perawat/dokter mengikuti poli penugasan, bukan query URL.');
   check('inpatient-edit-persistence','Nama ruangan/gedung tetap setelah migrasi ulang',(function(){const d=migrateData(seedData());const w=d.wards.find(function(x){return x.id==='W-K3';});w.nama='Ruang Uji Edit';w.buildingName='Gedung Uji Edit';ensureInpatientStructure(d);return w.nama==='Ruang Uji Edit'&&w.buildingName==='Gedung Uji Edit';})(),'Master data yang diedit tidak ditimpa kembali oleh seed pada reload.');
@@ -5107,9 +5086,9 @@ function runSystemAudit(){
 function renderAuditSistem(){
   setPageTitle('Audit Sistem');
   const checks=runSystemAudit(), pass=checks.filter(function(x){return x.pass;}).length;
-  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V15.7.2 untuk memeriksa aturan booking, nomor antrean bersama simulasi, jalur utama, data demo, permintaan antarunit, dan batas prototype.')+
+  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V15.8.0 untuk memeriksa aturan booking, nomor antrean bersama simulasi, jalur utama, data demo, permintaan antarunit, dan batas prototype.')+
     '<div class="ops-kpi-grid"><div class="ops-kpi"><div class="kpi-label">Lulus</div><div class="kpi-value">'+pass+'</div></div><div class="ops-kpi"><div class="kpi-label">Diperiksa</div><div class="kpi-value">'+checks.length+'</div></div><div class="ops-kpi"><div class="kpi-label">Status</div><div class="kpi-value" style="font-size:20px">'+(pass===checks.length?'SIAP':'PERLU REVIEW')+'</div></div></div>'+
-    '<div class="panel"><div class="panel-head"><div><h2>🧪 Self-Test V15.7.2</h2><div class="hint">Ini adalah audit data/aturan sisi client, bukan pengganti pengujian keamanan backend.</div></div><button class="btn btn-outline btn-sm" onclick="renderAuditSistem()">↻ Jalankan Lagi</button></div><div class="panel-body">'+
+    '<div class="panel"><div class="panel-head"><div><h2>🧪 Self-Test V15.8.0</h2><div class="hint">Ini adalah audit data/aturan sisi client, bukan pengganti pengujian keamanan backend.</div></div><button class="btn btn-outline btn-sm" onclick="renderAuditSistem()">↻ Jalankan Lagi</button></div><div class="panel-body">'+
     '<div class="table-wrap"><table><thead><tr><th>Status</th><th>Pemeriksaan</th><th>Detail</th></tr></thead><tbody>'+checks.map(function(c){return '<tr><td>'+(c.pass?'<span class="badge badge-sage">✓ LULUS</span>':'<span class="badge badge-brick">✕ GAGAL</span>')+'</td><td><strong>'+esc(c.label)+'</strong></td><td>'+esc(c.detail)+'</td></tr>';}).join('')+'</tbody></table></div></div></div>'+
     '<div class="alert alert-warning"><strong>Batas prototype:</strong> localStorage hanya untuk simulasi. Untuk produksi dibutuhkan backend, database terpusat, autentikasi server, otorisasi server, audit trail terpusat, enkripsi, backup, dan integrasi resmi.</div>';
 }

@@ -1,6 +1,6 @@
 # SIMRS PROTOTYPE — Portfolio / Demo
 
-**Versi:** V15.7.2  
+**Versi:** V15.8.0  
 **Baseline pengembangan:** V15.6.0  
 **Platform:** PWA / Web  
 **Status:** Prototype portfolio, bukan SIMRS produksi
@@ -11,7 +11,7 @@ SIMRS PROTOTYPE adalah proyek portfolio untuk memperlihatkan kemampuan analisis 
 
 ## 1. Baseline pengembangan
 
-Baseline untuk versi ini adalah **V15.6.0 SIMRS Booking & Antrean Terpadu**, dengan lineage sebelumnya dari V15.5.0 Patient Journey Integration dan V15.4.0 Integrasi Antarunit. V15.7.0 mempertahankan alur booking, antrean, perjalanan pasien, dan integrasi antarunit yang sudah ada sambil menambahkan monitor terikat penugasan, master ruang/shift, dan standar navigasi petugas.
+Baseline untuk versi ini adalah **V15.6.0 SIMRS Booking & Antrean Terpadu**, dengan lineage sebelumnya dari V15.5.0 Patient Journey Integration dan V15.4.0 Integrasi Antarunit. V15.7.0 menambahkan monitor terikat penugasan, master ruang/shift, dan standar navigasi petugas; V15.8.0 memulihkan menu Pelayanan superuser dan memperbaiki layout topbar responsif.
 
 Aturan pengembangan proyek:
 
@@ -20,14 +20,6 @@ Aturan pengembangan proyek:
 3. Fitur yang sudah benar harus dipertahankan.
 4. Setiap perubahan harus melalui pemeriksaan syntax, UI, navigasi, role/RBAC, alur utama, dan regresi fitur sebelum ZIP diberikan.
 5. README hanya diperbarui setelah fungsi aplikasi cukup stabil untuk didokumentasikan.
-
-## Perbaikan V15.7.2 — Booking maksimal H+3
-
-- Kalender booking pasien dan petugas kini dibatasi maksimal H+3.
-- Validasi saat submit berlaku pada sisi pasien dan petugas; tanggal H+4, H+7, dan sebulan ke depan ditolak meskipun input dimanipulasi.
-- Reguler hanya H-1 sampai H-3 (tanggal H wajib loket); pembukaan H+3 pukul 00.01 WIB.
-- Eksekutif mengikuti jendela H-3 sampai H+3, dapat booking hari H sampai pukul 12.00 WIB, dengan pemeriksaan jadwal dan kapasitas dokter.
-- Versi aset dan Service Worker dinaikkan ke 15.7.2 agar browser mengambil cache baru.
 
 ## Riwayat V15.6.0 — Aturan Booking & Antrean Bersama
 
@@ -450,3 +442,21 @@ Pengujian ini merupakan validasi sintaks dan logika terisolasi, **bukan** penguj
 - Browser smoke test memeriksa navbar/chat pada akun Admin, dokter, triase IGD, laboratorium, radiologi, farmasi, kasir, loket, pasien; monitor poli; monitor ruang rawat inap; penyimpanan edit master ruang/shift; dan akses cepat Admin.
 - Uji migrasi dari struktur V15.6.0 menjaga jumlah booking, kunjungan, admisi, resep, serta referensi bed admisi aktif.
 - Seluruh hasil adalah pengujian prototype client-side; belum menggantikan UAT rumah sakit, pengujian backend, dan integrasi sistem eksternal.
+
+
+## V15.8.0 — Pelayanan superuser dan topbar responsif
+
+- Mengembalikan tombol hamburger **Pelayanan** di kiri atas akun superuser. Tombol membuka 16 ikon akses cepat dalam grid 4×4; Chat tetap terpisah.
+- Menghapus label identitas versi yang sebelumnya dapat bertumpuk dengan judul halaman pada topbar.
+- Mengatur ulang topbar sebagai grid responsif supaya Chat tidak menutupi judul pada akun petugas maupun pasien. Pada layar sempit, tombol Chat dan Pelayanan menjadi ikon ringkas.
+- Menambah self-test untuk jumlah ikon menu Pelayanan dan pemisahan tombol Chat/judul halaman.
+- Data tetap disimpan di localStorage per browser/perangkat; perubahan master data tersimpan lokal dan tidak otomatis pindah antar browser; fitur ekspor/impor yang ada saat ini hanya untuk master dokter, jadwal, dan poli.
+
+## V15.8.0 — Pelayanan superuser dan topbar responsif
+
+- Mengembalikan tombol hamburger **Pelayanan** di kiri atas akun superuser. Tombol membuka 16 ikon akses cepat dalam grid 4×4; Chat tetap terpisah.
+- Menghapus label identitas versi pada topbar yang dapat bertumpuk dengan judul halaman.
+- Mengatur ulang topbar sebagai grid responsif supaya Chat tidak menutupi judul pada akun petugas maupun pasien. Pada layar sempit, tombol Chat dan Pelayanan menjadi ikon ringkas.
+- Menambah pemeriksaan statis untuk jumlah ikon menu Pelayanan dan pemisahan tombol Chat/judul halaman.
+- Data tetap disimpan di `localStorage` per browser/perangkat; fitur ekspor/impor yang tersedia saat ini hanya mencakup master dokter, jadwal, dan poli; data ruangan/shift belum tersinkron otomatis lintas browser.
+- Validasi browser penuh belum dapat dilakukan di lingkungan build; lihat `TEST_REPORT_V15.8.0.md` untuk batas pengujian.

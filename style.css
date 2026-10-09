@@ -850,3 +850,33 @@ input:focus,select:focus,textarea:focus{
 @media(max-width:600px){.topbar-left{gap:6px}.staff-chat-top-btn{padding:7px 10px}.prototype-badge{max-width:42vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.inpatient-bed-grid{grid-template-columns:1fr;}}
 
 @media(max-width:600px){.topbar .prototype-badge{display:none!important}.admin-topbar{grid-template-columns:76px minmax(0,1fr) auto!important}.admin-topbar .staff-chat-top-btn{height:38px!important;padding:0 8px!important;font-size:11px!important;width:auto!important}.admin-topbar .topbar-left{width:72px!important;overflow:visible!important}}
+
+
+/* V15.8.0 — topbar layout: Chat never covers the page title; Superuser gets the 4×4 Pelayanan launcher. */
+.topbar{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,auto) minmax(0,1fr);align-items:center;gap:12px;}
+.topbar-left{grid-column:1;grid-row:1;display:flex;align-items:center;justify-content:flex-start;gap:8px;min-width:0;flex:initial!important;}
+.topbar>#page-title{grid-column:2;grid-row:1;justify-self:center;min-width:0;max-width:100%;margin:0;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.topbar-right{grid-column:3;grid-row:1;justify-self:end;min-width:0;}
+.topbar .prototype-badge{display:none!important;}
+.admin-top-menu-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;flex:none;}
+.admin-menu-hamburger{font-size:19px;line-height:1;}
+.staff-chat-top-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex:none;}
+.admin-menu-folder h2{margin:0 0 4px;}
+@media(max-width:760px){
+  .topbar{grid-template-columns:minmax(0,auto) minmax(0,1fr) minmax(0,auto)!important;gap:6px!important;padding:10px 10px!important;}
+  .topbar-left{gap:5px!important;}
+  .topbar>#page-title{grid-column:2!important;grid-row:1!important;padding:0 3px!important;font-size:15px!important;}
+  .topbar-right{grid-column:3!important;grid-row:1!important;gap:5px!important;}
+  .topbar .staff-chat-top-btn,.topbar .admin-top-menu-btn{width:36px!important;min-width:36px!important;height:36px!important;padding:0!important;border-radius:12px!important;}
+  .chat-top-label,.admin-menu-label{display:none!important;}
+  .topbar-right .avatar-btn{width:32px!important;height:32px!important;font-size:12px!important;}
+}
+@media(max-width:390px){
+  .topbar{gap:4px!important;padding-left:6px!important;padding-right:6px!important;}
+  .topbar-left{gap:3px!important;}
+  .topbar .staff-chat-top-btn,.topbar .admin-top-menu-btn{width:32px!important;min-width:32px!important;height:34px!important;}
+  .topbar-right{gap:3px!important;}
+  .topbar-right #btn-global-search{display:none!important;}
+  .topbar>#page-title{font-size:13px!important;}
+}
+@media(max-width:760px){.admin-topbar .topbar-left{width:auto!important;min-width:0!important;}}
