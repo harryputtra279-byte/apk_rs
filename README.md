@@ -1,6 +1,6 @@
 # SIMRS PROTOTYPE — Portfolio / Demo
 
-**Versi:** V15.8.0  
+**Versi:** V15.8.1  
 **Baseline pengembangan:** V15.6.0  
 **Platform:** PWA / Web  
 **Status:** Prototype portfolio, bukan SIMRS produksi
@@ -11,7 +11,7 @@ SIMRS PROTOTYPE adalah proyek portfolio untuk memperlihatkan kemampuan analisis 
 
 ## 1. Baseline pengembangan
 
-Baseline untuk versi ini adalah **V15.6.0 SIMRS Booking & Antrean Terpadu**, dengan lineage sebelumnya dari V15.5.0 Patient Journey Integration dan V15.4.0 Integrasi Antarunit. V15.7.0 menambahkan monitor terikat penugasan, master ruang/shift, dan standar navigasi petugas; V15.8.0 memulihkan menu Pelayanan superuser dan memperbaiki layout topbar responsif.
+Baseline untuk versi ini adalah **V15.6.0 SIMRS Booking & Antrean Terpadu**, dengan lineage sebelumnya dari V15.5.0 Patient Journey Integration dan V15.4.0 Integrasi Antarunit. V15.7.0 menambahkan monitor terikat penugasan, master ruang/shift, dan standar navigasi petugas; V15.8.0 memulihkan menu Pelayanan superuser dan memperbaiki layout topbar responsif; V15.8.1 menyegarkan ikon, warna browser, dan border Glass 3D.
 
 Aturan pengembangan proyek:
 
@@ -460,3 +460,13 @@ Pengujian ini merupakan validasi sintaks dan logika terisolasi, **bukan** penguj
 - Menambah pemeriksaan statis untuk jumlah ikon menu Pelayanan dan pemisahan tombol Chat/judul halaman.
 - Data tetap disimpan di `localStorage` per browser/perangkat; fitur ekspor/impor yang tersedia saat ini hanya mencakup master dokter, jadwal, dan poli; data ruangan/shift belum tersinkron otomatis lintas browser.
 - Validasi browser penuh belum dapat dilakukan di lingkungan build; lihat `TEST_REPORT_V15.8.0.md` untuk batas pengujian.
+
+
+## V15.8.1 — Penyegaran UI dan ikon
+
+- Ikon aplikasi, favicon, ikon PWA, dan Apple Touch Icon diseragamkan: simbol medis putih di atas latar biru glossy dengan aksen violet/magenta.
+- Warna browser/PWA diperbarui ke Brighter Blue (`#4A8BFF`).
+- Menu Pelayanan mempertahankan bidang putih polos; efek Glass 3D diterapkan pada border biru-ke-ungu dan bayangan halus.
+- Kartu menu dan sejumlah panel yang sebelumnya terlihat polos mendapat border Glass 3D yang ringan, tanpa mengubah teks maupun alur kerja.
+- Versi file dan cache service worker dinaikkan ke V15.8.1.
+- Identitas tetap SIMRS PROTOTYPE; bukan logo resmi rumah sakit.

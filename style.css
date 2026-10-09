@@ -1,8 +1,8 @@
 :root{
   --ink:#182430; --ink-soft:rgba(24,36,48,.62); --ink-faint:rgba(24,36,48,.14); --ink-hair:rgba(24,36,48,.09);
-  --paper:#F2F1EC; --panel:#FFFFFF;
-  --accent:#0E5C56; --accent-2:#2F8078;
-  --clinical:#0E5C56; --clinical-dark:#0A423E; --clinical-tint:rgba(14,92,86,.15);
+  --paper:#F4F7FF; --panel:#FFFFFF;
+  --accent:#168BFF; --accent-2:#7C3AED;
+  --clinical:#2563EB; --clinical-dark:#1D4ED8; --clinical-tint:rgba(59,130,246,.15);
   --amber:#B8722A; --amber-tint:rgba(184,114,42,.17);
   --brick:#9A3324; --brick-tint:rgba(154,51,36,.15);
   --sage:#4C7A57; --sage-tint:rgba(76,122,87,.17);
@@ -13,7 +13,7 @@
   --font-mono:ui-monospace,"SF Mono","Cascadia Code","Roboto Mono",Consolas,monospace;
   --sidebar-w:252px;
   --glass-bg:rgba(255,255,255,.52); --glass-bg-strong:rgba(255,255,255,.74);
-  --glass-border:rgba(255,255,255,.65); --glass-border-soft:rgba(255,255,255,.4);
+  --glass-border:rgba(255,255,255,.86); --glass-border-soft:rgba(74,139,255,.22);
   --glass-blur:24px;
   --shadow-float:0 10px 34px rgba(20,32,44,.14), inset 0 1px 0 rgba(255,255,255,.55);
   --shadow-pop:0 16px 44px rgba(20,32,44,.20), inset 0 1px 0 rgba(255,255,255,.6);
@@ -24,18 +24,18 @@ body{
   margin:0;font-family:var(--font-ui);color:var(--ink);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;
   background-color:var(--paper);
   background-image:
-    radial-gradient(circle at 12% 8%, rgba(14,92,86,.38), transparent 42%),
-    radial-gradient(circle at 88% 12%, rgba(47,128,120,.30), transparent 40%),
-    radial-gradient(circle at 82% 88%, rgba(184,114,42,.20), transparent 42%),
-    radial-gradient(circle at 8% 92%, rgba(58,90,120,.22), transparent 42%),
-    linear-gradient(160deg, #EAF3F1 0%, #F2F1EC 55%, #F5EFE6 100%);
+    radial-gradient(circle at 12% 8%, rgba(22,139,255,.24), transparent 42%),
+    radial-gradient(circle at 88% 12%, rgba(124,58,237,.19), transparent 40%),
+    radial-gradient(circle at 82% 88%, rgba(139,92,246,.12), transparent 42%),
+    radial-gradient(circle at 8% 92%, rgba(59,130,246,.14), transparent 42%),
+    linear-gradient(160deg, #EEF5FF 0%, #F5F7FC 55%, #F6F1FC 100%);
   background-attachment:fixed;background-size:cover;
 }
 /* ---------- bubble kaca mengambang (dekoratif, lapisan paling belakang) ---------- */
 .bg-bubbles{position:fixed;inset:0;overflow:hidden;z-index:-1;pointer-events:none}
 .bubble{position:absolute;border-radius:50%;filter:blur(1px);will-change:transform}
 .bubble-1{width:380px;height:380px;left:-100px;top:-90px;
-  background:radial-gradient(circle at 32% 30%, rgba(14,92,86,.5), rgba(14,92,86,0) 72%);
+  background:radial-gradient(circle at 32% 30%, rgba(22,139,255,.38), rgba(22,139,255,0) 72%);
   animation:floatBubble 22s ease-in-out infinite}
 .bubble-2{width:280px;height:280px;right:-70px;top:8%;
   background:radial-gradient(circle at 32% 30%, rgba(184,114,42,.42), rgba(184,114,42,0) 72%);
@@ -44,7 +44,7 @@ body{
   background:radial-gradient(circle at 32% 30%, rgba(58,90,120,.4), rgba(58,90,120,0) 72%);
   animation:floatBubble 20s ease-in-out infinite;animation-delay:-11s}
 .bubble-4{width:220px;height:220px;right:12%;bottom:6%;
-  background:radial-gradient(circle at 32% 30%, rgba(76,122,87,.38), rgba(76,122,87,0) 72%);
+  background:radial-gradient(circle at 32% 30%, rgba(124,58,237,.24), rgba(124,58,237,0) 72%);
   animation:floatBubble 25s ease-in-out infinite;animation-delay:-16s}
 .bubble-5{width:190px;height:190px;left:48%;top:36%;
   background:radial-gradient(circle at 32% 30%, rgba(107,76,107,.32), rgba(107,76,107,0) 72%);
@@ -880,3 +880,49 @@ input:focus,select:focus,textarea:focus{
   .topbar>#page-title{font-size:13px!important;}
 }
 @media(max-width:760px){.admin-topbar .topbar-left{width:auto!important;min-width:0!important;}}
+
+
+/* ================================================================
+   V15.8.1 — UI polish: Glass 3D / Brighter Blue
+   Menu pelayanan keeps a clean white face; only its edge gets the blue-violet glass treatment.
+   ================================================================ */
+:root{
+  --core-gradient:linear-gradient(118deg,#38BDF8 0%,#168BFF 42%,#6366F1 76%,#A855F7 100%);
+  --glass-edge:linear-gradient(135deg,rgba(56,189,248,.88),rgba(22,139,255,.78) 42%,rgba(99,102,241,.76) 76%,rgba(168,85,247,.78));
+  --shadow-glass-edge:0 7px 18px rgba(37,99,235,.10),inset 0 1px 0 rgba(255,255,255,.94);
+}
+/* Clean white surface + gradient glass edge: the panel face is not recolored. */
+.admin-menu-folder{
+  background:rgba(255,255,255,.96)!important;
+  border:1px solid transparent!important;
+  background-image:linear-gradient(rgba(255,255,255,.96),rgba(255,255,255,.96)),var(--glass-edge)!important;
+  background-origin:border-box!important;background-clip:padding-box,border-box!important;
+  -webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);
+  box-shadow:0 18px 48px rgba(37,99,235,.15),inset 0 1px 0 #fff!important;
+}
+.admin-folder-item,.action-card{
+  border:1px solid transparent!important;
+  background:linear-gradient(rgba(255,255,255,.97),rgba(255,255,255,.97)) padding-box,var(--glass-edge) border-box!important;
+  box-shadow:var(--shadow-glass-edge)!important;
+  transition:transform .16s ease,box-shadow .16s ease;
+}
+.admin-folder-item:hover,.action-card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 10px 24px rgba(37,99,235,.16),inset 0 1px 0 #fff!important;
+}
+/* Add a restrained glass edge to plain, rounded UI blocks without changing their content colors. */
+.panel,.stat,.queue-board-item,.login-panel,.modal,.bottom-sheet,.queue-list-item,
+.patient-journey-card,.inpatient-bed-card,.ops-hero,.ops-kpi,.ops-queue-card,
+.patient-live-card,.patient-live-status,.patient-ticket-row,.checkin-result-card,
+.monitor-current,.monitor-next,.monitor-queue-list>div,.doctor-live-grid>div{
+  border-color:rgba(74,139,255,.22);
+  box-shadow:var(--shadow-glass-edge),var(--shadow-float);
+}
+.btn-outline,.admin-top-menu-btn,.staff-chat-top-btn,.tabs,.chip{
+  border-color:transparent!important;
+  background:linear-gradient(rgba(255,255,255,.74),rgba(255,255,255,.74)) padding-box,var(--glass-edge) border-box!important;
+}
+input,select,textarea{border-color:transparent!important;background:linear-gradient(rgba(255,255,255,.76),rgba(255,255,255,.76)) padding-box,var(--glass-edge) border-box!important;}
+input:focus,select:focus,textarea:focus{outline:2px solid rgba(22,139,255,.18)!important;}
+.nav-item.active,.btn-primary,.avatar-btn,.brand-mark{background:var(--core-gradient)!important;}
+.btn-primary,.nav-item.active,.avatar-btn,.brand-mark{box-shadow:0 5px 15px rgba(37,99,235,.24),inset 0 1px 0 rgba(255,255,255,.45)!important;}
