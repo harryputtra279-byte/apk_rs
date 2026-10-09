@@ -1,6 +1,6 @@
 # SIMRS PROTOTYPE — Portfolio / Demo
 
-**Versi:** V15.5.0  
+**Versi:** V15.6.0  
 **Baseline pengembangan:** V15.5.0  
 **Platform:** PWA / Web  
 **Status:** Prototype portfolio, bukan SIMRS produksi
@@ -11,7 +11,7 @@ SIMRS PROTOTYPE adalah proyek portfolio untuk memperlihatkan kemampuan analisis 
 
 ## 1. Baseline pengembangan
 
-Baseline untuk versi ini adalah **V15.4.0 SIMRS Integrasi Antarunit**. V15.5.0 dikembangkan di atas baseline tersebut; bukan kembali ke V15.3.0.
+Baseline untuk versi ini adalah **V15.5.0 SIMRS Patient Journey Integration**, yang sebelumnya dikembangkan dari V15.4.0 SIMRS Integrasi Antarunit. V15.6.0 mempertahankan fitur tersebut dan menerapkan aturan booking/antrean terbaru; bukan kembali ke versi lama.
 
 Aturan pengembangan proyek:
 
@@ -21,6 +21,18 @@ Aturan pengembangan proyek:
 4. Setiap perubahan harus melalui pemeriksaan syntax, UI, navigasi, role/RBAC, alur utama, dan regresi fitur sebelum ZIP diberikan.
 5. README hanya diperbarui setelah fungsi aplikasi cukup stabil untuk didokumentasikan.
 
+## Perubahan V15.6.0 — Aturan Booking & Antrean Bersama
+
+- Booking Rawat Jalan Reguler online dibatasi pada H-1, H-2, dan H-3. Untuk tanggal kunjungan H+3, pemesanan mulai dibuka pukul 00.01 WIB pada hari H-3. Booking hari H untuk pasien reguler ditolak oleh validasi dan diarahkan untuk datang ke loket RS.
+- Booking Rawat Jalan Eksekutif mengikuti pembukaan H-3 pukul 00.01 WIB, bisa memilih dokter, dan dapat dipesan pada hari H sampai pukul 12.00 WIB. Booking hanya dapat berhasil jika jadwal dokter dan slot/kuota masih tersedia; slot eksekutif yang jamnya sudah lewat tidak ditawarkan untuk booking hari H.
+- Pasien Reguler tidak dapat memilih dokter. Sistem mengalokasikan dokter/sesi secara otomatis mengikuti jadwal dan kapasitas yang tersedia.
+- Nomor antrean baru dihitung dari counter bersama per poli + tanggal, dengan pemindaian nomor booking dan kunjungan yang sudah tersimpan agar kanal simulasi Aplikasi RS, Mobile JKN, dan loket tidak membuat urutan lokal yang saling tumpang tindih.
+- Akun demo staf ditambah dengan Petugas Triase IGD (`triase.igd`, sandi demo `triase123`). IGD tetap dimulai oleh petugas atau rujukan internal, bukan pendaftaran mandiri dari akun pasien.
+- Warna hanya pada ujung gradasi ungu paling kanan yang dicerahkan menjadi ungu-magenta glossy (`#D946EF`). Stop biru kiri dan biru/indigo tengah serta layout lain dipertahankan.
+- Audit internal ditambah untuk aturan booking, nomor antrean lintas kanal simulasi, dan pembatasan pendaftaran IGD.
+
+> **Batas integrasi antrean:** nomor antrean bersama ini berlaku untuk data yang ada di database simulasi lokal. Kesamaan nomor dengan Mobile JKN nyata tidak bisa dijamin sampai tersedia backend dan koneksi/API resmi rumah sakit yang menyinkronkan booking lintas kanal. LocalStorage di browser tidak cukup untuk sinkronisasi perangkat berbeda.
+
 ## Perubahan V15.5.0 — Pengalaman Pasien & Akun Demo Bersih
 
 - Navbar pasien tepat lima menu: Beranda, Rawat Jalan, Informasi, Booking Saya, dan Riwayat. Rawat Inap dan Monitor tidak lagi menjadi menu tersendiri di navbar pasien; fungsi rawat inap tetap ditampilkan pada Perjalanan Saya.
@@ -29,7 +41,7 @@ Aturan pengembangan proyek:
 - Riwayat dipisahkan menjadi Rawat Jalan, Rawat Inap, dan IGD.
 - Informasi pasien satu arah; Chat Pelayanan dua arah dengan inbox staf. Admin dapat menerbitkan pengumuman umum. Perubahan booking atau penugasan dokter tetap harus disimpan oleh petugas berwenang pada alur operasional, tidak otomatis berubah hanya karena percakapan chat.
 - Lima akun demo Rawat Jalan dan lima akun demo Rawat Inap lama diganti menjadi sepuluh akun pasien fiktif bernomor 1–10. Setiap akun baru mulai tanpa booking, kunjungan, admisi, resep, atau riwayat. Satu akun terhubung ke identitas pasien yang sama pada episode layanan berikutnya.
-- Cache PWA dan query aset dinaikkan ke V15.5.0.
+- Cache PWA dan query aset dinaikkan mengikuti versi rilis masing-masing.
 
 > Batas prototype: data disimpan di localStorage per browser/perangkat. Chat, pengumuman, dan pembaruan data belum tersinkron ke perangkat lain tanpa backend bersama.
 
@@ -203,28 +215,74 @@ Menu utama menyesuaikan unit kerja akun, sehingga modul yang tidak relevan tidak
 
 ### Pasien
 
-**Beranda | Rawat Jalan | Rawat Inap | Booking Saya | Monitor | Riwayat**
+**Beranda | Rawat Jalan | Informasi | Booking Saya | Riwayat**
 
-## 6. Akun demo utama
+## 6. Akun demo per unit
 
-| Role | Username | Password |
+Seluruh akun berikut hanya untuk pengujian prototype. Login cepat tersedia pada halaman masuk; password demo bukan kredensial produksi.
+
+### Administrasi dan Rawat Jalan
+
+| Unit / peran | Username | Password |
 |---|---|---|
-| Admin | `admin` | `admin123` |
-| Loket | `loket` | `loket123` |
+| Admin Super User | `admin` | `admin123` |
+| Petugas Loket | `loket` | `loket123` |
 | Petugas Rawat Jalan | `rawatjalan` | `rawatjalan123` |
-| Dokter Umum | `dokter.umum` | `dokter123` |
-| Dokter Jantung | `dokter.jantung` | `dokter123` |
-| Perawat Rawat Jalan | `perawat` | `perawat123` |
+| Dokter Poli Umum | `dokter.umum` | `dokter123` |
+| Dokter Poli Anak | `dokter.anak` | `dokter123` |
+| Dokter Poli Gigi | `dokter.gigi` | `dokter123` |
+| Dokter Poli Jantung | `dokter.jantung` | `dokter123` |
+| Dokter Poli Penyakit Dalam | `dokter.penyakitdalam` | `dokter123` |
+| Perawat/Asisten Poli Umum | `asisten.umum` | `perawat123` |
+| Perawat/Asisten Poli Anak | `asisten.anak` | `perawat123` |
+| Perawat/Asisten Poli Gigi | `asisten.gigi` | `perawat123` |
+| Perawat/Asisten Poli Jantung | `asisten.jantung` | `perawat123` |
+| Perawat/Asisten Poli Penyakit Dalam | `asisten.penyakitdalam` | `perawat123` |
+
+### IGD
+
+| Unit / peran | Username | Password |
+|---|---|---|
+| Petugas Triase IGD | `triase.igd` | `triase123` |
+| Dokter IGD | `dokter.igd` | `dokter123` |
+| Perawat IGD | `perawat.igd` | `perawat123` |
+| Farmasi IGD | `farmasi.igd` | `farmasi123` |
+| Kasir IGD | `kasir.igd` | `kasir123` |
+
+IGD tidak menyediakan pendaftaran mandiri dari akun pasien. Episode IGD dimulai melalui petugas/triase atau penerimaan rujukan internal sesuai alur prototype.
+
+### Rawat Inap
+
+| Unit / peran | Username | Password |
+|---|---|---|
+| Admisi Rawat Inap | `admisi.ranap` | `admisi123` |
+| Dokter Rawat Inap / DPJP | `dokter.ranap` | `dokter123` |
+| Dokter Jaga Shift Pagi | `dokter.jaga.pagi` | `dokter123` |
+| Dokter Jaga Shift Sore | `dokter.jaga.sore` | `dokter123` |
+| Dokter Jaga Shift Malam | `dokter.jaga.malam` | `dokter123` |
+| Perawat Rawat Inap | `perawat.ranap` | `perawat123` |
+| Perawat Shift Pagi | `perawat.ranap.pagi` | `perawat123` |
+| Perawat Shift Sore | `perawat.ranap.sore` | `perawat123` |
+| Perawat Shift Malam | `perawat.ranap.malam` | `perawat123` |
+| Farmasi Rawat Inap | `farmasi.ranap` | `farmasi123` |
+| Kasir Rawat Inap | `kasir.ranap` | `kasir123` |
+
+### Penunjang dan layanan unit
+
+| Unit / peran | Username | Password |
+|---|---|---|
 | Laboratorium | `lab` | `lab123` |
 | Radiologi | `radiologi` | `rad123` |
 | Farmasi Rawat Jalan | `farmasi.rajal` | `farmasi123` |
 | Kasir Rawat Jalan | `kasir.rajal` | `kasir123` |
-| Admisi Rawat Inap | `admisi.ranap` | `admisi123` |
-| Dokter Rawat Inap | `dokter.ranap` | `dokter123` |
-| Perawat Rawat Inap | `perawat.ranap` | `perawat123` |
-| Pasien Demo 1–10 | `pasien.demo1` s.d. `pasien.demo10` | `pasien123` |
 
-Akun tambahan tersedia untuk dokter/perawat per unit, dokter jaga dan perawat per shift, Farmasi/Kasir IGD, Farmasi/Kasir Rawat Inap. Sepuluh akun pasien demo baru dimulai tanpa riwayat pelayanan.
+### Pasien demo
+
+| Akun | Username | Password |
+|---|---|---|
+| Pasien 1–10 | `pasien.demo1` s.d. `pasien.demo10` | `pasien123` |
+
+Sepuluh akun pasien menggunakan data fiktif dan mulai tanpa booking, nomor antrean, kunjungan, admisi, resep, atau riwayat. Akun yang sama dapat digunakan untuk mencoba alur Rawat Jalan dan kemudian episode layanan lain. Nomor 1–10 hanya label akun demo, bukan nomor antrean.
 
 ## 7. Teknologi
 

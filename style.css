@@ -747,9 +747,9 @@ body.kiosk-on .content{max-width:1100px;margin:0 auto;padding-top:32px}
   --plum-tint:rgba(124,58,237,.12);
   --core-blue:#168BFF;
   --core-indigo:#4F46E5;
-  --core-violet:#7C3AED;
-  --core-gradient:linear-gradient(90deg,#168BFF 0%,#3B82F6 28%,#4F46E5 62%,#7C3AED 100%);
-  --core-ring:conic-gradient(from 210deg,#168BFF 0%,#3B82F6 25%,#4F46E5 58%,#7C3AED 82%,#168BFF 100%);
+  --core-violet:#D946EF;
+  --core-gradient:linear-gradient(90deg,#168BFF 0%,#3B82F6 28%,#4F46E5 62%,#D946EF 100%);
+  --core-ring:conic-gradient(from 210deg,#168BFF 0%,#3B82F6 25%,#4F46E5 58%,#D946EF 82%,#168BFF 100%);
   --core-shadow:0 7px 18px rgba(46,60,120,.12),inset 0 1px 0 rgba(255,255,255,.86);
 }
 
@@ -791,7 +791,7 @@ body{
 /* Buttons: gradient face, while preserving their original dimensions. */
 .btn{box-shadow:var(--core-shadow)}
 .btn-primary{background:var(--core-gradient);box-shadow:0 7px 18px rgba(79,70,229,.24),inset 0 1px 0 rgba(255,255,255,.38)}
-.btn-primary:hover{background:linear-gradient(90deg,#4AA0FF 0%,#4F46E5 62%,#7C3AED 100%)}
+.btn-primary:hover{background:linear-gradient(90deg,#4AA0FF 0%,#4F46E5 62%,#D946EF 100%)}
 .btn-outline{
   border-color:transparent;
   background:linear-gradient(var(--glass-bg),var(--glass-bg)) padding-box,var(--core-gradient) border-box;

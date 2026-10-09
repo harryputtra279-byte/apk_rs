@@ -5,7 +5,7 @@
 const BIAYA_REGISTRASI = 10000;
 const BIAYA_LAB = 75000;
 const LOW_STOCK_THRESHOLD = 15;
-const PROTOTYPE_VERSION = 'v15.5.0';
+const PROTOTYPE_VERSION = 'v15.6.0';
 const PROTOTYPE_NAME = 'SIMRS PROTOTYPE';
 const PROTOTYPE_MODE = 'Portfolio / Demo';
 const QUEUE_JOURNEY = [
@@ -477,6 +477,7 @@ function ensureDivisionDemoUsers(data){
     {id:'U-RJ-KAS', username:'kasir.rajal', password:'kasir123', nama:'Rina Marlina', role:'kasir', unit:'rawat-jalan'},
     {id:'U-IGD-DOK', username:'dokter.igd', password:'dokter123', nama:'dr. ADITYA BALADIKA', role:'dokter_igd', unit:'igd', doctorMasterId:'DOC-ADITYA-UMUM'},
     {id:'U-IGD-PWT', username:'perawat.igd', password:'perawat123', nama:'Ns. Lestari Handayani', role:'perawat_igd', unit:'igd'},
+    {id:'U-IGD-TRI', username:'triase.igd', password:'triase123', nama:'Ns. Maya Kurniawati, S.Kep', role:'perawat_igd', unit:'igd', tugas:'Triase dan asesmen awal IGD'},
     {id:'U-IGD-FAR', username:'farmasi.igd', password:'farmasi123', nama:'Apt. Sari Wulandari', role:'farmasi', unit:'igd'},
     {id:'U-IGD-KAS', username:'kasir.igd', password:'kasir123', nama:'Rina Pratama', role:'kasir', unit:'igd'},
     {id:'U-RI-DOK', username:'dokter.ranap', password:'dokter123', nama:'dr. YUSTINA ROSANTI, Sp.A', role:'dokter_ranap', unit:'rawat-inap', doctorMasterId:'DOC-YUSTINA'},
@@ -1296,7 +1297,7 @@ function chipsForDemo(){
     {title:'👨‍⚕️ RAWAT INAP — DOKTER',hint:'Pisahkan DPJP dan dokter jaga. Dokter jaga berganti mengikuti shift 24 jam.',items:[['dokter.ranap','DPJP Rawat Inap'],['dokter.jaga.pagi','Dokter Jaga Pagi'],['dokter.jaga.sore','Dokter Jaga Sore'],['dokter.jaga.malam','Dokter Jaga Malam']]},
     {title:'👩‍⚕️ RAWAT INAP — PERAWAT',hint:'Perawat ruang rawat dengan pergantian shift pagi, sore, dan malam.',items:[['perawat.ranap','Perawat Rawat Inap'],['perawat.ranap.pagi','Perawat Shift Pagi'],['perawat.ranap.sore','Perawat Shift Sore'],['perawat.ranap.malam','Perawat Shift Malam']]},
     {title:'💊 FARMASI',hint:'Farmasi dipisahkan menurut konteks pelayanan.',items:[['farmasi.rajal','Farmasi Rawat Jalan'],['farmasi.igd','Farmasi IGD'],['farmasi.ranap','Farmasi Rawat Inap']]},
-    {title:'🚑 IGD',hint:'Dokter, perawat, farmasi, dan kasir IGD.',items:[['dokter.igd','Dokter IGD'],['perawat.igd','Perawat IGD'],['farmasi.igd','Farmasi IGD'],['kasir.igd','Kasir IGD']]},
+    {title:'🚑 IGD',hint:'Penerimaan dan triase dimulai oleh petugas; pasien tidak mendaftar IGD secara mandiri.',items:[['triase.igd','Petugas Triase IGD'],['dokter.igd','Dokter IGD'],['perawat.igd','Perawat IGD'],['farmasi.igd','Farmasi IGD'],['kasir.igd','Kasir IGD']]},
     {title:'🩺 DOKTER & PERAWAT RAWAT JALAN',hint:'Akun pelayanan poli sesuai poli yang melekat pada akun.',items:[['dokter.umum','Dokter Poli Umum'],['dokter.anak','Dokter Poli Anak'],['dokter.gigi','Dokter Poli Gigi'],['dokter.jantung','Dokter Poli Jantung'],['dokter.penyakitdalam','Dokter Penyakit Dalam'],['asisten.umum','Asisten Poli Umum'],['asisten.anak','Asisten Poli Anak'],['asisten.gigi','Asisten Poli Gigi'],['asisten.jantung','Asisten Poli Jantung'],['asisten.penyakitdalam','Asisten Poli Penyakit Dalam']]},
     {title:'🧪 LABORATORIUM & RADIOLOGI',hint:'Penerimaan order penunjang dan input hasil pemeriksaan.',items:[['lab','Petugas Laboratorium'],['radiologi','Petugas Radiologi']]},
     {title:'👤 10 AKUN DEMO PASIEN TERPADU',hint:'Akun 1–10 dimulai tanpa booking, antrean, kunjungan, resep, atau riwayat. Satu akun dapat digunakan lintas layanan.',items:[['pasien.demo1','Pasien 1 — Aditya Pratama'],['pasien.demo2','Pasien 2 — Siti Rahmawati'],['pasien.demo3','Pasien 3 — Budi Santoso'],['pasien.demo4','Pasien 4 — Nur Aisyah Putri'],['pasien.demo5','Pasien 5 — Rizky Ramadhan'],['pasien.demo6','Pasien 6 — Dewi Anggraini'],['pasien.demo7','Pasien 7 — Fajar Setiawan'],['pasien.demo8','Pasien 8 — Rina Oktaviani'],['pasien.demo9','Pasien 9 — Dimas Saputra'],['pasien.demo10','Pasien 10 — Maya Puspitasari']]}
@@ -1497,15 +1498,29 @@ function maybeNotifyPatientQueue(){
   }
 }
 function addDaysISODate(dateStr, days){ const d=new Date(dateStr+'T00:00:00'); d.setDate(d.getDate()+days); return todayStr(d); }
-function patientBookingWindowValid(tanggal, layanan){
-  const today=todayStr();
+function patientBookingWindowValid(tanggal, layanan, now){
+  now=now instanceof Date?now:new Date();
+  const today=todayStr(now), h3=addDaysISODate(today,3);
   if(!tanggal) return false;
-  if(layanan==='Poliklinik Eksekutif') return tanggal>=addDaysISODate(today,1) && tanggal<=addDaysISODate(today,7);
-  return tanggal>=addDaysISODate(today,1) && tanggal<=addDaysISODate(today,7);
+  const isExecutive=layanan==='Poliklinik Eksekutif';
+  // Pembukaan tanggal H+3 mengikuti pola Mobile JKN: mulai pukul 00.01 WIB.
+  if(tanggal===h3 && (now.getHours()*60+now.getMinutes())<1) return false;
+  if(isExecutive){
+    if(tanggal<today || tanggal>h3) return false;
+    // Booking eksekutif hari H masih dibuka sampai tepat pukul 12.00 WIB.
+    if(tanggal===today && (now.getHours()*60+now.getMinutes())>12*60) return false;
+    return true;
+  }
+  // Reguler: hanya H-1, H-2, dan H-3; hari H wajib melalui petugas loket.
+  return tanggal>=addDaysISODate(today,1) && tanggal<=h3;
 }
 function patientBookingWindowHint(layanan){
-  if(layanan==='Poliklinik Eksekutif') return 'Prototype mengikuti konsep pendaftaran Eksekutif: H-1 sampai sebelum praktik. Pilih dokter dan waktu/janji yang tersedia.';
-  return 'Prototype mengikuti konsep pendaftaran Reguler/Spesialis: pilih klinik, tanggal, dan dokter. Nomor antrean mengikuti sesi yang tersedia.';
+  if(layanan==='Poliklinik Eksekutif') return 'Booking dibuka mulai 00.01 WIB pada H-3 sampai H-1. Hari H dapat dipesan online hingga pukul 12.00 WIB, hanya jika jadwal dokter dan kuota masih tersedia. Anda boleh memilih dokter.';
+  return 'Booking online hanya untuk H-1, H-2, atau H-3 dan dibuka mulai 00.01 WIB pada H-3. Hari H wajib mendaftar langsung di loket; dokter ditentukan otomatis oleh sistem.';
+}
+function patientBookingMaxDate(now){
+  now=now instanceof Date?now:new Date();
+  return addDaysISODate(todayStr(now),3);
 }
 function patientBookings(patientId){
   return Store.data.bookings.filter(function(b){return b.patientId===patientId;}).sort(function(a,b){return b.tanggalKontrol.localeCompare(a.tanggalKontrol)||a.noAntrian.localeCompare(b.noAntrian);});
@@ -1548,8 +1563,10 @@ function buildExecutiveTimeSlots(poliId,tanggal,doctorId){
     while(cur<finish){
       const hh=String(Math.floor(cur/60)%24).padStart(2,'0'), mm=String(cur%60).padStart(2,'0');
       const time=hh+':'+mm, value=time+'|'+sc.id;
-      const used=Store.data.bookings.some(function(b){return b.poliId===poliId&&b.tanggalKontrol===tanggal&&b.sessionId===sc.id&&b.appointmentTime===time&&!['dibatalkan','kadaluarsa','tidak_hadir'].includes(b.status);});
-      if(!used&&!slots.some(function(x){return x.value===value;})) slots.push({value:value,label:time,session:sc});
+      const used=Store.data.bookings.some(function(b){return samePoli(b.poliId,poliId)&&b.tanggalKontrol===tanggal&&b.sessionId===sc.id&&b.appointmentTime===time&&!['dibatalkan','kadaluarsa','tidak_hadir'].includes(b.status);});
+      const now=new Date(), currentTime=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+      const alreadyPassed=tanggal===todayStr() && time<=currentTime;
+      if(!used&&!alreadyPassed&&!slots.some(function(x){return x.value===value;})) slots.push({value:value,label:time,session:sc});
       cur+=step;
     }
   });
@@ -1559,7 +1576,7 @@ function renderPatientBooking(){
   setPageTitle('Rawat Jalan');
   const u=Session.currentUser, p=getPatient(u.patientId);
   if(!p){document.getElementById('main-content').innerHTML='<div class="empty">Data pasien tidak ditemukan.</div>';return;}
-  const today=todayStr(), min=addDaysISODate(today,1), max=addDaysISODate(today,7);
+  const today=todayStr(), min=addDaysISODate(today,1), max=patientBookingMaxDate();
   document.getElementById('main-content').innerHTML=
     pageIntro('Pendaftaran pasien dibuat terpisah antara Poli Reguler/Spesialis dan Poli Eksekutif. QR/barcode yang diterbitkan membawa jenis layanan, poli, dokter, jadwal, dan nomor antrean untuk proses check-in.')+
     '<div class="panel"><div class="panel-head"><div><h2>📅 Pendaftaran Rawat Jalan</h2><div class="hint">Pilih alur layanan terlebih dahulu agar proses pendaftaran sesuai konteks pelayanan.</div></div></div><div class="panel-body">'+
@@ -1582,9 +1599,20 @@ function renderPatientBooking(){
   }
   function refreshDoctors(){
     const isEx=layanan==='Poliklinik Eksekutif';
+    const currentToday=todayStr(), earliest=isEx?currentToday:addDaysISODate(currentToday,1), latest=patientBookingMaxDate();
+    tanggal.min=earliest; tanggal.max=latest;
+    if(!tanggal.value || tanggal.value<earliest || tanggal.value>latest) tanggal.value=earliest;
     dokterWrap.classList.toggle('hidden',!isEx);
     dokter.required=isEx;
-    const list=getDoctorSchedulesForDate(poli.value,tanggal.value);
+    const list=getDoctorSchedulesForDate(poli.value,tanggal.value).filter(function(sc){
+      const load=queueLoadForSession(poli.value,tanggal.value,sc.id);
+      if(load.total>=sessionCapacity(sc)) return false;
+      if(tanggal.value===todayStr()){
+        const now=new Date(), currentTime=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+        if(String(sc.jamSelesai||'23:59')<=currentTime) return false;
+      }
+      return true;
+    });
     const byDoctor={};
     list.forEach(function(sc){const did=scheduleDoctorUserId(sc);if(did&&!byDoctor[did])byDoctor[did]=sc;});
     const ids=Object.keys(byDoctor);
@@ -2425,8 +2453,23 @@ function chooseQueueAllocation(poliId,dateStr,preferredDoctorId){
   return {schedule:null,doctorId:null,reason:'full'};
 }
 function generateNoAntrian(poliId,dateStr){
-  dateStr=dateStr||todayStr(); const key=canonicalPoliId(poliId)+'-'+dateStr;
-  const n=(Store.data.meta.queueCounters[key]||0)+1; Store.data.meta.queueCounters[key]=n;
+  dateStr=dateStr||todayStr();
+  const canonical=canonicalPoliId(poliId), key=canonical+'-'+dateStr;
+  // Satu counter bersama untuk semua kanal simulasi: aplikasi RS, Mobile JKN simulasi, dan loket.
+  // Pindai booking/kunjungan yang sudah tersimpan agar nomor dari kanal lain tidak tertimpa
+  // ketika counter lokal tertinggal atau data eksternal disinkronkan saat aplikasi berjalan.
+  let highest=Number(Store.data.meta.queueCounters[key]||0);
+  (Store.data.bookings||[]).forEach(function(b){
+    if(canonicalPoliId(b.poliId)===canonical && b.tanggalKontrol===dateStr){
+      const n=queueNumberValue(b.noAntrian); if(n!==null) highest=Math.max(highest,n);
+    }
+  });
+  (Store.data.visits||[]).forEach(function(v){
+    if(canonicalPoliId(v.poliId)===canonical && (v.tanggal||todayStr())===dateStr){
+      const n=queueNumberValue(v.noAntrian); if(n!==null) highest=Math.max(highest,n);
+    }
+  });
+  const n=highest+1; Store.data.meta.queueCounters[key]=n;
   return poliQueuePrefix(poliId)+'-'+String(n).padStart(3,'0');
 }
 function dateOffset(n){ const d=new Date(); d.setDate(d.getDate()+n); return todayStr(d); }
@@ -4822,6 +4865,33 @@ function runSystemAudit(){
   check('roles','Role utama tersedia',['admin','loket','rawat_jalan','dokter','pasien'].every(function(r){return Store.data.users.some(function(u){return u.role===r;});}), 'Admin, Loket, Rawat Jalan, Dokter, Pasien.');
   check('patient-nav','Navigasi pasien memiliki lima menu sesuai kesepakatan',['pasien-dashboard','pasien-booking','pasien-info','pasien-booking-saya','pasien-riwayat'].every(function(r){return ROLE_ROUTE_RULES.pasien.includes(r);}) && !ROLE_ROUTE_RULES.pasien.includes('pasien-rawat-inap') && !ROLE_ROUTE_RULES.pasien.includes('monitor-antrean'), 'Beranda · Rawat Jalan · Informasi · Booking Saya · Riwayat; Rawat Inap dan Monitor bukan menu navbar pasien.');
   check('catalog','Master poli memiliki Reguler dan Eksekutif',Store.data.poli.some(function(x){return x.layanan==='Poliklinik Spesialis';})&&Store.data.poli.some(function(x){return x.layanan==='Poliklinik Eksekutif';}), 'Konteks layanan tidak dicampur.');
+  check('booking-window-reguler','Booking reguler mengikuti H-1/H-2/H-3 dan pembukaan 00.01 WIB',(function(){
+    const d='2026-10-12';
+    return !patientBookingWindowValid(d,'Poliklinik Spesialis',new Date('2026-10-09T00:00:00')) &&
+      patientBookingWindowValid(d,'Poliklinik Spesialis',new Date('2026-10-09T00:01:00')) &&
+      patientBookingWindowValid('2026-10-11','Poliklinik Spesialis',new Date('2026-10-09T10:00:00')) &&
+      patientBookingWindowValid('2026-10-10','Poliklinik Spesialis',new Date('2026-10-09T10:00:00')) &&
+      !patientBookingWindowValid('2026-10-09','Poliklinik Spesialis',new Date('2026-10-09T10:00:00')) &&
+      !patientBookingWindowValid('2026-10-13','Poliklinik Spesialis',new Date('2026-10-09T10:00:00'));
+  })(),'Tanggal H-3 baru aktif pukul 00.01; H-2/H-1 bisa, hari H dan lebih dari H-3 ditolak.');
+  check('booking-window-eksekutif','Booking eksekutif hari H sampai pukul 12.00 WIB',(function(){
+    return patientBookingWindowValid('2026-10-09','Poliklinik Eksekutif',new Date('2026-10-09T12:00:00')) &&
+      !patientBookingWindowValid('2026-10-09','Poliklinik Eksekutif',new Date('2026-10-09T12:01:00')) &&
+      patientBookingWindowValid('2026-10-12','Poliklinik Eksekutif',new Date('2026-10-09T10:00:00')) &&
+      !patientBookingWindowValid('2026-10-13','Poliklinik Eksekutif',new Date('2026-10-09T10:00:00'));
+  })(),'Eksekutif bisa booking hari H hingga 12.00, serta H-1/H-2/H-3; di luar rentang ditolak.');
+  check('queue-shared-channels','Nomor antrean baru melanjutkan booking lintas kanal pada poli/tanggal sama',(function(){
+    const original=Store.data;
+    try{
+      Store.data={meta:{queueCounters:{'SP-JAN-2026-10-12':1}},poli:[],bookings:[
+        {id:'JKN-1',poliId:'SP-JAN',tanggalKontrol:'2026-10-12',noAntrian:'JAN-002',sumber:'Mobile JKN (simulasi)',status:'terjadwal'},
+        {id:'APP-1',poliId:'SP-JAN',tanggalKontrol:'2026-10-12',noAntrian:'JAN-001',sumber:'Aplikasi RS',status:'terjadwal'}
+      ],visits:[]};
+      const next=generateNoAntrian('SP-JAN','2026-10-12');
+      return /003$/.test(next)&&Store.data.meta.queueCounters['SP-JAN-2026-10-12']===3;
+    }catch(e){return false;}finally{Store.data=original;}
+  })(),'Generator memindai booking/visit tersimpan dan counter lokal sebelum mengeluarkan nomor berikutnya.');
+  check('igd-demo-no-patient-self-registration','Akun demo IGD hanya petugas, bukan pasien self-registration',Store.data.users.some(function(u){return u.username==='triase.igd'&&u.role==='perawat_igd'&&u.unit==='igd';}) && !ROLE_ROUTE_RULES.pasien.includes('igd') && !ROLE_ROUTE_RULES.pasien.includes('pasien-igd'),'IGD dimulai oleh petugas/rujukan internal; tidak ada route pendaftaran IGD mandiri untuk pasien.');
   check('queue','Nomor antrean konsisten per poli+tanggal',(function(){const s=new Map();let ok=true;Store.data.bookings.forEach(function(x){if(!x.noAntrian)return;const k=x.poliId+'|'+(x.tanggalKontrol||'')+'|'+x.noAntrian;if(s.has(k))ok=false;s.set(k,x.id);});Store.data.visits.forEach(function(x){if(!x.noAntrian)return;const k=x.poliId+'|'+(x.tanggal||'')+'|'+x.noAntrian;const booking=x.bookingId?Store.data.bookings.find(function(b){return b.id===x.bookingId;}):null;if(s.has(k)&&!(booking&&s.get(k)===booking.id))ok=false;if(!s.has(k))s.set(k,x.id);});return ok;})(), 'Booking dan visit boleh berbagi nomor jika visit berasal dari booking yang sama.');
   check('journey','Kunjungan memiliki workflow',Store.data.visits.filter(function(v){return v.unit==='rawat-jalan';}).every(function(v){return v.workflow&&Object.prototype.hasOwnProperty.call(v.workflow,'checkinAt');}), 'Workflow check-in dan tahapan layanan tersedia.');
   check('arrival','Booking memiliki estimasi jendela kedatangan',Store.data.bookings.filter(function(b){return ['terjadwal','checked_in'].includes(b.status);}).every(function(b){return b.arrivalWindowStart&&b.arrivalWindowEnd;}), 'Jam kedatangan disimpan sebagai estimasi, bukan janji medis.');
@@ -4831,6 +4901,30 @@ function runSystemAudit(){
   check('ranap-billing','Billing rawat inap memiliki komponen penunjang',Store.data.admissions.every(function(a){return a.billing&&Object.prototype.hasOwnProperty.call(a.billing,'biayaPenunjang');}),'Kamar, obat, penunjang, dan tindakan dipisahkan.');
   check('ranap-users','Role rawat inap tersedia',['dokter_ranap','perawat_ranap'].every(function(r){return Store.data.users.some(function(u){return u.role===r;});}),'Dokter dan perawat rawat inap tersedia.');
   check('demo-patients-clean-start','Sepuluh akun demo pasien baru belum memiliki riwayat',['RM-DEMO-NP001','RM-DEMO-NP002','RM-DEMO-NP003','RM-DEMO-NP004','RM-DEMO-NP005','RM-DEMO-NP006','RM-DEMO-NP007','RM-DEMO-NP008','RM-DEMO-NP009','RM-DEMO-NP010'].every(function(id){return Store.data.patients.some(function(p){return p.id===id;})&&!Store.data.bookings.some(function(b){return b.patientId===id;})&&!Store.data.visits.some(function(v){return v.patientId===id;})&&!Store.data.admissions.some(function(a){return a.patientId===id;})&&!Store.data.prescriptions.some(function(r){return r.patientId===id;});})&&Store.data.users.filter(function(u){return /^pasien\.demo(10|[1-9])$/.test(u.username);}).length===10&&new Set(Store.data.users.filter(function(u){return /^pasien\.demo(10|[1-9])$/.test(u.username);}).map(function(u){return u.patientId;})).size===10&&!Store.data.users.some(function(u){return /^pasien\.ri[1-5]$/.test(u.username)||u.username==='pasien.demo';}),'10 akun baru lintas layanan memiliki identitas unik tanpa booking, visit, admission, atau resep bawaan; akun pasien demo lama dibersihkan.');
+  check('unit-demo-accounts','Akun demo staf mencakup layanan utama dan unit terpisah',(function(){
+    const required={
+      'triase.igd':['perawat_igd','igd'],'dokter.igd':['dokter_igd','igd'],'perawat.igd':['perawat_igd','igd'],
+      'farmasi.igd':['farmasi','igd'],'kasir.igd':['kasir','igd'],'farmasi.rajal':['farmasi','rawat-jalan'],
+      'kasir.rajal':['kasir','rawat-jalan'],'farmasi.ranap':['farmasi','rawat-inap'],'kasir.ranap':['kasir','rawat-inap'],
+      'admisi.ranap':['admisi_ranap','rawat-inap'],'lab':['lab',null],'radiologi':['radiologi',null]
+    };
+    return Object.keys(required).every(function(username){const u=Store.data.users.find(function(x){return x.username===username;});return !!u&&u.role===required[username][0]&&(required[username][1]===null||u.unit===required[username][1]);});
+  })(),'Akun triase, dokter/perawat IGD, farmasi/kasir per unit, admisi RI, laboratorium, dan radiologi terdaftar.');
+  check('role-route-isolation','Role staf dibatasi pada menu sesuai unit kerja',(function(){
+    const original=Session.currentUser;
+    try{
+      const igd=Store.data.users.find(function(u){return u.username==='perawat.igd';});
+      const lab=Store.data.users.find(function(u){return u.username==='lab';});
+      const patient=Store.data.users.find(function(u){return u.username==='pasien.demo1';});
+      Session.currentUser=igd;
+      const igdOk=isRouteAllowed('igd','perawat_igd')&&!isRouteAllowed('ranap','perawat_igd')&&!isRouteAllowed('pasien-booking','perawat_igd');
+      Session.currentUser=lab;
+      const labOk=isRouteAllowed('lab','lab')&&!isRouteAllowed('radiologi','lab')&&!isRouteAllowed('igd','lab');
+      Session.currentUser=patient;
+      const patientOk=isRouteAllowed('pasien-booking','pasien')&&!isRouteAllowed('igd','pasien')&&!isRouteAllowed('pasien-rawat-inap','pasien');
+      return igdOk&&labOk&&patientOk;
+    }catch(e){return false;}finally{Session.currentUser=original;}
+  })(),'Triase IGD tidak membuka Rawat Inap/pasien; lab tidak membuka radiologi/IGD; pasien tidak membuka IGD atau route Rawat Inap tersendiri.');
   check('ranap-demo-roles','Akun demo Rawat Inap terpisah dan terkelompok',['admisi.ranap','dokter.jaga.pagi','dokter.jaga.sore','dokter.jaga.malam','perawat.ranap.pagi','perawat.ranap.sore','perawat.ranap.malam','farmasi.ranap'].every(function(u){return Store.data.users.some(function(x){return x.username===u;});}),'Admisi, dokter jaga, perawat shift, dan farmasi RI tersedia.');
   check('ranap-shift','Shift Rawat Inap 24 jam terdefinisi',INPATIENT_SHIFTS.length===3&&INPATIENT_SHIFTS.every(function(x){return x.jamMulai&&x.jamSelesai;}),'Pagi 06–14, Sore 14–22, Malam 22–06.');
   check('admin-radiology-route','Admin memiliki menu Radiologi',isRouteAllowed('radiologi','admin') && NAV_ITEMS.some(function(n){return n.hash==='radiologi';}),'Radiologi tersedia untuk Admin melalui folder Lainnya.');
@@ -4860,9 +4954,9 @@ function runSystemAudit(){
 function renderAuditSistem(){
   setPageTitle('Audit Sistem');
   const checks=runSystemAudit(), pass=checks.filter(function(x){return x.pass;}).length;
-  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V15.5.0 untuk memeriksa jalur utama, data demo, antrean, permintaan antarunit, dan batas prototype.')+
+  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V15.6.0 untuk memeriksa aturan booking, nomor antrean bersama simulasi, jalur utama, data demo, permintaan antarunit, dan batas prototype.')+
     '<div class="ops-kpi-grid"><div class="ops-kpi"><div class="kpi-label">Lulus</div><div class="kpi-value">'+pass+'</div></div><div class="ops-kpi"><div class="kpi-label">Diperiksa</div><div class="kpi-value">'+checks.length+'</div></div><div class="ops-kpi"><div class="kpi-label">Status</div><div class="kpi-value" style="font-size:20px">'+(pass===checks.length?'SIAP':'PERLU REVIEW')+'</div></div></div>'+
-    '<div class="panel"><div class="panel-head"><div><h2>🧪 Self-Test V15.5.0</h2><div class="hint">Ini adalah audit data/aturan sisi client, bukan pengganti pengujian keamanan backend.</div></div><button class="btn btn-outline btn-sm" onclick="renderAuditSistem()">↻ Jalankan Lagi</button></div><div class="panel-body">'+
+    '<div class="panel"><div class="panel-head"><div><h2>🧪 Self-Test V15.6.0</h2><div class="hint">Ini adalah audit data/aturan sisi client, bukan pengganti pengujian keamanan backend.</div></div><button class="btn btn-outline btn-sm" onclick="renderAuditSistem()">↻ Jalankan Lagi</button></div><div class="panel-body">'+
     '<div class="table-wrap"><table><thead><tr><th>Status</th><th>Pemeriksaan</th><th>Detail</th></tr></thead><tbody>'+checks.map(function(c){return '<tr><td>'+(c.pass?'<span class="badge badge-sage">✓ LULUS</span>':'<span class="badge badge-brick">✕ GAGAL</span>')+'</td><td><strong>'+esc(c.label)+'</strong></td><td>'+esc(c.detail)+'</td></tr>';}).join('')+'</tbody></table></div></div></div>'+
     '<div class="alert alert-warning"><strong>Batas prototype:</strong> localStorage hanya untuk simulasi. Untuk produksi dibutuhkan backend, database terpusat, autentikasi server, otorisasi server, audit trail terpusat, enkripsi, backup, dan integrasi resmi.</div>';
 }
