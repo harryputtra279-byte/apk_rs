@@ -1,6 +1,6 @@
 # SIMRS PROTOTYPE — Portfolio / Demo
 
-**Versi:** V15.7.0  
+**Versi:** V15.7.1  
 **Baseline pengembangan:** V15.6.0  
 **Platform:** PWA / Web  
 **Status:** Prototype portfolio, bukan SIMRS produksi
@@ -11,7 +11,7 @@ SIMRS PROTOTYPE adalah proyek portfolio untuk memperlihatkan kemampuan analisis 
 
 ## 1. Baseline pengembangan
 
-Baseline untuk versi ini adalah **V15.6.0 SIMRS Booking & Antrean Terpadu**, dengan lineage sebelumnya dari V15.5.0 Patient Journey Integration dan V15.4.0 Integrasi Antarunit. V15.7.0 mempertahankan alur booking, antrean, perjalanan pasien, dan integrasi antarunit yang sudah ada sambil menambahkan monitor terikat penugasan, master ruang/shift, dan standar navigasi petugas.
+Baseline untuk versi ini adalah **V15.6.0 SIMRS Booking & Antrean Terpadu**, dengan lineage sebelumnya dari V15.5.0 Patient Journey Integration dan V15.4.0 Integrasi Antarunit. V15.7.1 mempertahankan alur booking, antrean, perjalanan pasien, dan integrasi antarunit yang sudah ada sambil menambahkan monitor terikat penugasan, master ruang/shift, dan standar navigasi petugas.
 
 Aturan pengembangan proyek:
 
@@ -425,7 +425,15 @@ Dibuat sebagai proyek portfolio Sistem Informasi untuk menunjukkan kemampuan ana
 Pengujian ini merupakan validasi sintaks dan logika terisolasi, **bukan** pengujian penerimaan klinis, keamanan produksi, atau validasi UI penuh pada perangkat nyata. Sebelum dipakai sebagai demonstrasi langsung kepada rumah sakit, lakukan uji manual semua akun demo dan skenario lintas unit pada browser/perangkat sasaran.
 
 
-## V15.7.0 — Monitor per unit, struktur ruang rawat inap, dan navbar petugas
+## V15.7.1 — Monitor per unit, struktur ruang rawat inap, dan navbar petugas
+
+### Perbaikan booking V15.7.1
+- Menyamakan batas tanggal booking petugas dengan aturan bisnis: reguler hanya H-1/H-2/H-3; eksekutif dapat hari H sampai 12.00 WIB serta H-1/H-2/H-3.
+- Maksimum tanggal pada form petugas dibatasi sampai H+3.
+- Validasi dilakukan kembali saat submit, sehingga perubahan tanggal secara manual tidak bisa melewati jendela booking.
+- H-3 baru dapat dipilih mulai pukul 00.01 WIB.
+
+
 
 - Monitor rawat jalan untuk dokter/perawat yang login mengunci poli berdasarkan penugasan akun; parameter URL tidak dapat mengganti poli akun.
 - Monitor rawat inap mengikuti `wardId`/`wardIds` akun dan menampilkan semua kamar/bed dalam ruang yang ditugaskan, termasuk bed kosong dan status bed.
@@ -436,7 +444,7 @@ Pengujian ini merupakan validasi sintaks dan logika terisolasi, **bukan** penguj
 - Batasan tetap: penyimpanan localStorage adalah simulasi lokal dan tidak menyediakan sinkronisasi lintas perangkat atau autentikasi backend produksi.
 
 
-### Validasi V15.7.0
+### Validasi V15.7.1
 
 - Audit logika internal mencakup 54 pemeriksaan pada source yang dibundel.
 - Browser smoke test memeriksa navbar/chat pada akun Admin, dokter, triase IGD, laboratorium, radiologi, farmasi, kasir, loket, pasien; monitor poli; monitor ruang rawat inap; penyimpanan edit master ruang/shift; dan akses cepat Admin.

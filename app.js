@@ -5,7 +5,7 @@
 const BIAYA_REGISTRASI = 10000;
 const BIAYA_LAB = 75000;
 const LOW_STOCK_THRESHOLD = 15;
-const PROTOTYPE_VERSION = 'v15.7.0';
+const PROTOTYPE_VERSION = 'v15.7.1';
 const PROTOTYPE_NAME = 'SIMRS PROTOTYPE';
 const PROTOTYPE_MODE = 'Portfolio / Demo';
 const QUEUE_JOURNEY = [
@@ -2719,7 +2719,7 @@ function bookingFormHtml(jenisBayar){
     '<div class="field-row">'+
       '<div class="field"><label>Poli Tujuan</label><select id="bk-poli" required></select></div>'+
       '<div class="field hidden" id="bk-dokter-wrap"><label>Dokter / Sesi Praktik</label><select id="bk-dokter"></select><div class="hint">Pilihan dokter hanya untuk Poli Eksekutif. Poli Reguler menggunakan alokasi dokter/sesi otomatis.</div></div>'+
-      '<div class="field"><label>Tanggal Kontrol</label><input type="date" id="bk-tanggal" min="'+dateOffset(0)+'" max="'+dateOffset(7)+'" value="'+dateOffset(1)+'" required></div>'+
+      '<div class="field"><label>Tanggal Kontrol</label><input type="date" id="bk-tanggal" min="'+dateOffset(1)+'" max="'+dateOffset(3)+'" value="'+dateOffset(1)+'" required><div class="hint" id="bk-date-hint">Booking reguler hanya H-1 sampai H-3. Booking hari ini dilakukan melalui pendaftaran langsung.</div></div>'+
     '</div><div id="bk-service-note" class="alert alert-info"></div>'+
     (isBpjs ? '<div class="field"><label>No. Kartu BPJS</label><input type="text" id="bk-nobpjs" placeholder="0001234567890" required></div>' : '')+
     '<button type="submit" class="btn btn-primary" disabled id="btn-submit-booking">'+(isBpjs?'Simulasikan Booking Masuk':'Buat Booking')+'</button>'+
@@ -2769,23 +2769,34 @@ function bindBookingFormEvents(jenisBayar){
   });
   const bkPoli=document.getElementById('bk-poli'), bkDate=document.getElementById('bk-tanggal'), bkDok=document.getElementById('bk-dokter'), bkDokWrap=document.getElementById('bk-dokter-wrap');
   let bkService='Poliklinik Spesialis';
-  function refreshBkPoli(){const opts=Store.data.poli.filter(p=>p.official&&p.layanan===bkService).sort((a,b)=>a.nama.localeCompare(b.nama));bkPoli.innerHTML=opts.map(p=>'<option value="'+p.id+'">'+esc(p.nama)+'</option>').join('');refreshBkDoctors();}
-  function refreshBkDoctors(){const isEx=bkService==='Poliklinik Eksekutif';bkDokWrap.classList.toggle('hidden',!isEx);bkDok.required=isEx;const list=getDoctorSchedulesForDate(bkPoli.value,bkDate.value);if(isEx){bkDok.innerHTML='<option value="AUTO">⚡ Otomatis — sistem memilih dokter/sesi yang masih tersedia</option>'+list.map(sc=>{const d=Store.data.users.find(u=>u.doctorMasterId===sc.doctorId)||Store.data.users.find(u=>u.id===sc.doctorId)||doctorMasterById(sc.doctorId);return d?'<option value="'+(d.id||sc.doctorId)+'">'+esc(d.nama)+' · '+esc(sc.jamMulai)+'–'+esc(sc.jamSelesai)+' · '+esc(sc.ruang||'')+'</option>':'';}).join('');}else{bkDok.innerHTML='<option value="AUTO">⚡ Sistem memilih dokter/sesi otomatis</option>';}bkDok.value='AUTO';const note=document.getElementById('bk-service-note');if(note)note.innerHTML=isEx?'<strong>Eksekutif:</strong> booking dibatasi H-1 atau hari H sesuai jendela sesi dokter; pasien tidak digabung dengan antrean Reguler.':'<strong>Reguler:</strong> booking masuk antrean Poliklinik Spesialis dan dokter/sesi ditentukan otomatis berdasarkan jadwal dan kapasitas.';}
+  function refreshBkPoli(){
+    const opts=Store.data.poli.filter(p=>p.official&&p.layanan===bkService).sort((a,b)=>a.nama.localeCompare(b.nama));
+    bkPoli.innerHTML=opts.map(p=>'<option value="'+p.id+'">'+esc(p.nama)+'</option>').join('');
+    const isEx=bkService==='Poliklinik Eksekutif', minDate=isEx?dateOffset(0):dateOffset(1), maxDate=dateOffset(3);
+    bkDate.min=minDate; bkDate.max=maxDate;
+    if(!bkDate.value||bkDate.value<minDate||bkDate.value>maxDate) bkDate.value=minDate;
+    const hint=document.getElementById('bk-date-hint');
+    if(hint) hint.textContent=isEx?'Eksekutif: hari H sampai pukul 12.00 WIB, atau H-1/H-2/H-3; harus ada jadwal dan kuota.':'Reguler: hanya H-1, H-2, atau H-3. Booking hari H dilakukan melalui pendaftaran langsung.';
+    refreshBkDoctors();
+  }
+  function refreshBkDoctors(){const isEx=bkService==='Poliklinik Eksekutif';bkDokWrap.classList.toggle('hidden',!isEx);bkDok.required=isEx;const list=getDoctorSchedulesForDate(bkPoli.value,bkDate.value);if(isEx){bkDok.innerHTML='<option value="AUTO">⚡ Otomatis — sistem memilih dokter/sesi yang masih tersedia</option>'+list.map(sc=>{const d=Store.data.users.find(u=>u.doctorMasterId===sc.doctorId)||Store.data.users.find(u=>u.id===sc.doctorId)||doctorMasterById(sc.doctorId);return d?'<option value="'+(d.id||sc.doctorId)+'">'+esc(d.nama)+' · '+esc(sc.jamMulai)+'–'+esc(sc.jamSelesai)+' · '+esc(sc.ruang||'')+'</option>':'';}).join('');}else{bkDok.innerHTML='<option value="AUTO">⚡ Sistem memilih dokter/sesi otomatis</option>';}bkDok.value='AUTO';const note=document.getElementById('bk-service-note');if(note)note.innerHTML=isEx?'<strong>Eksekutif:</strong> Anda dapat memilih dokter yang praktik pada tanggal tersebut. Booking hari H hanya sampai pukul 12.00 WIB dan mengikuti kuota.':'<strong>Reguler:</strong> booking online H-1/H-2/H-3; dokter/sesi ditentukan otomatis berdasarkan jadwal dan kapasitas.';}
   document.querySelectorAll('[data-bk-service]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-bk-service]').forEach(x=>x.classList.remove('active'));btn.classList.add('active');bkService=btn.dataset.bkService;refreshBkPoli();}));
   bkPoli.addEventListener('change',refreshBkDoctors); bkDate.addEventListener('change',refreshBkDoctors); refreshBkPoli();
   document.getElementById('form-booking').addEventListener('submit', function(e){ e.preventDefault(); submitBooking(jenisBayar); });
 }
 function isExecutivePoli(poliId){ const p=getPoli(poliId); return !!(p&&p.layanan==='Poliklinik Eksekutif'); }
 function executiveBookingAllowed(poliId,dateStr,doctorId){
+  const poli=getPoli(poliId), layanan=(poli&&poli.layanan)||'Poliklinik Spesialis';
+  if(!patientBookingWindowValid(dateStr,layanan)){
+    return {ok:false,message:layanan==='Poliklinik Eksekutif'?'Booking eksekutif hanya untuk hari H sampai pukul 12.00 WIB atau tanggal H-1/H-2/H-3; H-3 dibuka pukul 00.01 WIB.':'Booking reguler hanya untuk H-1, H-2, atau H-3; H-3 dibuka pukul 00.01 WIB. Untuk hari H, gunakan pendaftaran langsung.'};
+  }
   if(!isExecutivePoli(poliId)) return {ok:true};
-  const today=todayStr(), tomorrow=dateOffset(1);
-  if(dateStr!==today && dateStr!==tomorrow) return {ok:false,message:'Booking Poliklinik Eksekutif mengikuti ketentuan H-1 atau sampai 1 jam sebelum praktik dimulai.'};
-  const sessions=getSessionCandidates(poliId,dateStr).filter(function(sc){return !doctorId||sc.doctorId===doctorId;});
-  if(!sessions.length) return {ok:false,message:'Belum ada jadwal dokter Eksekutif pada tanggal tersebut.'};
-  if(dateStr===tomorrow) return {ok:true};
-  const now=new Date(), mins=now.getHours()*60+now.getMinutes();
-  const allowed=sessions.some(function(sc){const a=String(sc.jamMulai).split(':').map(Number);return mins < (a[0]*60+a[1]-60);});
-  return allowed?{ok:true}:{ok:false,message:'Batas booking Eksekutif untuk sesi dokter yang dipilih sudah lewat. Silakan pilih sesi/dokter lain.'};
+  const sessions=getDoctorSchedulesForDate(poliId,dateStr).filter(function(sc){
+    if(doctorId && doctorId!=='AUTO' && !scheduleMatchesDoctor(sc,doctorId)) return false;
+    return queueLoadForSession(poliId,dateStr,sc.id).total<sessionCapacity(sc);
+  });
+  if(!sessions.length) return {ok:false,message:'Tidak ada jadwal dokter eksekutif yang sesuai dan masih memiliki kuota pada tanggal tersebut.'};
+  return {ok:true};
 }
 function submitBooking(jenisBayar){
   if(!bookingSearchPatientId){ showToast('Pilih pasien terlebih dahulu', 'danger'); return; }
@@ -4992,6 +5003,14 @@ function runSystemAudit(){
       patientBookingWindowValid('2026-10-12','Poliklinik Eksekutif',new Date('2026-10-09T10:00:00')) &&
       !patientBookingWindowValid('2026-10-13','Poliklinik Eksekutif',new Date('2026-10-09T10:00:00'));
   })(),'Eksekutif bisa booking hari H hingga 12.00, serta H-1/H-2/H-3; di luar rentang ditolak.');
+  check('staff-booking-window','Form booking petugas menolak tanggal lebih dari H+3 dan booking reguler hari H',(function(){
+    const now=new Date('2026-10-09T10:00:00');
+    return !patientBookingWindowValid('2026-11-09','Poliklinik Spesialis',now) &&
+      !patientBookingWindowValid('2026-10-09','Poliklinik Spesialis',now) &&
+      patientBookingWindowValid('2026-10-12','Poliklinik Spesialis',new Date('2026-10-09T00:01:00')) &&
+      patientBookingWindowValid('2026-10-09','Poliklinik Eksekutif',new Date('2026-10-09T12:00:00')) &&
+      !patientBookingWindowValid('2026-10-09','Poliklinik Eksekutif',new Date('2026-10-09T12:01:00'));
+  })(),'Validasi bisnis membatasi booking petugas ke jendela H-1/H-2/H-3 untuk reguler, eksekutif hari H sampai 12.00, dan menolak tanggal sebulan ke depan.');
   check('queue-shared-channels','Nomor antrean baru melanjutkan booking lintas kanal pada poli/tanggal sama',(function(){
     const original=Store.data;
     try{
@@ -5082,9 +5101,9 @@ function runSystemAudit(){
 function renderAuditSistem(){
   setPageTitle('Audit Sistem');
   const checks=runSystemAudit(), pass=checks.filter(function(x){return x.pass;}).length;
-  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V15.7.0 untuk memeriksa aturan booking, nomor antrean bersama simulasi, jalur utama, data demo, permintaan antarunit, dan batas prototype.')+
+  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V15.7.1 untuk memeriksa aturan booking, nomor antrean bersama simulasi, jalur utama, data demo, permintaan antarunit, dan batas prototype.')+
     '<div class="ops-kpi-grid"><div class="ops-kpi"><div class="kpi-label">Lulus</div><div class="kpi-value">'+pass+'</div></div><div class="ops-kpi"><div class="kpi-label">Diperiksa</div><div class="kpi-value">'+checks.length+'</div></div><div class="ops-kpi"><div class="kpi-label">Status</div><div class="kpi-value" style="font-size:20px">'+(pass===checks.length?'SIAP':'PERLU REVIEW')+'</div></div></div>'+
-    '<div class="panel"><div class="panel-head"><div><h2>🧪 Self-Test V15.7.0</h2><div class="hint">Ini adalah audit data/aturan sisi client, bukan pengganti pengujian keamanan backend.</div></div><button class="btn btn-outline btn-sm" onclick="renderAuditSistem()">↻ Jalankan Lagi</button></div><div class="panel-body">'+
+    '<div class="panel"><div class="panel-head"><div><h2>🧪 Self-Test V15.7.1</h2><div class="hint">Ini adalah audit data/aturan sisi client, bukan pengganti pengujian keamanan backend.</div></div><button class="btn btn-outline btn-sm" onclick="renderAuditSistem()">↻ Jalankan Lagi</button></div><div class="panel-body">'+
     '<div class="table-wrap"><table><thead><tr><th>Status</th><th>Pemeriksaan</th><th>Detail</th></tr></thead><tbody>'+checks.map(function(c){return '<tr><td>'+(c.pass?'<span class="badge badge-sage">✓ LULUS</span>':'<span class="badge badge-brick">✕ GAGAL</span>')+'</td><td><strong>'+esc(c.label)+'</strong></td><td>'+esc(c.detail)+'</td></tr>';}).join('')+'</tbody></table></div></div></div>'+
     '<div class="alert alert-warning"><strong>Batas prototype:</strong> localStorage hanya untuk simulasi. Untuk produksi dibutuhkan backend, database terpusat, autentikasi server, otorisasi server, audit trail terpusat, enkripsi, backup, dan integrasi resmi.</div>';
 }
