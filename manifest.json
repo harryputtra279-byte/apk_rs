@@ -8,7 +8,7 @@
   "display": "standalone",
   "orientation": "any",
   "background_color": "#F4F5F1",
-  "theme_color": "#4F46E5",
+  "theme_color": "#168BFF",
   "lang": "id",
   "dir": "ltr",
   "categories": ["medical", "productivity", "business"],

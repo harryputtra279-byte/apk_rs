@@ -5,13 +5,13 @@
 //
 // PENTING: SW_VERSION harus dinaikkan setiap kali app.js/style.css/qrcode.lib.js berubah,
 // supaya browser tahu ada versi baru dan mengambil file segar (bukan memakai cache lama selamanya).
-const SW_VERSION = 'v15.2.0';
+const SW_VERSION = 'v15.3.0';
 const CACHE_NAME = 'simrs-prototype-' + SW_VERSION;
 const APP_SHELL = [
   './',
   './index.html',
-  './style.css?v=15.2.0',
-  './app.js?v=15.2.0',
+  './style.css?v=15.3.0',
+  './app.js?v=15.3.0',
   './qrcode.lib.js',
   './manifest.json',
   './icon-192.png',
