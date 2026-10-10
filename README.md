@@ -1,6 +1,6 @@
-# SIMRS PROTOTYPE — V15.8.8
+# SIMRS PROTOTYPE — V16.0.0
 
-## Perubahan V15.8.8
+## Perubahan V16.0.0
 - Baseline pengembangan: V15.8.7.
 - Sembilan KPI operasional, Patient Journey, jadwal kontrol poli, dan informasi praktik dokter ditempatkan pada Beranda.
 - Halaman Poli dokter rawat jalan difokuskan pada dashboard sesi dokter, kontrol antrean, daftar pasien, dan ruang pemeriksaan.
@@ -546,3 +546,16 @@ Pengujian ini merupakan validasi sintaks dan logika terisolasi, **bukan** penguj
 ### Catatan pengujian V15.8.4
 
 V15.8.4 masih working copy pengembangan dan belum dinyatakan rilis bebas bug. Penyimpanan lokal menggunakan localStorage pada perangkat/browser yang sama; belum ada sinkronisasi backend lintas perangkat. Alur klinis harus divalidasi dengan uji interaktif sebelum digunakan sebagai rilis portfolio.
+
+
+## Perubahan V16.0.0 — Pemisahan Workflow IGD
+
+- Baseline pengembangan: arsip V15.8.8; alur rawat jalan dan Glass UI dipertahankan.
+- Ruang kerja dipisahkan untuk Perawat Triase IGD, Dokter IGD, dan Perawat Pelaksana IGD dengan role dan route masing-masing.
+- Triase menyimpan prioritas, tanda vital, ringkasan, petugas, waktu, dan riwayat evaluasi ulang. Daftar triase diprioritaskan berdasarkan level kegawatan.
+- Dokter IGD melihat pasien yang sudah ditriase, menyimpan diagnosis/asesmen, membuat instruksi, serta mencatat disposisi. Observasi tetap aktif; keputusan pulang/rujukan/rawat inap menggunakan status terpisah.
+- Perawat pelaksana memiliki daftar instruksi, konfirmasi penerimaan, pencatatan pelaksanaan, dan catatan keperawatan terpisah.
+- Hak akses diperiksa pada tampilan dan fungsi penyimpanan.
+- ZIP rilis tidak menyertakan laporan pengujian, berkas audit sementara, atau berkas pengembangan.
+
+Akun demo IGD: `triase.igd` / `triase123`; `dokter.igd` / `dokter123`; `perawat.igd` / `perawat123`.
