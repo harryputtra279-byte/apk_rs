@@ -975,3 +975,9 @@ input:focus,select:focus,textarea:focus{outline:2px solid rgba(22,139,255,.18)!i
 @media(max-width:900px){.doctor-workspace{grid-template-columns:minmax(210px,.7fr) minmax(0,1.5fr);gap:12px}.exam-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:680px){.doctor-workspace{grid-template-columns:minmax(0,1fr)}.doctor-summary{order:0}.doctor-workspace-main{order:1}}
 @media(max-width:520px){.exam-tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px!important}.exam-tabs .tab{padding:10px 7px;font-size:12px}}
+
+/* V15.8.7 — navbar dokter lima menu, aman untuk layar ponsel sempit */
+.doctor-bottom-nav{width:calc(100% - 16px);justify-content:space-between;gap:2px;padding:5px}
+.doctor-bottom-nav .tab-item{flex:1 1 0;min-width:0;padding:7px 2px;font-size:9px;white-space:nowrap}
+.doctor-bottom-nav .tab-item .ic{font-size:16px}
+@media(max-width:600px){.doctor-bottom-nav{bottom:10px;width:calc(100% - 10px)}.doctor-bottom-nav .tab-item{padding:7px 0;font-size:8px}.doctor-bottom-nav .tab-item .ic{font-size:15px}}

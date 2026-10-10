@@ -1,6 +1,6 @@
 # SIMRS PROTOTYPE — Portfolio / Demo
 
-**Versi:** V15.8.6  
+**Versi:** V15.8.7  
 **Baseline pengembangan:** V15.8.5  
 **Platform:** PWA / Web  
 **Status:** Prototype portfolio, bukan SIMRS produksi
@@ -8,6 +8,18 @@
 SIMRS PROTOTYPE adalah proyek portfolio untuk memperlihatkan kemampuan analisis kebutuhan, perancangan alur pelayanan rumah sakit, UI/UX, RBAC (hak akses berbasis peran), PWA, penyimpanan lokal, simulasi antrean, serta integrasi antar-modul pelayanan.
 
 > **Penting:** aplikasi ini adalah prototype/demo. Bukan sistem resmi RSUD R.T. Notopuro, bukan pengganti SIMRS rumah sakit, dan bukan SOP resmi. Data demo bersifat fiktif. Implementasi produksi membutuhkan backend, database terpusat, autentikasi dan otorisasi server, audit terpusat, enkripsi, backup, monitoring, serta integrasi resmi.
+
+## Perubahan V15.8.7 — Navbar dan Beranda Dokter
+
+- Baseline langsung: V15.8.6.
+- Navbar dokter memiliki lima menu: **Beranda, Poli, Monitor, Rekam Medis, Riwayat**. Menu Monitor tetap ditujukan untuk layar antrean di depan poli dan dibatasi pada poli yang ditugaskan ke akun dokter.
+- Beranda dokter merangkum status kunjungan poli hari ini, Patient Journey, booking kontrol mendatang, serta informasi praktik terkini.
+- Halaman Poli tetap menggabungkan dashboard sesi dokter, kontrol antrean, dan ruang pemeriksaan dalam satu halaman.
+- Antrean dokter difokuskan pada pasien yang sudah selesai screening, dipanggil, sedang diperiksa, atau membutuhkan review. Tindakan screening awal hanya tersedia pada alur perawat.
+- Tombol pasien yang sedang diperiksa menyediakan jalur untuk melanjutkan ruang pemeriksaan setelah kunjungan dipulihkan, tanpa membuat kunjungan tersebut selesai otomatis.
+- Cache PWA dan versi aset dinaikkan ke V15.8.7.
+
+> Batas pengujian V15.8.7: syntax JavaScript, JSON manifest, pemeriksaan statis, dan integritas ZIP diperiksa. Browser end-to-end interaktif penuh belum dapat diklaim lulus di lingkungan ini.
 
 ## 1. Baseline pengembangan
 
