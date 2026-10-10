@@ -1,7 +1,7 @@
 # SIMRS PROTOTYPE — Portfolio / Demo
 
-**Versi:** V15.8.4  
-**Baseline pengembangan:** V15.8.3  
+**Versi:** V15.8.5  
+**Baseline pengembangan:** V15.8.4  
 **Platform:** PWA / Web  
 **Status:** Prototype portfolio, bukan SIMRS produksi
 
@@ -12,6 +12,20 @@ SIMRS PROTOTYPE adalah proyek portfolio untuk memperlihatkan kemampuan analisis 
 ## 1. Baseline pengembangan
 
 Baseline untuk versi ini adalah **V15.6.0 SIMRS Booking & Antrean Terpadu**, dengan lineage sebelumnya dari V15.5.0 Patient Journey Integration dan V15.4.0 Integrasi Antarunit. V15.7.0 menambahkan monitor terikat penugasan, master ruang/shift, dan standar navigasi petugas; V15.8.0 memulihkan menu Pelayanan superuser dan memperbaiki layout topbar responsif; V15.8.2 menyegarkan ikon, warna browser, dan border Glass 3D. V15.8.4 menindaklanjuti alur pemeriksaan bertab, autosave tanpa pop-up, serta penyimpanan draft resep terikat kunjungan. Pengujian interaktif tetap wajib sebelum dianggap final.
+
+### Perubahan V15.8.5 — Kontrol Antrean, Draft Aman, Koreksi, dan Patient Journey
+
+- Baseline langsung dari V15.8.4; gaya Glass 3D dan struktur modul utama dipertahankan.
+- Kontrol antrean disederhanakan mengikuti status: **Panggil Berikutnya → Mulai Pemeriksaan → Selesaikan Pemeriksaan**. Tombol penyelesaian dari panel antrean mengarahkan ke konfirmasi pada formulir klinis yang sama; antrean berikutnya tidak dilepas diam-diam.
+- Ketika halaman Rawat Jalan dibuka ulang setelah refresh, kunjungan yang masih `diperiksa` dan milik dokter aktif dipulihkan ke ruang pemeriksaan berdasarkan ID kunjungan. Draft tetap draft, bukan status selesai.
+- Autosave draft mencakup tab aktif, data klinis, screening, pilihan rujukan, dan daftar resep. Perubahan tambah/hapus obat ikut disimpan. Status penyimpanan gagal ditampilkan secara eksplisit.
+- Lima tab pemeriksaan memakai lebar area kerja dengan susunan responsif; pada layar lebar tab memenuhi area formulir, pada layar lebih kecil tab membungkus ke beberapa kolom.
+- Dokter/admin dapat mengoreksi catatan klinis kunjungan yang sudah selesai melalui tindakan khusus; nilai sebelumnya, nilai koreksi, akun, waktu, dan jenis koreksi disimpan dalam riwayat revisi. Resep yang sudah diproses farmasi tidak dapat diubah dari formulir koreksi klinis.
+- Patient Journey hanya menampilkan tahap farmasi/pengambilan obat bila kunjungan memiliki resep berisi item. Resep yang sudah masuk antrean farmasi saat dokter masih memeriksa tidak membuat tahap Dokter tampak selesai atau tahap Farmasi tampak aktif bagi pasien sebelum finalisasi.
+- Penyelesaian kasir hanya mengarahkan pasien ke pengambilan obat bila resep terkait masih aktif dan berisi item; resep kosong/dibatalkan tidak membuat tahap farmasi palsu.
+- Cache PWA dan versi aset dinaikkan ke V15.8.5 agar browser mengambil file terbaru.
+
+> Batas pengujian rilis: pemeriksaan sintaks JavaScript dan pemeriksaan integritas ZIP dijalankan. Browser headless di lingkungan kerja diblokir oleh kebijakan lingkungan, sehingga skenario interaktif penuh (termasuk refresh di tengah pemeriksaan, seluruh role, dan alur end-to-end) belum dapat diklaim lulus. Jalankan Audit Sistem dan skenario manual sebelum menggunakan build ini untuk demo.
 
 Aturan pengembangan proyek:
 

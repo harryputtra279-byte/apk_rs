@@ -2036,7 +2036,7 @@ function patientJourneyDefinition(v){
   const hasLab=!!(v && v.labRequest);
   const hasRad=!!(v && v.radiologyRequest);
   const rx=v?getResepByVisit(v.id):null;
-  const hasRx=!!(v && ((rx && ['menunggu','disiapkan','diambil','diberikan','selesai'].includes(rx.status)) || ['menunggu_farmasi','menunggu_bayar','obat_siap'].includes(v.status)));
+  const hasRx=!!(v && rx && Array.isArray(rx.items) && rx.items.length>0 && ['menunggu','disiapkan','diambil','diberikan','selesai'].includes(rx.status));
   const steps=[
     {key:'booking',label:'Pendaftaran',icon:'📅'},
     {key:'checkin',label:'Check-in',icon:'✓'},
@@ -2100,9 +2100,9 @@ function patientJourneyStepState(v, step){
     const req=(Store.data.careRequests||[]).find(function(r){return r.sourceVisitId===v.id&&r.destination==='igd';});
     return req&&req.status==='diterima'?'done':(req&&req.status==='menunggu_konfirmasi'?'active':(status==='menunggu_rujukan_igd'?'active':'pending'));
   }
-  if(step.key==='pharmacy_prepare')return !rx?'pending':(['diambil','diberikan','selesai'].includes(rx.status)?'done':(rx.status==='menunggu'?'active':(rx.status==='disiapkan'?'done':'pending')));
+  if(step.key==='pharmacy_prepare')return !rx||!Array.isArray(rx.items)||!rx.items.length?'pending':(status==='diperiksa'?'pending':(['diambil','diberikan','selesai'].includes(rx.status)?'done':(rx.status==='menunggu'?'active':(rx.status==='disiapkan'?'done':'pending'))));
   if(step.key==='payment')return status==='menunggu_bayar'?'active':(['obat_siap','selesai'].includes(status)?'done':'pending');
-  if(step.key==='pharmacy_pickup')return !rx?'pending':(rx.status==='diambil'?'done':(status==='obat_siap'?'active':'pending'));
+  if(step.key==='pharmacy_pickup')return !rx||!Array.isArray(rx.items)||!rx.items.length?'pending':(rx.status==='diambil'?'done':(status==='obat_siap'?'active':'pending'));
   if(step.key==='done')return status==='selesai'?'done':'pending';
   return 'pending';
 }
@@ -3136,6 +3136,15 @@ function renderPoli(){
   window.__rjRerender=rerenderHeader;
   renderDoctorSessionDashboard();
   rerenderHeader(); refreshPoliQueue(); refreshQueueControlPanel(); renderJadwalKontrolPoli(); renderInfoPraktikPoli();
+  // Pulihkan ruang pemeriksaan aktif setelah refresh: kunjungan tetap berstatus diperiksa,
+  // bukan dibuat ulang atau ditandai selesai. Data diambil dari kunjungan tersimpan.
+  const currentActive=visitsToday().find(function(v){return samePoli(v.poliId,poliState.poliId)&&v.unit==='rawat-jalan'&&v.status==='diperiksa'&&(!u||u.role!=='dokter'||v.dokterId===u.id);});
+  if(currentActive){
+    poliState.activeVisitId=currentActive.id;
+    const currentRx=getResepByVisit(currentActive.id);
+    poliState.resepItems=(currentRx&&['draft','menunggu'].includes(currentRx.status))?(currentRx.items||[]).map(function(it){return Object.assign({},it);}):[];
+    renderFormPeriksa(currentActive);
+  }
 }
 
 function renderDoctorSessionDashboard(){
@@ -3163,9 +3172,11 @@ function queueCandidates(poliId){
   });
 }
 function callNextPatient(poliId){
-  const u=Session.currentUser; if(!u||!['dokter','admin'].includes(u.role)){showToast('Panggilan antrean dokter hanya dapat dilakukan oleh akun dokter atau admin.','danger');return;}
-  const active=visitsToday().find(v=>samePoli(v.poliId,poliId)&&v.status==='diperiksa'&&(!u||u.role!=='dokter'||v.dokterId===u.id));
+  const u=Session.currentUser; if(!u||!['dokter','perawat','admin'].includes(u.role)){showToast('Kontrol antrean hanya dapat dilakukan oleh petugas berwenang.','danger');return;}
+  const active=visitsToday().find(v=>samePoli(v.poliId,poliId)&&v.unit==='rawat-jalan'&&v.status==='diperiksa'&&(!u||u.role!=='dokter'||v.dokterId===u.id));
   if(active){showToast('Masih ada pasien yang sedang diperiksa ('+active.noAntrian+'). Selesaikan pasien tersebut terlebih dahulu.','warning');return;}
+  const called=visitsToday().find(v=>samePoli(v.poliId,poliId)&&v.unit==='rawat-jalan'&&v.status==='dipanggil'&&(!u||u.role!=='dokter'||v.dokterId===u.id));
+  if(called){showToast('Pasien '+called.noAntrian+' sudah dipanggil. Mulai atau tangani pasien tersebut sebelum memanggil nomor lain.','warning');return;}
   const next=queueCandidates(poliId)[0]; if(!next){showToast('Belum ada pasien yang siap dipanggil di poli ini. Selesaikan screening terlebih dahulu.','warning');return;}
   next.status='dipanggil'; next.queueCalledAt=nowISO(); next.queueCallCount=(next.queueCallCount||0)+1; next.updatedAt=nowISO();
   Store.save(); pushNotification('queue','🟢 SILAKAN MASUK',next.noAntrian+' — silakan menuju '+getPoli(next.poliId).nama,next.patientId); logAudit('panggil_berikutnya',next.noAntrian+' — '+getPatient(next.patientId).nama);
@@ -3179,22 +3190,35 @@ function pausePatient(visitId){
   const v=getVisit(visitId); if(!v)return; v.status='menunggu_dokter'; v.queuePausedAt=nowISO(); v.updatedAt=nowISO(); Store.save(); logAudit('tunda_antrean',v.noAntrian+' — '+getPatient(v.patientId).nama); refreshPoliQueue(); refreshQueueControlPanel(); showToast(v.noAntrian+' ditunda dan kembali ke antrean.','success');
 }
 function renderQueueControlPanel(poliId){
-  const u=Session.currentUser; if(!u||!['dokter','admin'].includes(u.role))return '';
-  const active=visitsToday().filter(v=>samePoli(v.poliId,poliId)&&v.status==='diperiksa').sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt))[0]||null;
-  const called=visitsToday().filter(v=>samePoli(v.poliId,poliId)&&v.status==='dipanggil').sort((a,b)=>new Date(b.queueCalledAt||b.updatedAt||b.createdAt)-new Date(a.queueCalledAt||a.updatedAt||a.createdAt))[0]||null;
+  const u=Session.currentUser; if(!u||!['dokter','perawat','admin'].includes(u.role))return '';
+  const user=Session.currentUser;
+  const mine=function(v){return samePoli(v.poliId,poliId)&&v.unit==='rawat-jalan'&&(!user||user.role!=='dokter'||v.dokterId===user.id);};
+  const active=visitsToday().filter(function(v){return mine(v)&&v.status==='diperiksa';}).sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt))[0]||null;
+  const called=visitsToday().filter(function(v){return mine(v)&&v.status==='dipanggil';}).sort((a,b)=>new Date(b.queueCalledAt||b.updatedAt||b.createdAt)-new Date(a.queueCalledAt||a.updatedAt||a.createdAt))[0]||null;
   const next=queueCandidates(poliId)[0]||null;
-  let body='<div class="queue-control-actions"><div class="ops-alert"><strong>Berikutnya: '+(next?esc(next.noAntrian):'—')+'</strong><div>'+(next?esc(getPatient(next.patientId).nama):'Belum ada pasien siap dipanggil.')+'</div></div>';
-  if(!active&&!called) body+='<button class="btn btn-primary" id="btn-queue-call-next">▶️ Panggil Berikutnya</button>';
-  if(called) body+='<button class="btn btn-primary" id="btn-queue-open-called">🟢 Mulai Pemeriksaan</button><button class="btn btn-outline" id="btn-queue-recall">↩️ Panggil Ulang</button><button class="btn btn-ghost" id="btn-queue-pause">⏸️ Tunda</button>';
-  if(active) body+='<button class="btn btn-outline" id="btn-queue-recall">↩️ Panggil Ulang</button><button class="btn btn-ghost" id="btn-queue-pause">⏸️ Tunda</button><button class="btn btn-primary" id="btn-queue-finish-next">✅ Selesaikan Pemeriksaan &amp; Panggil Berikutnya</button>';
-  return '<section class="panel queue-control-panel"><div class="panel-head"><div><div class="ops-eyebrow">ANTREAN POLI · '+esc(getPoli(poliId)?.nama||poliId)+'</div><h2>🔄 Kontrol Antrean</h2><div class="hint">Kontrol ini otomatis mengikuti poli akun yang sedang aktif. Berlaku untuk seluruh poli.</div></div><span class="badge '+(active?'badge-clinical':called?'badge-sage':'badge-slate')+'">'+(active?'Sedang Diperiksa':called?'Dipanggil':'Siap')+'</span></div><div class="panel-body">'+body+'</div></section>';
+  const current=active||called;
+  let body='<div class="queue-control-actions"><div class="ops-alert"><strong>'+(current?'Pasien aktif: '+esc(current.noAntrian):'Berikutnya: '+(next?esc(next.noAntrian):'—'))+'</strong><div>'+(current?esc(getPatient(current.patientId).nama)+(active?' · Sedang diperiksa':' · Menunggu mulai pemeriksaan'):(next?esc(getPatient(next.patientId).nama):'Belum ada pasien siap dipanggil.'))+'</div></div>';
+  if(!active&&!called) body+='<button type="button" class="btn btn-primary" id="btn-queue-call-next">▶️ Panggil Berikutnya</button>';
+  if(called) body+='<button type="button" class="btn btn-primary" id="btn-queue-open-called">🩺 Mulai Pemeriksaan</button><button type="button" class="btn btn-outline" id="btn-queue-recall">↩️ Panggil Ulang</button><button type="button" class="btn btn-ghost" id="btn-queue-pause">⏸️ Pasien Tidak Hadir / Tunda</button>';
+  if(active) body+='<button type="button" class="btn btn-primary" id="btn-queue-finish-next">✅ Selesaikan Pemeriksaan</button>';
+  return '<section class="panel queue-control-panel"><div class="panel-head"><div><div class="ops-eyebrow">ANTREAN POLI · '+esc(getPoli(poliId)?.nama||poliId)+'</div><h2>🔄 Kontrol Antrean</h2><div class="hint">Satu pasien aktif dalam satu waktu. Selesaikan pemeriksaan sebelum memanggil pasien berikutnya.</div></div><span class="badge '+(active?'badge-clinical':called?'badge-sage':'badge-slate')+'">'+(active?'Sedang Diperiksa':called?'Menunggu Mulai':'Siap')+'</span></div><div class="panel-body">'+body+'</div></section>';
 }
 function bindQueueControlPanel(){
   const call=document.getElementById('btn-queue-call-next'); if(call)call.addEventListener('click',()=>callNextPatient(poliState.poliId));
-  const open=document.getElementById('btn-queue-open-called'); if(open){open.addEventListener('click',()=>{const v=visitsToday().find(v=>samePoli(v.poliId,poliState.poliId)&&v.status==='dipanggil');if(v)bukaPeriksa(v.id);});}
+  const open=document.getElementById('btn-queue-open-called'); if(open){open.addEventListener('click',()=>{const u=Session.currentUser;const v=visitsToday().find(v=>samePoli(v.poliId,poliState.poliId)&&v.unit==='rawat-jalan'&&v.status==='dipanggil'&&(!u||u.role!=='dokter'||v.dokterId===u.id));if(v)bukaPeriksa(v.id);});}
   const recall=document.getElementById('btn-queue-recall'); if(recall){recall.addEventListener('click',()=>{const v=visitsToday().find(v=>samePoli(v.poliId,poliState.poliId)&&['dipanggil','diperiksa'].includes(v.status));if(v)recallPatient(v.id);});}
   const pause=document.getElementById('btn-queue-pause'); if(pause){pause.addEventListener('click',()=>{const v=visitsToday().find(v=>samePoli(v.poliId,poliState.poliId)&&['dipanggil','diperiksa'].includes(v.status));if(v)pausePatient(v.id);});}
-  const finish=document.getElementById('btn-queue-finish-next'); if(finish)finish.addEventListener('click',function(){const active=visitsToday().find(v=>samePoli(v.poliId,poliState.poliId)&&v.status==='diperiksa');if(!active)return;const p=getPatient(active.patientId),source=Session.currentUser.role==='perawat'||Session.currentUser.role==='rawat_jalan'?'perawat':'dokter';openModal('<div class="modal-head"><h2>Konfirmasi Penyelesaian</h2><button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button></div><div class="modal-body"><p>Apakah pemeriksaan pasien <strong>'+esc(p.nama)+'</strong> dengan nomor <strong>'+esc(active.noAntrian)+'</strong> sudah selesai?</p><div class="alert alert-info">Setelah dikonfirmasi, sistem akan menyelesaikan pasien ini dan otomatis memanggil antrean berikutnya pada poli yang sama.</div><button class="btn btn-primary btn-block" id="btn-confirm-queue-finish">Ya, Selesaikan &amp; Panggil Berikutnya</button></div>');document.getElementById('btn-confirm-queue-finish').addEventListener('click',function(){closeModal();finishQueueAndCallNext(active.id,source);});});
+  const finish=document.getElementById('btn-queue-finish-next'); if(finish)finish.addEventListener('click',function(){
+    const active=visitsToday().find(v=>samePoli(v.poliId,poliState.poliId)&&v.status==='diperiksa'&&(!Session.currentUser||Session.currentUser.role!=='dokter'||v.dokterId===Session.currentUser.id));
+    if(!active)return;
+    const form=document.getElementById('form-periksa');
+    if(form && poliState.activeVisitId===active.id){form.requestSubmit();return;}
+    const p=getPatient(active.patientId);
+    showToast('Draft pasien '+p.nama+' dipulihkan. Periksa formulir lalu selesaikan dari halaman pemeriksaan.','warning');
+    poliState.activeVisitId=active.id;
+    const rx=getResepByVisit(active.id);poliState.resepItems=(rx&&['draft','menunggu'].includes(rx.status))?(rx.items||[]).map(function(it){return Object.assign({},it);}):[];
+    renderFormPeriksa(active);
+  });
 }
 
 function openScreening(visitId){
@@ -3334,7 +3358,8 @@ function bukaPeriksa(visitId){
   if(Session.currentUser.role==='dokter') visit.dokterId=Session.currentUser.id;
   if(!['menunggu_dokter','dipanggil','menunggu_review','menunggu_poli'].includes(visit.status)){ showToast('Pasien belum siap untuk pemeriksaan.','warning'); return; }
   if(visit.status==='menunggu_review')visit.reviewPending=true;
-  visit.status='diperiksa'; visit.workflow=visit.workflow||{}; visit.workflow.doctorStartAt=nowISO(); visit.updatedAt=nowISO();
+  const wasAlreadyInExam=visit.status==='diperiksa';
+  visit.status='diperiksa'; visit.workflow=visit.workflow||{}; if(!wasAlreadyInExam&&!visit.workflow.doctorStartAt)visit.workflow.doctorStartAt=nowISO(); visit.updatedAt=nowISO();
   Store.save(); refreshPoliQueue(); if(window.__rjRerender)window.__rjRerender(); const existingRx=getResepByVisit(visit.id); poliState.resepItems=(existingRx && ['draft','menunggu'].includes(existingRx.status)) ? (existingRx.items||[]).map(function(it){return Object.assign({},it);}) : []; renderFormPeriksa(visit);
 }
 function historyItemHtml(v){
@@ -3376,7 +3401,7 @@ function renderFormPeriksa(visit){
         '<div class="field"><label>Berat Badan (kg)</label><input type="number" id="px-bb" value="'+esc(vital.bb||'')+'"></div>'+
         '<div class="field"><label>Tinggi Badan (cm)</label><input type="number" id="px-tb" value="'+esc(vital.tb||'')+'"></div>'+
       '</div>'+
-      '<div class="field"><label>Diagnosis</label><input type="text" id="px-diagnosis" value="'+esc(visit.diagnosis)+'" required></div>'+
+      '<div class="field"><label>Diagnosis</label><input type="text" id="px-diagnosis" value="'+esc(visit.diagnosis)+'"></div>'+
       '<div class="field"><label>Catatan / Tindakan</label><textarea id="px-catatan">'+esc(visit.catatan)+'</textarea></div>'+
       '<div class="field"><label>Rencana / Next Step</label><select id="px-next-step"><option value="selesai" '+(nextStepValue==='selesai'?'selected':'')+'>Selesai / Pulang</option><option value="farmasi" '+(nextStepValue==='farmasi'?'selected':'')+'>Resep → Farmasi Rawat Jalan</option><option value="kontrol" '+(nextStepValue==='kontrol'?'selected':'')+'>Jadwal Kontrol</option><option value="penunjang" '+(nextStepValue==='penunjang'?'selected':'')+'>Pemeriksaan Penunjang</option><option value="ranap" '+(nextStepValue==='ranap'?'selected':'')+'>Admisi Rawat Inap</option><option value="rujuk" '+(nextStepValue==='rujuk'?'selected':'')+'>Rujuk Keluar</option></select></div>'+
       '<div class="field checkbox-row"><input type="checkbox" id="px-rujuk-lab" '+(visit.labRequest?'checked disabled':'')+'><label for="px-rujuk-lab" style="margin:0">Permintaan Laboratorium</label></div>'+
@@ -3386,7 +3411,7 @@ function renderFormPeriksa(visit){
       '<div class="field checkbox-row"><input type="checkbox" id="px-rujuk-igd" '+((visit.referrals||[]).some(function(r){return r.destination==='igd'&&r.status!=='ditolak'&&r.status!=='dibatalkan';})?'checked disabled':'')+'><label for="px-rujuk-igd" style="margin:0">Rujukan ke IGD (berdasarkan keputusan klinis)</label></div>'+
       '<div class="field hidden" id="px-igd-alasan-wrap"><label>Alasan / ringkasan rujukan IGD</label><textarea id="px-igd-alasan" placeholder="Ringkasan klinis untuk serah terima ke IGD"></textarea></div>'+
       '<div id="px-resep-section">'+resepSectionHtml()+'</div>'+
-      '<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-outline" id="btn-simpan-draft-periksa">💾 Simpan Data Pemeriksaan</button><button type="submit" class="btn btn-primary">✅ Selesaikan Pemeriksaan &amp; Panggil Berikutnya</button>'+
+      '<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-outline" id="btn-simpan-draft-periksa">💾 Simpan Data Pemeriksaan</button><button type="submit" class="btn btn-primary">✅ Selesaikan Pemeriksaan</button>'+
       '<button type="button" class="btn btn-outline" id="btn-rujuk-ranap">🏥 Admisi Rawat Inap</button></div>'+
       '</form>'+
     '</div></div>';
@@ -3396,12 +3421,13 @@ function renderFormPeriksa(visit){
     const form=document.getElementById('form-periksa'); if(!form)return;
     const parent=form.parentElement;
     const nav=document.createElement('div'); nav.className='tabs exam-tabs'; nav.setAttribute('role','tablist');
-    nav.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 10px';
+    nav.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 10px;width:100%;box-sizing:border-box;align-items:stretch';
     const names=[['screening','Screening'],['dokter','Pemeriksaan Dokter'],['diagnosis','Diagnosis'],['resep','Resep'],['riwayat','Riwayat']];
     const panes={};
+    const savedTab=(visit.examDraft&&visit.examDraft.activeTab&&names.some(function(x){return x[0]===visit.examDraft.activeTab;}))?visit.examDraft.activeTab:'screening';
     names.forEach(function(pair,i){
-      const b=document.createElement('button'); b.type='button'; b.className='tab'+(i===0?' active':''); b.dataset.examtab=pair[0]; b.textContent=pair[1]; b.setAttribute('role','tab'); b.setAttribute('aria-selected',i===0?'true':'false'); nav.appendChild(b);
-      const pane=document.createElement('section'); pane.dataset.exampane=pair[0]; pane.style.display=i===0?'block':'none'; pane.style.padding='8px 0'; panes[pair[0]]=pane;
+      const b=document.createElement('button'); b.type='button'; b.className='tab'+(pair[0]===savedTab?' active':''); b.dataset.examtab=pair[0]; b.textContent=pair[1]; b.setAttribute('role','tab'); b.setAttribute('aria-selected',pair[0]===savedTab?'true':'false'); nav.appendChild(b);
+      const pane=document.createElement('section'); pane.dataset.exampane=pair[0]; pane.style.display=pair[0]===savedTab?'block':'none'; pane.style.padding='8px 0'; panes[pair[0]]=pane;
     });
     parent.insertBefore(nav,form);
     const draftStatus=form.querySelector('#exam-draft-status');
@@ -3442,19 +3468,29 @@ function renderFormPeriksa(visit){
     const status=document.createElement('div'); status.id='exam-draft-status'; status.className='hint'; status.setAttribute('aria-live','polite'); status.style.margin='8px 0'; status.textContent='Draft otomatis aktif — perubahan disimpan setelah jeda singkat.'; nav.insertAdjacentElement('afterend',status);
     nav.querySelectorAll('[data-examtab]').forEach(function(btn){btn.addEventListener('click',function(){
       nav.querySelectorAll('[data-examtab]').forEach(function(b){b.classList.toggle('active',b===btn);b.setAttribute('aria-selected',b===btn?'true':'false');});
-      Object.keys(panes).forEach(function(key){panes[key].style.display=key===btn.dataset.examtab?'block':'none';});
+      Object.keys(panes).forEach(function(key){panes[key].style.display=key===btn.dataset.examtab?'block':'none';}); visit.examDraft=visit.examDraft||{};visit.examDraft.activeTab=btn.dataset.examtab;try{Store.save();}catch(e){}
     });});
   })();
   document.getElementById('btn-lihat-riwayat').addEventListener('click', ()=> openRiwayatModal(patient.id));
   document.getElementById('btn-rujuk-ranap').addEventListener('click', function(){ rujukRawatInap(visit.id); });
   const rujukChk = document.getElementById('px-rujuk-lab');
   const labWrap = document.getElementById('px-lab-jenis-wrap');
+  const examDraft=visit.examDraft||{};
+  if(rujukChk&&!rujukChk.disabled)rujukChk.checked=!!examDraft.rujukLab;
+  if(document.getElementById('px-lab-jenis')&&!visit.labRequest)document.getElementById('px-lab-jenis').value=examDraft.labJenis||'';
+  if(document.getElementById('px-rujuk-rad')&&!document.getElementById('px-rujuk-rad').disabled)document.getElementById('px-rujuk-rad').checked=!!examDraft.rujukRad;
+  if(document.getElementById('px-rad-jenis')&&!visit.radiologyRequest)document.getElementById('px-rad-jenis').value=examDraft.radJenis||'';
+  if(document.getElementById('px-rujuk-igd')&&!document.getElementById('px-rujuk-igd').disabled)document.getElementById('px-rujuk-igd').checked=!!examDraft.rujukIgd;
+  if(document.getElementById('px-igd-alasan'))document.getElementById('px-igd-alasan').value=examDraft.igdAlasan||'';
   if(visit.labRequest){ labWrap.classList.remove('hidden'); document.getElementById('px-lab-jenis').value = visit.labRequest.jenis; document.getElementById('px-lab-jenis').disabled = true; }
   const radChk=document.getElementById('px-rujuk-rad'), radWrap=document.getElementById('px-rad-jenis-wrap'), igdChk=document.getElementById('px-rujuk-igd'), igdWrap=document.getElementById('px-igd-alasan-wrap');
   if(visit.radiologyRequest){radWrap.classList.remove('hidden');document.getElementById('px-rad-jenis').value=visit.radiologyRequest.jenis;document.getElementById('px-rad-jenis').disabled=true;}
   if(igdChk && igdChk.checked){igdWrap.classList.remove('hidden');}
   if(radChk)radChk.addEventListener('change',function(){radWrap.classList.toggle('hidden',!this.checked);});
   if(igdChk)igdChk.addEventListener('change',function(){igdWrap.classList.toggle('hidden',!this.checked);});
+  if(rujukChk&&!rujukChk.disabled)labWrap.classList.toggle('hidden',!rujukChk.checked);
+  if(radChk&&!radChk.disabled)radWrap.classList.toggle('hidden',!radChk.checked);
+  if(igdChk)igdWrap.classList.toggle('hidden',!igdChk.checked);
   rujukChk.addEventListener('change', function(){
     labWrap.classList.toggle('hidden', !this.checked);
     document.getElementById('px-resep-section').classList.toggle('hidden', this.checked);
@@ -3462,9 +3498,9 @@ function renderFormPeriksa(visit){
   bindResepEvents();
   document.getElementById('btn-simpan-draft-periksa').addEventListener('click', function(){ simpanDraftPeriksa(visit.id); logAudit('simpan_draft_pemeriksaan',visit.noAntrian+' — '+getPatient(visit.patientId).nama); const st=document.getElementById('exam-draft-status'); if(st)st.textContent='Data pemeriksaan tersimpan · '+new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}); });
   let examDraftTimer=null;
-  document.getElementById('form-periksa').querySelectorAll('#px-keluhan,#px-td,#px-nadi,#px-suhu,#px-rr,#px-bb,#px-tb,#px-diagnosis,#px-catatan,#px-next-step,#px-scr-td,#px-scr-nadi,#px-scr-suhu,#px-scr-spo2,#px-scr-bb,#px-scr-tb,#px-scr-keluhan,#px-scr-alergi').forEach(function(field){field.addEventListener('input',function(){clearTimeout(examDraftTimer);const status=document.getElementById('exam-draft-status');if(status)status.textContent='Perubahan belum tersimpan…';examDraftTimer=setTimeout(function(){simpanDraftPeriksa(visit.id);},900);});field.addEventListener('change',function(){clearTimeout(examDraftTimer);examDraftTimer=setTimeout(function(){simpanDraftPeriksa(visit.id);},250);});});
+  document.getElementById('form-periksa').querySelectorAll('input,textarea,select').forEach(function(field){if(field.type==='button'||field.type==='submit')return;field.addEventListener('input',function(){clearTimeout(examDraftTimer);const status=document.getElementById('exam-draft-status');if(status)status.textContent='Perubahan belum tersimpan…';examDraftTimer=setTimeout(function(){if(poliState.activeVisitId===visit.id)simpanDraftPeriksa(visit.id);},900);});field.addEventListener('change',function(){clearTimeout(examDraftTimer);examDraftTimer=setTimeout(function(){if(poliState.activeVisitId===visit.id)simpanDraftPeriksa(visit.id);},250);});});
   document.getElementById('form-periksa').addEventListener('submit', function(e){ e.preventDefault();
-    openModal('<div class="modal-head"><h2>Konfirmasi Penyelesaian</h2><button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button></div><div class="modal-body"><p>Apakah pemeriksaan pasien <strong>'+esc(patient.nama)+'</strong> dengan nomor <strong>'+esc(visit.noAntrian)+'</strong> sudah selesai?</p><div class="alert alert-info">Setelah dikonfirmasi, sistem akan memperbarui status pasien dan otomatis memanggil pasien berikutnya.</div><button class="btn btn-primary btn-block" id="btn-confirm-finish-next">Ya, Selesaikan &amp; Panggil Berikutnya</button></div>');
+    openModal('<div class="modal-head"><h2>Konfirmasi Penyelesaian</h2><button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button></div><div class="modal-body"><p>Apakah pemeriksaan pasien <strong>'+esc(patient.nama)+'</strong> dengan nomor <strong>'+esc(visit.noAntrian)+'</strong> sudah selesai?</p><div class="alert alert-info">Setelah dikonfirmasi, hasil pemeriksaan disimpan dan status pasien diperbarui. Pasien berikutnya dapat dipanggil setelah ini.</div><button class="btn btn-primary btn-block" id="btn-confirm-finish-next">Ya, Selesaikan Pemeriksaan</button></div>');
     document.getElementById('btn-confirm-finish-next').addEventListener('click', function(){ closeModal(); selesaiPeriksa(visit.id); });
   });
 }
@@ -3493,7 +3529,7 @@ function bindResepEvents(){
     poliState.resepItems.push({medicineId:medId, nama:med.nama, jumlah, hargaSatuan:med.harga, aturanPakai:aturan});
     document.getElementById('resep-items-table').innerHTML = resepItemsTableHtml();
     bindResepRemoveEvents();
-    document.getElementById('rsp-jumlah').value=1; document.getElementById('rsp-aturan').value='';
+    document.getElementById('rsp-jumlah').value=1; document.getElementById('rsp-aturan').value=''; if(poliState.activeVisitId)simpanDraftPeriksa(poliState.activeVisitId);
   });
   bindResepRemoveEvents();
 }
@@ -3502,7 +3538,7 @@ function bindResepRemoveEvents(){
     b.addEventListener('click', function(){
       poliState.resepItems.splice(parseInt(this.dataset.remove),1);
       document.getElementById('resep-items-table').innerHTML = resepItemsTableHtml();
-      bindResepRemoveEvents();
+      bindResepRemoveEvents(); if(poliState.activeVisitId)simpanDraftPeriksa(poliState.activeVisitId);
     });
   });
 }
@@ -3525,7 +3561,22 @@ function historyItemHtmlFull(v){
     '<div><strong>Diagnosis:</strong> '+esc(v.diagnosis||'-')+'</div>'+
     (v.catatan ? '<div><strong>Catatan/Tindakan:</strong> '+esc(v.catatan)+'</div>' : '')+
     ((vital.td||vital.nadi||vital.suhu||vital.rr||vital.bb||vital.tb) ? '<div><strong>Tanda vital:</strong> TD '+esc(vital.td||'-')+' · Nadi '+esc(vital.nadi||'-')+' · Suhu '+esc(vital.suhu||'-')+' °C · RR '+esc(vital.rr||'-')+' · BB '+esc(vital.bb||'-')+' kg · TB '+esc(vital.tb||'-')+' cm</div>' : '')+
-    (resep ? '<div><strong>Resep:</strong> '+resep.items.map(i=>esc(i.nama)+' ×'+i.jumlah+' ('+esc(i.aturanPakai||'-')+')').join(', ')+'</div>' : '')+'</div>';
+    (resep ? '<div><strong>Resep:</strong> '+(resep.items||[]).map(i=>esc(i.nama)+' ×'+i.jumlah+' ('+esc(i.aturanPakai||'-')+')').join(', ')+'</div>' : '')+
+    ((Session.currentUser&&['dokter','admin'].includes(Session.currentUser.role)&&Array.isArray(v.examRevisions)&&v.examRevisions.length)?'<details style="margin-top:8px"><summary>Riwayat koreksi ('+v.examRevisions.length+')</summary><div class="hint">'+v.examRevisions.slice().reverse().map(function(r){const prev=r.previous||{};return '<div style="padding:6px 0;border-bottom:1px solid var(--line)"><strong>'+esc(r.stage||'perubahan draft')+'</strong><br>'+esc(r.changedBy||'-')+' · '+esc(r.changedAt?formatTanggalWaktu(r.changedAt):'-')+(prev.diagnosis?'<br>Diagnosis sebelumnya: '+esc(prev.diagnosis):'')+(r.correctedTo&&r.correctedTo.diagnosis?'<br>Diagnosis koreksi: '+esc(r.correctedTo.diagnosis):'')+'</div>';}).join('')+'</div></details>':'')+
+    ((Session.currentUser&&['dokter','admin'].includes(Session.currentUser.role)&&v.status==='selesai')?'<div style="margin-top:8px"><button type="button" class="btn btn-outline btn-sm" onclick="openFinalVisitCorrection(\''+v.id+'\')">✏️ Koreksi Catatan Klinis</button></div>':'')+'</div>';
+}
+function openFinalVisitCorrection(visitId){
+  const v=getVisit(visitId),u=Session.currentUser;if(!v||v.status!=='selesai'||!u||!['dokter','admin'].includes(u.role)){showToast('Koreksi hanya tersedia bagi dokter/admin pada kunjungan yang sudah selesai.','danger');return;}
+  const vital=v.vital||{};
+  openModal('<div class="modal-head"><h2>Koreksi Catatan Klinis</h2><button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button></div><div class="modal-body"><div class="alert alert-warning">Koreksi akan menyimpan nilai sebelumnya dalam riwayat audit. Resep yang sudah diproses tidak dapat diubah dari formulir ini.</div><div class="field"><label>Keluhan</label><textarea id="corr-keluhan">'+esc(v.keluhan||'')+'</textarea></div><div class="field-row"><div class="field"><label>Tekanan darah</label><input id="corr-td" value="'+esc(vital.td||'')+'"></div><div class="field"><label>Nadi</label><input id="corr-nadi" value="'+esc(vital.nadi||'')+'"></div></div><div class="field-row"><div class="field"><label>Suhu °C</label><input id="corr-suhu" value="'+esc(vital.suhu||'')+'"></div><div class="field"><label>Respirasi</label><input id="corr-rr" value="'+esc(vital.rr||'')+'"></div></div><div class="field-row"><div class="field"><label>Berat badan</label><input id="corr-bb" value="'+esc(vital.bb||'')+'"></div><div class="field"><label>Tinggi badan</label><input id="corr-tb" value="'+esc(vital.tb||'')+'"></div></div><div class="field"><label>Diagnosis</label><input id="corr-dx" value="'+esc(v.diagnosis||'')+'" required></div><div class="field"><label>Catatan / Tindakan</label><textarea id="corr-catatan">'+esc(v.catatan||'')+'</textarea></div><button class="btn btn-primary btn-block" id="btn-save-clinical-correction">Simpan Koreksi dengan Riwayat</button></div>');
+  document.getElementById('btn-save-clinical-correction').addEventListener('click',function(){
+    const dx=document.getElementById('corr-dx').value.trim();if(!dx){showToast('Diagnosis wajib diisi.','danger');return;}
+    const previous={keluhan:v.keluhan||'',vital:JSON.parse(JSON.stringify(v.vital||{})),diagnosis:v.diagnosis||'',catatan:v.catatan||''};
+    const next={keluhan:document.getElementById('corr-keluhan').value.trim(),vital:{td:document.getElementById('corr-td').value.trim(),nadi:document.getElementById('corr-nadi').value.trim(),suhu:document.getElementById('corr-suhu').value.trim(),rr:document.getElementById('corr-rr').value.trim(),bb:document.getElementById('corr-bb').value.trim(),tb:document.getElementById('corr-tb').value.trim()},diagnosis:dx,catatan:document.getElementById('corr-catatan').value.trim()};
+    if(!Array.isArray(v.examRevisions))v.examRevisions=[];v.examRevisions.push({previous:previous,correctedTo:JSON.parse(JSON.stringify(next)),changedAt:nowISO(),changedBy:u.id||u.nama,stage:'koreksi-final'});
+    v.keluhan=next.keluhan;v.vital=next.vital;v.diagnosis=next.diagnosis;v.catatan=next.catatan;v.lastClinicalCorrectionAt=nowISO();v.lastClinicalCorrectionBy=u.id||u.nama;v.updatedAt=nowISO();
+    try{Store.save();logAudit('koreksi_catatan_klinis',v.noAntrian+' · '+getPatient(v.patientId).nama);closeModal();showToast('Koreksi tersimpan dan riwayat sebelumnya dipertahankan.','success');if(window.__rjRerender)window.__rjRerender();}catch(e){showToast('Gagal menyimpan koreksi. Data belum dapat dipastikan tersimpan.','danger');}
+  });
 }
 function simpanDraftPeriksa(visitId){
   const visit=getVisit(visitId); if(!visit)return;
@@ -3540,6 +3591,14 @@ function simpanDraftPeriksa(visitId){
     if(!Array.isArray(visit.examRevisions))visit.examRevisions=[];
     visit.examRevisions.push({previous:before,changedAt:nowISO(),changedBy:Session.currentUser?(Session.currentUser.id||Session.currentUser.nama):null,stage:'draft'});
   }
+  visit.examDraft=visit.examDraft||{};
+  visit.examDraft.activeTab=(document.querySelector('.exam-tabs [data-examtab].active')||{}).dataset?.examtab||visit.examDraft.activeTab||'screening';
+  visit.examDraft.rujukLab=!!(document.getElementById('px-rujuk-lab')&&document.getElementById('px-rujuk-lab').checked);
+  visit.examDraft.labJenis=(document.getElementById('px-lab-jenis')||{}).value||'';
+  visit.examDraft.rujukRad=!!(document.getElementById('px-rujuk-rad')&&document.getElementById('px-rujuk-rad').checked);
+  visit.examDraft.radJenis=(document.getElementById('px-rad-jenis')||{}).value||'';
+  visit.examDraft.rujukIgd=!!(document.getElementById('px-rujuk-igd')&&document.getElementById('px-rujuk-igd').checked);
+  visit.examDraft.igdAlasan=(document.getElementById('px-igd-alasan')||{}).value||'';
   // Menyimpan resep membuat satu item antrean farmasi yang terhubung ke ID kunjungan.
   // Status pemeriksaan dokter tetap 'diperiksa' sampai tombol finalisasi dipilih.
   if(Array.isArray(poliState.resepItems) && poliState.resepItems.length){
@@ -3557,6 +3616,13 @@ function simpanDraftPeriksa(visitId){
     }
     visit.billing=visit.billing||{registrasi:BIAYA_REGISTRASI,konsultasi:0,obat:0,lab:0};
     visit.billing.obat=poliState.resepItems.reduce(function(sum,it){return sum+(Number(it.jumlah)||0)*(Number(it.hargaSatuan)||0);},0);
+  }else{
+    const existingEmptyRx=getResepByVisit(visit.id);
+    if(existingEmptyRx&&['draft','menunggu'].includes(existingEmptyRx.status)){
+      existingEmptyRx.items=[];existingEmptyRx.status='dibatalkan';existingEmptyRx.updatedAt=nowISO();existingEmptyRx.cancelReason='Resep dikosongkan sebelum finalisasi oleh petugas pemeriksa';
+      visit.resepId=existingEmptyRx.id;
+    }
+    visit.billing=visit.billing||{registrasi:BIAYA_REGISTRASI,konsultasi:0,obat:0,lab:0};visit.billing.obat=0;
   }
   const scrFields={td:'px-scr-td',nadi:'px-scr-nadi',suhu:'px-scr-suhu',spo2:'px-scr-spo2',bb:'px-scr-bb',tb:'px-scr-tb',keluhan:'px-scr-keluhan',alergi:'px-scr-alergi'};
   const scrNext={}; let hasScreeningEditor=false;
@@ -3578,37 +3644,6 @@ function simpanDraftPeriksa(visitId){
   if(draftStatus) draftStatus.textContent='Tersimpan · '+new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
   refreshPoliQueue();
 }
-function advanceNextPatientInQueue(completedVisit){
-  const candidates=visitsToday().filter(function(v){return v.id!==completedVisit.id && samePoli(v.poliId,completedVisit.poliId) && v.unit==='rawat-jalan' && v.status==='menunggu_dokter' && (!completedVisit.dokterId || v.dokterId===completedVisit.dokterId);}).sort(function(a,b){
-    return (b.prioritas?1:0)-(a.prioritas?1:0) || (queueNumberValue(a.noAntrian)||999999)-(queueNumberValue(b.noAntrian)||999999);
-  });
-  if(!candidates.length) return null;
-  const next=candidates[0];
-  next.status='dipanggil'; next.queueCalledAt=nowISO(); next.queueCallCount=(next.queueCallCount||0)+1; next.updatedAt=nowISO();
-  pushNotification('queue','🟢 Silakan masuk ke poli',next.noAntrian+' — giliran Anda sekarang. Silakan menuju '+getPoli(next.poliId).nama+'.',next.patientId);
-  logAudit('antrean_otomatis_berikutnya',completedVisit.noAntrian+' selesai → '+next.noAntrian+' dipanggil');
-  return next;
-}
-function finishQueueAndCallNext(visitId, source){
-  const visit=getVisit(visitId); if(!visit)return;
-  if(visit.status!=='diperiksa'){showToast('Pasien ini tidak sedang diperiksa.','warning');return;}
-  if(!visit.queueReadyToAdvance){
-    showToast('Simpan Data Pemeriksaan terlebih dahulu agar data klinis tersimpan sebelum antrean dilanjutkan.','warning');return;
-  }
-  if(source==='perawat' && visit.nextStep && visit.nextStep!=='selesai'){
-    showToast('Untuk rujukan Farmasi/Penunjang/Rawat Inap, dokter harus menyelesaikan dari form pemeriksaan agar alurnya tercatat lengkap.','warning');return;
-  }
-  const targetStep=visit.nextStep||'selesai';
-  visit.status=(targetStep==='farmasi' && visit.resepId)?'menunggu_farmasi':(targetStep==='penunjang' && visit.labRequest)?'menunggu_lab':'menunggu_bayar';
-  visit.nextStep=visit.status==='menunggu_farmasi'?'Farmasi Rawat Jalan':visit.status==='menunggu_lab'?'Pemeriksaan penunjang — hasil kembali ke dokter untuk review':'Billing / Kasir Rawat Jalan';
-  visit.workflow=visit.workflow||{}; visit.workflow.completedAt=nowISO(); visit.queueReleasedAt=nowISO(); visit.queueReadyToAdvance=false; visit.updatedAt=nowISO();
-  const next=advanceNextPatientInQueue(visit);
-  Store.save();
-  logAudit('selesai_dan_panggil_berikutnya',visit.noAntrian+' — '+getPatient(visit.patientId).nama+(next?' → '+next.noAntrian:''));
-  refreshPoliQueue(); refreshQueueControlPanel(); if(window.__rjRerender)window.__rjRerender();
-  showToast(next?'Pasien selesai — '+next.noAntrian+' otomatis dipanggil.':'Pasien selesai — belum ada pasien berikutnya.','success');
-}
-
 function notifyCareUnit(patientId, unit, title, body){
   const p=getPatient(patientId); if(!p)return;
   pushNotification('info',title,body,unit,null);
@@ -3694,13 +3729,12 @@ function selesaiPeriksa(visitId){
   visit.updatedAt = nowISO();
   visit.queueReadyToAdvance = false;
   visit.workflow = visit.workflow || {}; visit.workflow.completedAt = nowISO();
-  const nextPatient = advanceNextPatientInQueue(visit);
   Store.save();
   poliState.activeVisitId = null;
   poliState.resepItems = [];
-  refreshPoliQueue(); refreshQueueControlPanel();
-  document.getElementById('poli-exam-area').innerHTML = '<div class="panel"><div class="panel-body"><div class="empty"><div class="big">🩺</div>Pilih pasien dari antrian untuk memulai pemeriksaan.</div></div></div>';
-  if(nextPatient) showToast('Pasien '+visit.noAntrian+' selesai. Nomor '+nextPatient.noAntrian+' otomatis dipanggil.','success');
+  refreshPoliQueue(); refreshQueueControlPanel(); if(window.__rjRerender)window.__rjRerender();
+  document.getElementById('poli-exam-area').innerHTML = '<div class="panel"><div class="panel-body"><div class="empty"><div class="big">🩺</div>Pemeriksaan '+esc(visit.noAntrian)+' selesai. Panggil pasien berikutnya jika siap.</div></div></div>';
+  showToast('Pemeriksaan '+visit.noAntrian+' selesai. Antrean berikutnya siap dipanggil secara manual.','success');
 }
 
 /* =================================================================
@@ -4076,7 +4110,8 @@ function prosesBayar(visitId, metode, rincianRows, total){
   const visit = getVisit(visitId);
   const trx = {id:uid('TRX'), visitId, rincian: rincianRows.map(r=>({label:r[0], jumlah:r[1]})), total, metode, createdAt: nowISO()};
   Store.data.transactions.push(trx);
-  visit.status = visit.resepId ? 'obat_siap' : 'selesai';
+  const rxForVisit=getResepByVisit(visit.id);
+  visit.status = (rxForVisit && Array.isArray(rxForVisit.items) && rxForVisit.items.length>0 && ['menunggu','disiapkan'].includes(rxForVisit.status)) ? 'obat_siap' : 'selesai';
   visit.updatedAt = nowISO();
   Store.save();
   logAudit('pembayaran', visit.noAntrian+' — '+esc(getPatient(visit.patientId).nama)+' · '+formatRupiah(total)+' · '+metode);
@@ -5091,6 +5126,10 @@ function runSystemAudit(){
   const checks=[];
   function check(id,label,pass,detail){checks.push({id,label,pass,detail});}
   check('db','Database demo dapat dimuat',!!Store.data&&Array.isArray(Store.data.users)&&Array.isArray(Store.data.bookings), 'Store.data tersedia dan memiliki users + bookings.');
+  check('v1585-active-visit-restore','Ruang pemeriksaan aktif dipulihkan ketika Rawat Jalan dibuka',/currentActive/.test(renderPoli.toString())&&/renderFormPeriksa\(currentActive\)/.test(renderPoli.toString()),'Kunjungan berstatus diperiksa dipulihkan berdasarkan ID kunjungan tanpa mengubah statusnya.');
+  check('v1585-queue-simplified','Kontrol antrean menggunakan tombol sesuai status',/Panggil Berikutnya/.test(renderQueueControlPanel.toString())&&/Mulai Pemeriksaan/.test(renderQueueControlPanel.toString())&&/Selesaikan Pemeriksaan/.test(renderQueueControlPanel.toString()),'Tombol utama mengikuti status menunggu, dipanggil, atau sedang diperiksa.');
+  check('v1585-final-correction','Koreksi catatan final menyimpan jejak revisi',typeof openFinalVisitCorrection==='function'&&/koreksi-final/.test(openFinalVisitCorrection.toString()),'Koreksi final menyimpan snapshot sebelumnya, nilai terbaru, waktu, dan akun pengoreksi.');
+  check('v1585-no-phantom-pharmacy','Perjalanan pasien tidak membuat tahap farmasi untuk resep kosong',/rx && Array\.isArray\(rx\.items\) && rx\.items\.length>0/.test(patientJourneyDefinition.toString()),'Tahap farmasi hanya muncul bila kunjungan benar-benar memiliki resep aktif berisi item.');
   check('roles','Role utama tersedia',['admin','loket','rawat_jalan','dokter','pasien'].every(function(r){return Store.data.users.some(function(u){return u.role===r;});}), 'Admin, Loket, Rawat Jalan, Dokter, Pasien.');
   check('patient-nav','Navigasi pasien memiliki lima menu sesuai kesepakatan',['pasien-dashboard','pasien-booking','pasien-info','pasien-booking-saya','pasien-riwayat'].every(function(r){return ROLE_ROUTE_RULES.pasien.includes(r);}) && !ROLE_ROUTE_RULES.pasien.includes('pasien-rawat-inap') && !ROLE_ROUTE_RULES.pasien.includes('monitor-antrean'), 'Beranda · Rawat Jalan · Informasi · Booking Saya · Riwayat; Rawat Inap dan Monitor bukan menu navbar pasien.');
   check('catalog','Master poli memiliki Reguler dan Eksekutif',Store.data.poli.some(function(x){return x.layanan==='Poliklinik Spesialis';})&&Store.data.poli.some(function(x){return x.layanan==='Poliklinik Eksekutif';}), 'Konteks layanan tidak dicampur.');
@@ -5201,9 +5240,9 @@ function runSystemAudit(){
 function renderAuditSistem(){
   setPageTitle('Audit Sistem');
   const checks=runSystemAudit(), pass=checks.filter(function(x){return x.pass;}).length;
-  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V15.8.2 untuk memeriksa aturan booking, nomor antrean bersama simulasi, jalur utama, data demo, permintaan antarunit, dan batas prototype.')+
+  document.getElementById('main-content').innerHTML=pageIntro('Pemeriksaan internal V15.8.5 untuk memeriksa aturan booking, nomor antrean bersama simulasi, jalur utama, data demo, permintaan antarunit, dan batas prototype.')+
     '<div class="ops-kpi-grid"><div class="ops-kpi"><div class="kpi-label">Lulus</div><div class="kpi-value">'+pass+'</div></div><div class="ops-kpi"><div class="kpi-label">Diperiksa</div><div class="kpi-value">'+checks.length+'</div></div><div class="ops-kpi"><div class="kpi-label">Status</div><div class="kpi-value" style="font-size:20px">'+(pass===checks.length?'SIAP':'PERLU REVIEW')+'</div></div></div>'+
-    '<div class="panel"><div class="panel-head"><div><h2>🧪 Self-Test V15.8.2</h2><div class="hint">Ini adalah audit data/aturan sisi client, bukan pengganti pengujian keamanan backend.</div></div><button class="btn btn-outline btn-sm" onclick="renderAuditSistem()">↻ Jalankan Lagi</button></div><div class="panel-body">'+
+    '<div class="panel"><div class="panel-head"><div><h2>🧪 Self-Test V15.8.5</h2><div class="hint">Ini adalah audit data/aturan sisi client, bukan pengganti pengujian keamanan backend.</div></div><button class="btn btn-outline btn-sm" onclick="renderAuditSistem()">↻ Jalankan Lagi</button></div><div class="panel-body">'+
     '<div class="table-wrap"><table><thead><tr><th>Status</th><th>Pemeriksaan</th><th>Detail</th></tr></thead><tbody>'+checks.map(function(c){return '<tr><td>'+(c.pass?'<span class="badge badge-sage">✓ LULUS</span>':'<span class="badge badge-brick">✕ GAGAL</span>')+'</td><td><strong>'+esc(c.label)+'</strong></td><td>'+esc(c.detail)+'</td></tr>';}).join('')+'</tbody></table></div></div></div>'+
     '<div class="alert alert-warning"><strong>Batas prototype:</strong> localStorage hanya untuk simulasi. Untuk produksi dibutuhkan backend, database terpusat, autentikasi server, otorisasi server, audit trail terpusat, enkripsi, backup, dan integrasi resmi.</div>';
 }

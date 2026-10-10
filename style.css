@@ -959,3 +959,13 @@ input:focus,select:focus,textarea:focus{outline:2px solid rgba(22,139,255,.18)!i
 @media(prefers-reduced-motion:reduce){
   .admin-folder-item,.action-card{transition:none!important}
 }
+
+/* V15.8.5 — pemeriksaan dokter menggunakan ruang kerja lebar, bukan tab menumpuk di kiri. */
+.exam-tabs{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));width:100%;gap:8px!important;align-items:stretch;box-sizing:border-box;margin:14px 0 10px!important}
+.exam-tabs .tab{width:100%;min-width:0;justify-content:center;text-align:center;white-space:normal;line-height:1.25;padding:12px 10px;box-sizing:border-box}
+#form-periksa [data-exampane]{width:100%;min-width:0;box-sizing:border-box}
+#form-periksa [data-exampane] .field-row,#form-periksa [data-exampane] .field-row3{width:100%;box-sizing:border-box}
+#poli-exam-area{min-width:0}
+#poli-exam-area>.panel>.panel-body{min-width:0}
+@media(max-width:900px){.exam-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:520px){.exam-tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px!important}.exam-tabs .tab{padding:10px 7px;font-size:12px}}
