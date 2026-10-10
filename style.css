@@ -981,3 +981,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid rgba(22,139,255,.18)!i
 .doctor-bottom-nav .tab-item{flex:1 1 0;min-width:0;padding:7px 2px;font-size:9px;white-space:nowrap}
 .doctor-bottom-nav .tab-item .ic{font-size:16px}
 @media(max-width:600px){.doctor-bottom-nav{bottom:10px;width:calc(100% - 10px)}.doctor-bottom-nav .tab-item{padding:7px 0;font-size:8px}.doctor-bottom-nav .tab-item .ic{font-size:15px}}
+
+
+/* V16.0.1 — IGD bed monitor: zone colors are labels, not a substitute for triage. */
+.igd-zone-panel{margin:16px 0}.igd-zone-panel.igd-zone-green{border-top:4px solid #2f9e58}.igd-zone-panel.igd-zone-yellow{border-top:4px solid #d6a329}.igd-zone-panel.igd-zone-red{border-top:4px solid #cf4545}.igd-bed-grid{grid-template-columns:repeat(auto-fit,minmax(205px,1fr))}.igd-bed-card{display:flex;flex-direction:column;gap:10px;min-height:170px}.igd-bed-card .field{margin:4px 0 0}.igd-bed-card .field select{width:100%;min-width:0}.igd-bed-card .btn{align-self:flex-start}.igd-zone-green .panel-head h2{color:#238247}.igd-zone-yellow .panel-head h2{color:#946a0b}.igd-zone-red .panel-head h2{color:#b62c2c}@media(max-width:600px){.igd-bed-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.igd-bed-card{padding:9px}.igd-bed-card>div:first-child{align-items:flex-start;flex-direction:column}}

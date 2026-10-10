@@ -1,17 +1,20 @@
-# SIMRS PROTOTYPE — V16.0.0
+# SIMRS PROTOTYPE — V16.0.1
 
-## Perubahan V16.0.0
-- Baseline pengembangan: V15.8.7.
-- Sembilan KPI operasional, Patient Journey, jadwal kontrol poli, dan informasi praktik dokter ditempatkan pada Beranda.
-- Halaman Poli dokter rawat jalan difokuskan pada dashboard sesi dokter, kontrol antrean, daftar pasien, dan ruang pemeriksaan.
-- Menu Riwayat di navbar dokter rawat jalan dihilangkan setelah audit tumpang tindih; daftar pemeriksaan khusus dokter dipertahankan sebagai bagian lipat di Rekam Medis.
-- Riwayat klinis per pasien tetap tersedia dalam pencarian/detail Rekam Medis. Data kunjungan tidak dihapus.
-- Tema Glass UI dan alur integrasi yang ada dipertahankan.
+## Perubahan V16.0.1 — Penyempurnaan Workflow IGD
+- Baseline langsung: V16.0.0 (versi terakhir yang dibuat); alur Rawat Jalan dan fitur versi sebelumnya dipertahankan.
+- Mengembalikan dan memperjelas Perjalanan Saya untuk episode IGD aktif, termasuk triase, tindakan, penunjang, farmasi, observasi, dan proses pindah/pulang sesuai status tersimpan.
+- Menambahkan navbar Beranda IGD untuk akun klinis IGD serta farmasi/kasir yang ditugaskan ke IGD, berisi ringkasan pasien aktif, pasien baru, pelayanan, observasi, rencana admisi, perpindahan terkonfirmasi, kepulangan, dan keterisian bed.
+- Menambahkan Monitor IGD berisi Zona Hijau, Zona Kuning, dan Zona Merah, masing-masing 20 bed (total 60). Status bed: kosong, terisi, persiapan/dibersihkan, dan perbaikan.
+- Penempatan pasien ke bed dan konfirmasi pasien keluar dibatasi berdasarkan peran. Keputusan pulang belum mengakhiri episode sebelum pasien benar-benar keluar; perpindahan ke Rawat Inap mengakhiri episode IGD setelah admisi dikonfirmasi, sementara riwayat IGD tetap disimpan.
+- Menu Riwayat terpisah di akun Dokter IGD dihilangkan untuk menghindari duplikasi dengan Rekam Medis; jejak audit tetap dipertahankan.
+- Tema Glass UI, alur Rawat Jalan, serta aset dan fungsi lain yang tidak terkait perubahan ini dipertahankan.
+
+> Batas pengujian V16.0.1: pemeriksaan sintaks, struktur berkas, konfigurasi PWA, dan pemeriksaan statis dilakukan. Pengujian browser interaktif end-to-end tidak berhasil dijalankan karena lingkungan browser memblokir navigasi; karena itu, pengujian tersebut tidak diklaim lulus.
 
 # SIMRS PROTOTYPE — Portfolio / Demo
 
-**Versi:** V15.8.7  
-**Baseline pengembangan:** V15.8.5  
+**Versi historis bagian ini:** V15.8.7  
+**Baseline historis:** V15.8.5  
 **Platform:** PWA / Web  
 **Status:** Prototype portfolio, bukan SIMRS produksi
 
