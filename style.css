@@ -960,12 +960,18 @@ input:focus,select:focus,textarea:focus{outline:2px solid rgba(22,139,255,.18)!i
   .admin-folder-item,.action-card{transition:none!important}
 }
 
-/* V15.8.5 — pemeriksaan dokter menggunakan ruang kerja lebar, bukan tab menumpuk di kiri. */
-.exam-tabs{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));width:100%;gap:8px!important;align-items:stretch;box-sizing:border-box;margin:14px 0 10px!important}
+/* V15.8.6 — ruang kerja dokter dua kolom; empat tab dokter, screening hanya dibaca dari ringkasan perawat. */
+.doctor-workspace{display:grid;grid-template-columns:minmax(240px,0.78fr) minmax(0,2fr);gap:18px;align-items:start;width:100%;min-width:0}
+.doctor-summary,.doctor-workspace-main{min-width:0;box-sizing:border-box}
+.doctor-summary{padding:12px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.42);display:flex;flex-direction:column;gap:12px}
+.doctor-summary>.alert{margin:0}
+.doctor-payer-summary{border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:6px;font-size:13px}
+.exam-tabs{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));width:100%;gap:8px!important;align-items:stretch;box-sizing:border-box;margin:0 0 10px!important}
 .exam-tabs .tab{width:100%;min-width:0;justify-content:center;text-align:center;white-space:normal;line-height:1.25;padding:12px 10px;box-sizing:border-box}
 #form-periksa [data-exampane]{width:100%;min-width:0;box-sizing:border-box}
 #form-periksa [data-exampane] .field-row,#form-periksa [data-exampane] .field-row3{width:100%;box-sizing:border-box}
 #poli-exam-area{min-width:0}
 #poli-exam-area>.panel>.panel-body{min-width:0}
-@media(max-width:900px){.exam-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:900px){.doctor-workspace{grid-template-columns:minmax(210px,.7fr) minmax(0,1.5fr);gap:12px}.exam-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){.doctor-workspace{grid-template-columns:minmax(0,1fr)}.doctor-summary{order:0}.doctor-workspace-main{order:1}}
 @media(max-width:520px){.exam-tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px!important}.exam-tabs .tab{padding:10px 7px;font-size:12px}}

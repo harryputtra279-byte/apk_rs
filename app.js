@@ -3222,6 +3222,7 @@ function bindQueueControlPanel(){
 }
 
 function openScreening(visitId){
+  const actor=Session.currentUser; if(!actor||actor.role!=='perawat'){showToast('Screening hanya dapat diisi oleh akun perawat.','danger');return;}
   const v=getVisit(visitId); if(!v)return; const p=getPatient(v.patientId); if(!p)return;
   const statusSebelumScreening=v.status; const oldScr=v.screening||{}; openModal('<div class="modal-head"><h2>🩺 Screening Awal — '+esc(p.nama)+'</h2><button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button></div><div class="modal-body"><p class="hint">Screening dapat dikoreksi sebelum/follow-up sesuai kewenangan. Perubahan dicatat dalam riwayat.</p><div class="field-row"><div class="field"><label>Tekanan Darah</label><input id="scr-td" placeholder="120/80" value="'+esc(oldScr.td||'')+'"></div><div class="field"><label>Nadi</label><input id="scr-nadi" type="number" placeholder="80" value="'+esc(oldScr.nadi||'')+'"></div></div><div class="field-row"><div class="field"><label>Suhu °C</label><input id="scr-suhu" type="number" step="0.1" placeholder="36.7" value="'+esc(oldScr.suhu||'')+'"></div><div class="field"><label>SpO₂ %</label><input id="scr-spo2" type="number" placeholder="98" value="'+esc(oldScr.spo2||'')+'"></div></div><div class="field-row"><div class="field"><label>Berat Badan kg</label><input id="scr-bb" type="number" step="0.1" value="'+esc(oldScr.bb||'')+'"></div><div class="field"><label>Tinggi Badan cm</label><input id="scr-tb" type="number" step="0.1" value="'+esc(oldScr.tb||'')+'"></div></div><div class="field"><label>Keluhan Utama / Screening</label><textarea id="scr-keluhan">'+esc(oldScr.keluhan||v.keluhan||'')+'</textarea></div><div class="field"><label>Alergi</label><input id="scr-alergi" value="'+esc(oldScr.alergi||p.alergi||'')+'" placeholder="Tidak diketahui / sebutkan bila ada"></div><button class="btn btn-primary btn-block" id="btn-save-screening">Simpan Koreksi Screening & Kirim ke Dokter</button></div>');
   document.getElementById('btn-save-screening').addEventListener('click',function(){
@@ -3334,9 +3335,9 @@ function refreshPoliQueue(){
   area.innerHTML=list.map(v=>{
     const p=getPatient(v.patientId), age=v.workflow&&v.workflow.screeningAt?Math.max(0,Math.round((Date.now()-new Date(v.workflow.screeningAt).getTime())/60000)):Math.max(0,Math.round((Date.now()-new Date(v.createdAt).getTime())/60000));
     let action='';
-    if(['rawat_jalan','perawat'].includes(u.role) && ['menunggu_screening','screening'].includes(v.status)) action='<button class="btn btn-primary btn-sm" data-screening="'+v.id+'">🩺 Screening</button>';
+    if(['perawat'].includes(u.role) && ['menunggu_screening','screening'].includes(v.status)) action='<button class="btn btn-primary btn-sm" data-screening="'+v.id+'">🩺 Screening</button>';
     else if(u.role==='dokter' && ['menunggu_dokter','dipanggil','menunggu_review','menunggu_poli','screening'].includes(v.status)) action=v.status==='screening'?'<span class="badge badge-amber">⏳ Screening berjalan</span>':'<button class="btn btn-primary btn-sm" data-openvisit="'+v.id+'">'+(v.status==='dipanggil'?'🟢 Mulai Pemeriksaan':'Buka')+'</button>';
-    else if(u.role==='admin' && ['menunggu_screening','screening'].includes(v.status)) action='<button class="btn btn-primary btn-sm" data-screening="'+v.id+'">Screening</button>';
+    else if(u.role==='admin' && ['menunggu_screening','screening'].includes(v.status)) action='<span class="badge badge-amber">Screening hanya oleh perawat</span>';
     return '<div class="rj-queue-item '+(v.prioritas?'urgent':'')+'"><div><div class="rj-q-top"><span class="rj-q-no">'+esc(v.noAntrian)+'</span>'+badgeStatus(v.status)+'</div>'+(u.role==='dokter' && ['menunggu_dokter','dipanggil','menunggu_review','menunggu_poli','screening'].includes(v.status)?'<button type="button" class="btn btn-ghost btn-sm" style="padding:0;font-weight:700" data-openvisit="'+v.id+'">'+esc(p.nama)+'</button>':'<strong>'+esc(p.nama)+'</strong>')+'<div class="hint">RM '+esc(p.id)+' · '+age+' menit dalam tahap aktif'+(v.prioritas?' · 🚩 prioritas':'')+'</div></div><div class="rj-q-actions">'+action+'<button class="btn btn-ghost btn-sm" data-history="'+v.patientId+'">Riwayat</button></div></div>';
   }).join('');
   area.querySelectorAll('[data-screening]').forEach(b=>b.addEventListener('click',()=>openScreening(b.dataset.screening)));
@@ -3390,19 +3391,8 @@ function renderFormPeriksa(visit){
         '<div style="margin-top:10px">'+riwayat.map(v=>historyItemHtmlFull(v)).join('')+'</div></details>' : '')+
       hasilLabBlock+
       '<form id="form-periksa">'+
-      '<div class="field"><label>Keluhan</label><textarea id="px-keluhan">'+esc(visit.keluhan)+'</textarea></div>'+
-      '<div class="field-row3">'+
-        '<div class="field"><label>Tekanan Darah</label><input type="text" id="px-td" placeholder="120/80" value="'+esc(vital.td||'')+'"></div>'+
-        '<div class="field"><label>Nadi (x/menit)</label><input type="number" id="px-nadi" value="'+esc(vital.nadi||'')+'"></div>'+
-        '<div class="field"><label>Suhu (°C)</label><input type="number" step="0.1" id="px-suhu" value="'+esc(vital.suhu||'')+'"></div>'+
-      '</div>'+
-      '<div class="field-row3">'+
-        '<div class="field"><label>Respirasi (x/menit)</label><input type="number" id="px-rr" value="'+esc(vital.rr||'')+'"></div>'+
-        '<div class="field"><label>Berat Badan (kg)</label><input type="number" id="px-bb" value="'+esc(vital.bb||'')+'"></div>'+
-        '<div class="field"><label>Tinggi Badan (cm)</label><input type="number" id="px-tb" value="'+esc(vital.tb||'')+'"></div>'+
-      '</div>'+
+      '<div class="field"><label>Pemeriksaan Dokter / Temuan Klinis</label><textarea id="px-catatan" placeholder="Catat anamnesis tambahan, pemeriksaan fisik dokter, dan temuan klinis. Data screening perawat tersedia di panel kiri.">'+esc(visit.catatan)+'</textarea></div>'+
       '<div class="field"><label>Diagnosis</label><input type="text" id="px-diagnosis" value="'+esc(visit.diagnosis)+'"></div>'+
-      '<div class="field"><label>Catatan / Tindakan</label><textarea id="px-catatan">'+esc(visit.catatan)+'</textarea></div>'+
       '<div class="field"><label>Rencana / Next Step</label><select id="px-next-step"><option value="selesai" '+(nextStepValue==='selesai'?'selected':'')+'>Selesai / Pulang</option><option value="farmasi" '+(nextStepValue==='farmasi'?'selected':'')+'>Resep → Farmasi Rawat Jalan</option><option value="kontrol" '+(nextStepValue==='kontrol'?'selected':'')+'>Jadwal Kontrol</option><option value="penunjang" '+(nextStepValue==='penunjang'?'selected':'')+'>Pemeriksaan Penunjang</option><option value="ranap" '+(nextStepValue==='ranap'?'selected':'')+'>Admisi Rawat Inap</option><option value="rujuk" '+(nextStepValue==='rujuk'?'selected':'')+'>Rujuk Keluar</option></select></div>'+
       '<div class="field checkbox-row"><input type="checkbox" id="px-rujuk-lab" '+(visit.labRequest?'checked disabled':'')+'><label for="px-rujuk-lab" style="margin:0">Permintaan Laboratorium</label></div>'+
       '<div class="field hidden" id="px-lab-jenis-wrap"><label>Jenis Pemeriksaan Laboratorium</label><input type="text" id="px-lab-jenis" placeholder="contoh: Darah Lengkap"></div>'+
@@ -3422,9 +3412,9 @@ function renderFormPeriksa(visit){
     const parent=form.parentElement;
     const nav=document.createElement('div'); nav.className='tabs exam-tabs'; nav.setAttribute('role','tablist');
     nav.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 10px;width:100%;box-sizing:border-box;align-items:stretch';
-    const names=[['screening','Screening'],['dokter','Pemeriksaan Dokter'],['diagnosis','Diagnosis'],['resep','Resep'],['riwayat','Riwayat']];
+    const names=[['dokter','Pemeriksaan'],['diagnosis','Diagnosis'],['resep','Resep'],['riwayat','Riwayat']];
     const panes={};
-    const savedTab=(visit.examDraft&&visit.examDraft.activeTab&&names.some(function(x){return x[0]===visit.examDraft.activeTab;}))?visit.examDraft.activeTab:'screening';
+    const previousTab=visit.examDraft&&visit.examDraft.activeTab; const savedTab=(previousTab&&names.some(function(x){return x[0]===previousTab;}))?previousTab:(previousTab==='screening'?'dokter':'dokter');
     names.forEach(function(pair,i){
       const b=document.createElement('button'); b.type='button'; b.className='tab'+(pair[0]===savedTab?' active':''); b.dataset.examtab=pair[0]; b.textContent=pair[1]; b.setAttribute('role','tab'); b.setAttribute('aria-selected',pair[0]===savedTab?'true':'false'); nav.appendChild(b);
       const pane=document.createElement('section'); pane.dataset.exampane=pair[0]; pane.style.display=pair[0]===savedTab?'block':'none'; pane.style.padding='8px 0'; panes[pair[0]]=pane;
@@ -3432,26 +3422,11 @@ function renderFormPeriksa(visit){
     parent.insertBefore(nav,form);
     const draftStatus=form.querySelector('#exam-draft-status');
     if(draftStatus) form.removeChild(draftStatus);
-    form.insertBefore(panes.screening,form.firstChild);
-    names.slice(1).forEach(function(pair){form.insertBefore(panes[pair[0]],form.firstChild);});
-    // Screening yang sudah tercatat tetap bisa dibuka dan dikoreksi lewat form resmi dengan jejak revisi.
-    const scr=Array.from(parent.querySelectorAll('.alert.alert-info')).find(function(el){return /Screening Awal/.test(el.textContent);});
-    if(scr)scr.remove();
-    {
-      const sc=visit.screening||{};
-      panes.screening.innerHTML='<div class="hint" style="margin-bottom:10px">Data screening dapat dikoreksi langsung di halaman ini. Setiap perubahan menyimpan nilai sebelumnya dalam riwayat revisi.</div>'+
-        '<div class="field-row"><div class="field"><label>Tekanan Darah</label><input id="px-scr-td" value="'+esc(sc.td||'')+'" placeholder="120/80"></div><div class="field"><label>Nadi</label><input id="px-scr-nadi" type="number" value="'+esc(sc.nadi||'')+'"></div></div>'+
-        '<div class="field-row"><div class="field"><label>Suhu °C</label><input id="px-scr-suhu" type="number" step="0.1" value="'+esc(sc.suhu||'')+'"></div><div class="field"><label>SpO₂ %</label><input id="px-scr-spo2" type="number" value="'+esc(sc.spo2||'')+'"></div></div>'+
-        '<div class="field-row"><div class="field"><label>Berat Badan kg</label><input id="px-scr-bb" type="number" step="0.1" value="'+esc(sc.bb||'')+'"></div><div class="field"><label>Tinggi Badan cm</label><input id="px-scr-tb" type="number" step="0.1" value="'+esc(sc.tb||'')+'"></div></div>'+
-        '<div class="field"><label>Keluhan / Screening</label><textarea id="px-scr-keluhan">'+esc(sc.keluhan||visit.keluhan||'')+'</textarea></div>'+
-        '<div class="field"><label>Alergi</label><input id="px-scr-alergi" value="'+esc(sc.alergi||patient.alergi||'')+'"></div>'+
-        '<div class="hint">Terakhir dicatat oleh '+esc(sc.by||'-')+' · '+esc(sc.updatedAt?formatTanggalWaktu(sc.updatedAt):(sc.at?formatTanggalWaktu(sc.at):'-'))+'</div>';
-    }
-    const allergy=parent.querySelector('.allergy-flag'); if(allergy)panes.screening.appendChild(allergy);
+    names.slice().reverse().forEach(function(pair){form.insertBefore(panes[pair[0]],form.firstChild);});
     const history=Array.from(parent.children).find(function(el){return el.tagName==='DETAILS';}); if(history)panes.riwayat.appendChild(history);
     const result=Array.from(parent.children).find(function(el){return el.classList&&el.classList.contains('alert')&&/Hasil Laboratorium/.test(el.textContent);}); if(result)panes.dokter.appendChild(result);
     const fieldToPane={
-      'px-keluhan':'dokter','px-td':'dokter','px-nadi':'dokter','px-suhu':'dokter','px-rr':'dokter','px-bb':'dokter','px-tb':'dokter','px-catatan':'dokter',
+      'px-catatan':'dokter',
       'px-diagnosis':'diagnosis','px-next-step':'diagnosis','px-rujuk-lab':'diagnosis','px-lab-jenis':'diagnosis','px-rujuk-rad':'diagnosis','px-rad-jenis':'diagnosis','px-rujuk-igd':'diagnosis','px-igd-alasan':'diagnosis',
       'px-resep-section':'resep','btn-simpan-draft-periksa':'dokter','btn-rujuk-ranap':'diagnosis'
     };
@@ -3464,8 +3439,20 @@ function renderFormPeriksa(visit){
       if(el.tagName==='BUTTON' || (el.querySelector && el.querySelector('#btn-simpan-draft-periksa')))pane=pane||'dokter';
       if(pane)panes[pane].appendChild(el);
     });
-    // Simpan indikator status di area tab yang selalu terlihat.
+    // Indikator draft dan workspace dua kolom: ringkasan pasien di kiri, formulir dokter di kanan.
     const status=document.createElement('div'); status.id='exam-draft-status'; status.className='hint'; status.setAttribute('aria-live','polite'); status.style.margin='8px 0'; status.textContent='Draft otomatis aktif — perubahan disimpan setelah jeda singkat.'; nav.insertAdjacentElement('afterend',status);
+    const workspace=document.createElement('div'); workspace.className='doctor-workspace';
+    const sidebar=document.createElement('aside'); sidebar.className='doctor-summary'; sidebar.setAttribute('aria-label','Ringkasan pasien');
+    const main=document.createElement('section'); main.className='doctor-workspace-main'; main.setAttribute('aria-label','Ruang kerja dokter');
+    parent.insertBefore(workspace,parent.firstChild); workspace.appendChild(sidebar); workspace.appendChild(main);
+    const initialHeader=Array.from(parent.children).find(function(el){return el!==workspace&&el.querySelector&&el.querySelector('#btn-lihat-riwayat');});
+    const screeningSummary=Array.from(parent.children).find(function(el){return el!==workspace&&el.classList&&el.classList.contains('alert')&&/Screening Awal/.test(el.textContent);});
+    const allergySummary=Array.from(parent.children).find(function(el){return el!==workspace&&el.classList&&el.classList.contains('allergy-flag');});
+    if(initialHeader)sidebar.appendChild(initialHeader);
+    if(screeningSummary){screeningSummary.innerHTML=screeningSummary.innerHTML+'<div class=\"hint\" style=\"margin-top:6px\">Ringkasan baca-saja dari screening perawat.</div>';sidebar.appendChild(screeningSummary);}
+    if(allergySummary)sidebar.appendChild(allergySummary);
+    const payer=document.createElement('div'); payer.className='doctor-payer-summary'; payer.innerHTML='<strong>Penjamin &amp; pembayaran</strong><div>Penjamin: '+esc(visit.jenisBayar||visit.penjamin||'-')+'</div><div>Metode pembayaran: '+esc((visit.billing&&visit.billing.metodeBayar)||'Belum dicatat')+'</div><div class=\"hint\">Informasi saja — transaksi tetap dikelola kasir.</div>'; sidebar.appendChild(payer);
+    main.appendChild(nav); main.appendChild(status); main.appendChild(form);
     nav.querySelectorAll('[data-examtab]').forEach(function(btn){btn.addEventListener('click',function(){
       nav.querySelectorAll('[data-examtab]').forEach(function(b){b.classList.toggle('active',b===btn);b.setAttribute('aria-selected',b===btn?'true':'false');});
       Object.keys(panes).forEach(function(key){panes[key].style.display=key===btn.dataset.examtab?'block':'none';}); visit.examDraft=visit.examDraft||{};visit.examDraft.activeTab=btn.dataset.examtab;try{Store.save();}catch(e){}
@@ -3554,7 +3541,7 @@ function openRiwayatModal(patientId){
 function historyItemHtmlFull(v){
   const poli = getPoli(v.poliId);
   const resep = v.resepId ? getResep(v.resepId) : null;
-  const vital=v.vital||v.screening||{};
+  const vital=Object.assign({},v.screening||{},v.vital||{});
   return '<div class="history-item"><div class="when">'+formatTanggalWaktu(v.updatedAt||v.createdAt)+' &middot; '+esc(poli.nama)+' &middot; '+badgeStatus(v.status)+'</div>'+
     '<div style="margin-top:4px"><strong>Dokter:</strong> '+esc((getUserById(v.dokterId)||{}).nama||'-')+'</div>'+
     '<div><strong>Keluhan:</strong> '+esc(v.keluhan||'-')+'</div>'+
@@ -3582,8 +3569,8 @@ function simpanDraftPeriksa(visitId){
   const visit=getVisit(visitId); if(!visit)return;
   const kel=document.getElementById('px-keluhan'), td=document.getElementById('px-td'), nadi=document.getElementById('px-nadi'), suhu=document.getElementById('px-suhu'), rr=document.getElementById('px-rr'), bb=document.getElementById('px-bb'), tb=document.getElementById('px-tb'), dx=document.getElementById('px-diagnosis'), cat=document.getElementById('px-catatan'), next=document.getElementById('px-next-step');
   const before={keluhan:visit.keluhan||'',vital:JSON.parse(JSON.stringify(visit.vital||{})),diagnosis:visit.diagnosis||'',catatan:visit.catatan||'',nextStep:visit.nextStep||'selesai'};
-  visit.keluhan=kel?kel.value.trim():visit.keluhan;
-  visit.vital={td:td?td.value.trim():'',nadi:nadi?nadi.value:'',suhu:suhu?suhu.value:'',rr:rr?rr.value:'',bb:bb?bb.value:'',tb:tb?tb.value:''};
+  if(kel)visit.keluhan=kel.value.trim();
+  if(td||nadi||suhu||rr||bb||tb)visit.vital={td:td?td.value.trim():'',nadi:nadi?nadi.value:'',suhu:suhu?suhu.value:'',rr:rr?rr.value:'',bb:bb?bb.value:'',tb:tb?tb.value:''};
   visit.diagnosis=dx?dx.value.trim():visit.diagnosis;
   visit.catatan=cat?cat.value.trim():visit.catatan;
   visit.nextStep=next?next.value:visit.nextStep;
@@ -3592,7 +3579,7 @@ function simpanDraftPeriksa(visitId){
     visit.examRevisions.push({previous:before,changedAt:nowISO(),changedBy:Session.currentUser?(Session.currentUser.id||Session.currentUser.nama):null,stage:'draft'});
   }
   visit.examDraft=visit.examDraft||{};
-  visit.examDraft.activeTab=(document.querySelector('.exam-tabs [data-examtab].active')||{}).dataset?.examtab||visit.examDraft.activeTab||'screening';
+  visit.examDraft.activeTab=(document.querySelector('.exam-tabs [data-examtab].active')||{}).dataset?.examtab||visit.examDraft.activeTab||'dokter';
   visit.examDraft.rujukLab=!!(document.getElementById('px-rujuk-lab')&&document.getElementById('px-rujuk-lab').checked);
   visit.examDraft.labJenis=(document.getElementById('px-lab-jenis')||{}).value||'';
   visit.examDraft.rujukRad=!!(document.getElementById('px-rujuk-rad')&&document.getElementById('px-rujuk-rad').checked);
@@ -3624,18 +3611,7 @@ function simpanDraftPeriksa(visitId){
     }
     visit.billing=visit.billing||{registrasi:BIAYA_REGISTRASI,konsultasi:0,obat:0,lab:0};visit.billing.obat=0;
   }
-  const scrFields={td:'px-scr-td',nadi:'px-scr-nadi',suhu:'px-scr-suhu',spo2:'px-scr-spo2',bb:'px-scr-bb',tb:'px-scr-tb',keluhan:'px-scr-keluhan',alergi:'px-scr-alergi'};
-  const scrNext={}; let hasScreeningEditor=false;
-  Object.keys(scrFields).forEach(function(k){const el=document.getElementById(scrFields[k]);if(el){hasScreeningEditor=true;scrNext[k]=el.value.trim();}});
-  if(hasScreeningEditor){
-    const old=visit.screening?JSON.parse(JSON.stringify(visit.screening)):null;
-    const comparable={};Object.keys(scrNext).forEach(function(k){comparable[k]=String((old&&old[k])||'');});
-    if(JSON.stringify(comparable)!==JSON.stringify(scrNext)){
-      if(old){if(!Array.isArray(visit.screeningRevisions))visit.screeningRevisions=[];visit.screeningRevisions.push({previous:old,changedAt:nowISO(),changedBy:Session.currentUser?(Session.currentUser.id||Session.currentUser.nama):null,source:'halaman_pemeriksaan'});}
-      visit.screening=Object.assign({},old||{},scrNext,{by:Session.currentUser?Session.currentUser.nama:'',at:(old&&old.at)||nowISO(),updatedAt:nowISO()});
-      const patient=getPatient(visit.patientId);if(patient && scrNext.alergi!==undefined)patient.alergi=scrNext.alergi;
-    }
-  }
+  // Screening dikelola akun perawat; halaman dokter hanya menampilkan ringkasan baca-saja.
   visit.examDraftSavedAt=nowISO(); visit.examDraftSavedBy=Session.currentUser?(Session.currentUser.id||Session.currentUser.nama):null;
   visit.queueReadyToAdvance=false; // Draft tersimpan bukan berarti pemeriksaan selesai.
   visit.updatedAt=nowISO();
@@ -3663,12 +3639,9 @@ function selesaiPeriksa(visitId){
   if(visit.status!=='diperiksa'){showToast('Kunjungan tidak lagi berstatus sedang diperiksa; cegah penyelesaian ganda.','warning');return;}
   // Simpan seluruh nilai tab yang masih terbuka sebelum membaca data final agar klik cepat tidak kehilangan perubahan.
   simpanDraftPeriksa(visitId);
-  visit.keluhan = document.getElementById('px-keluhan').value.trim();
-  visit.vital = {
-    td: document.getElementById('px-td').value.trim(), nadi: document.getElementById('px-nadi').value,
-    suhu: document.getElementById('px-suhu').value, rr: document.getElementById('px-rr').value,
-    bb: document.getElementById('px-bb').value, tb: document.getElementById('px-tb').value
-  };
+  const keluhanInput=document.getElementById('px-keluhan'); if(keluhanInput)visit.keluhan=keluhanInput.value.trim();
+  const tdInput=document.getElementById('px-td'), nadiInput=document.getElementById('px-nadi'), suhuInput=document.getElementById('px-suhu'), rrInput=document.getElementById('px-rr'), bbInput=document.getElementById('px-bb'), tbInput=document.getElementById('px-tb');
+  if(tdInput||nadiInput||suhuInput||rrInput||bbInput||tbInput)visit.vital={td:tdInput?tdInput.value.trim():'',nadi:nadiInput?nadiInput.value:'',suhu:suhuInput?suhuInput.value:'',rr:rrInput?rrInput.value:'',bb:bbInput?bbInput.value:'',tb:tbInput?tbInput.value:''};
   visit.diagnosis = document.getElementById('px-diagnosis').value.trim();
   visit.nextStep = document.getElementById('px-next-step') ? document.getElementById('px-next-step').value : visit.nextStep;
   visit.catatan = document.getElementById('px-catatan').value.trim();
