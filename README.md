@@ -1,7 +1,7 @@
 # SIMRS PROTOTYPE — Portfolio / Demo
 
-**Versi:** V15.8.3  
-**Baseline pengembangan:** V15.6.0  
+**Versi:** V15.8.4  
+**Baseline pengembangan:** V15.8.3  
 **Platform:** PWA / Web  
 **Status:** Prototype portfolio, bukan SIMRS produksi
 
@@ -11,7 +11,7 @@ SIMRS PROTOTYPE adalah proyek portfolio untuk memperlihatkan kemampuan analisis 
 
 ## 1. Baseline pengembangan
 
-Baseline untuk versi ini adalah **V15.6.0 SIMRS Booking & Antrean Terpadu**, dengan lineage sebelumnya dari V15.5.0 Patient Journey Integration dan V15.4.0 Integrasi Antarunit. V15.7.0 menambahkan monitor terikat penugasan, master ruang/shift, dan standar navigasi petugas; V15.8.0 memulihkan menu Pelayanan superuser dan memperbaiki layout topbar responsif; V15.8.2 menyegarkan ikon, warna browser, dan border Glass 3D. V15.8.3 memperbaiki koreksi screening, draft pemeriksaan, pengamanan resep duplikat, dan finalisasi antrean.
+Baseline untuk versi ini adalah **V15.6.0 SIMRS Booking & Antrean Terpadu**, dengan lineage sebelumnya dari V15.5.0 Patient Journey Integration dan V15.4.0 Integrasi Antarunit. V15.7.0 menambahkan monitor terikat penugasan, master ruang/shift, dan standar navigasi petugas; V15.8.0 memulihkan menu Pelayanan superuser dan memperbaiki layout topbar responsif; V15.8.2 menyegarkan ikon, warna browser, dan border Glass 3D. V15.8.4 menindaklanjuti alur pemeriksaan bertab, autosave tanpa pop-up, serta penyimpanan draft resep terikat kunjungan. Pengujian interaktif tetap wajib sebelum dianggap final.
 
 Aturan pengembangan proyek:
 
@@ -462,7 +462,7 @@ Pengujian ini merupakan validasi sintaks dan logika terisolasi, **bukan** penguj
 - Validasi browser penuh belum dapat dilakukan di lingkungan build; lihat `TEST_REPORT_V15.8.0.md` untuk batas pengujian.
 
 
-## V15.8.3 — Perbaikan alur klinis (review statis)
+## V15.8.4 — Perbaikan keterhubungan kunjungan, pemeriksaan, dan farmasi (working copy)
 
 - Form screening memuat kembali nilai sebelumnya agar dapat dikoreksi. Koreksi screening sebelumnya disimpan pada `screeningRevisions`.
 - Draft pemeriksaan tidak lagi mewajibkan diagnosis; draft tidak menandai antrean siap maju. Perubahan klinis dicatat pada `examRevisions`.
@@ -486,3 +486,18 @@ Pengujian ini merupakan validasi sintaks dan logika terisolasi, **bukan** penguj
 - Menambahkan fokus keyboard yang terlihat pada tombol/kartu menu tanpa mengubah rute atau alur bisnis.
 - Versi aset runtime dan cache PWA dinaikkan ke V15.8.2.
 - Tidak ada perubahan skema data atau penggantian alur pelayanan pada rilis ini.
+
+
+## V15.8.4 — Halaman pemeriksaan bertab dan draft resep
+- Halaman pemeriksaan dokter disusun menjadi tab Screening, Pemeriksaan Dokter, Diagnosis, Resep, dan Riwayat.
+- Nama pasien pada antrean dokter dapat membuka kunjungan terkait.
+- Simpan draft menggunakan indikator inline dan tidak menampilkan pop-up berulang.
+- Saat resep disimpan, resep masuk antrean Farmasi Rawat Jalan dengan ID kunjungan yang sama. Status tahap dokter pada Perjalanan Pasien tetap aktif sampai dokter melakukan finalisasi pemeriksaan.
+- Resep pending dimuat kembali ketika halaman pemeriksaan dibuka ulang.
+- Penyimpanan draft menangani kegagalan localStorage dengan indikator gagal simpan.
+- Batasan: data masih tersimpan di localStorage perangkat; sinkronisasi antarperangkat memerlukan backend.
+
+
+### Catatan pengujian V15.8.4
+
+V15.8.4 masih working copy pengembangan dan belum dinyatakan rilis bebas bug. Penyimpanan lokal menggunakan localStorage pada perangkat/browser yang sama; belum ada sinkronisasi backend lintas perangkat. Alur klinis harus divalidasi dengan uji interaktif sebelum digunakan sebagai rilis portfolio.
