@@ -883,7 +883,7 @@ input:focus,select:focus,textarea:focus{
 
 
 /* ================================================================
-   V15.8.1 — UI polish: Glass 3D / Brighter Blue
+   V15.8.2 — UI polish: Glass 3D / Brighter Blue
    Menu pelayanan keeps a clean white face; only its edge gets the blue-violet glass treatment.
    ================================================================ */
 :root{
@@ -926,3 +926,36 @@ input,select,textarea{border-color:transparent!important;background:linear-gradi
 input:focus,select:focus,textarea:focus{outline:2px solid rgba(22,139,255,.18)!important;}
 .nav-item.active,.btn-primary,.avatar-btn,.brand-mark{background:var(--core-gradient)!important;}
 .btn-primary,.nav-item.active,.avatar-btn,.brand-mark{box-shadow:0 5px 15px rgba(37,99,235,.24),inset 0 1px 0 rgba(255,255,255,.45)!important;}
+
+
+/* ================================================================
+   V15.8.2 — Glass 3D edge refinement (white surfaces preserved)
+   ================================================================ */
+:root{
+  --glass-edge-strong:linear-gradient(132deg,rgba(125,230,255,.98) 0%,rgba(56,189,248,.94) 18%,rgba(22,139,255,.92) 43%,rgba(99,102,241,.88) 73%,rgba(192,132,252,.94) 100%);
+  --shadow-glass-depth:0 8px 18px rgba(37,99,235,.11),0 2px 4px rgba(37,99,235,.07),inset 0 1px 0 rgba(255,255,255,.98),inset 0 -1px 0 rgba(99,102,241,.10);
+}
+.admin-menu-folder{
+  border:1px solid transparent!important;
+  background:linear-gradient(rgba(255,255,255,.97),rgba(255,255,255,.97)) padding-box,var(--glass-edge-strong) border-box!important;
+  box-shadow:0 20px 46px rgba(37,99,235,.15),inset 0 1px 0 #fff, inset 0 -1px 0 rgba(99,102,241,.08)!important;
+}
+.admin-folder-item,.action-card{
+  background:linear-gradient(rgba(255,255,255,.985),rgba(255,255,255,.955)) padding-box,var(--glass-edge-strong) border-box!important;
+  box-shadow:var(--shadow-glass-depth)!important;
+}
+.admin-folder-item:focus-visible,.action-card:focus-visible,.btn-outline:focus-visible,.admin-top-menu-btn:focus-visible{
+  outline:3px solid rgba(22,139,255,.28)!important;outline-offset:2px;
+}
+.admin-folder-item:hover,.action-card:hover{
+  box-shadow:0 12px 25px rgba(37,99,235,.17),inset 0 1px 0 #fff,inset 0 -1px 0 rgba(99,102,241,.10)!important;
+}
+.panel,.stat,.queue-board-item,.login-panel,.modal,.bottom-sheet,.queue-list-item,
+.patient-journey-card,.inpatient-bed-card,.ops-hero,.ops-kpi,.ops-queue-card,
+.patient-live-card,.patient-live-status,.patient-ticket-row,.checkin-result-card,
+.monitor-current,.monitor-next,.monitor-queue-list>div,.doctor-live-grid>div{
+  box-shadow:0 6px 16px rgba(37,99,235,.065),inset 0 1px 0 rgba(255,255,255,.82),var(--shadow-float);
+}
+@media(prefers-reduced-motion:reduce){
+  .admin-folder-item,.action-card{transition:none!important}
+}
