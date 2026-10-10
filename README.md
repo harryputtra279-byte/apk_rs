@@ -1,3 +1,13 @@
+# SIMRS PROTOTYPE — V15.8.8
+
+## Perubahan V15.8.8
+- Baseline pengembangan: V15.8.7.
+- Sembilan KPI operasional, Patient Journey, jadwal kontrol poli, dan informasi praktik dokter ditempatkan pada Beranda.
+- Halaman Poli dokter rawat jalan difokuskan pada dashboard sesi dokter, kontrol antrean, daftar pasien, dan ruang pemeriksaan.
+- Menu Riwayat di navbar dokter rawat jalan dihilangkan setelah audit tumpang tindih; daftar pemeriksaan khusus dokter dipertahankan sebagai bagian lipat di Rekam Medis.
+- Riwayat klinis per pasien tetap tersedia dalam pencarian/detail Rekam Medis. Data kunjungan tidak dihapus.
+- Tema Glass UI dan alur integrasi yang ada dipertahankan.
+
 # SIMRS PROTOTYPE — Portfolio / Demo
 
 **Versi:** V15.8.7  
