@@ -3197,9 +3197,12 @@ function bindQueueControlPanel(){
 
 function openScreening(visitId){
   const v=getVisit(visitId); if(!v)return; const p=getPatient(v.patientId); if(!p)return;
-  openModal('<div class="modal-head"><h2>🩺 Screening Awal — '+esc(p.nama)+'</h2><button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button></div><div class="modal-body"><p class="hint">Data screening akan diteruskan ke dokter agar pasien tidak perlu diukur ulang.</p><div class="field-row"><div class="field"><label>Tekanan Darah</label><input id="scr-td" placeholder="120/80"></div><div class="field"><label>Nadi</label><input id="scr-nadi" type="number" placeholder="80"></div></div><div class="field-row"><div class="field"><label>Suhu °C</label><input id="scr-suhu" type="number" step="0.1" placeholder="36.7"></div><div class="field"><label>SpO₂ %</label><input id="scr-spo2" type="number" placeholder="98"></div></div><div class="field-row"><div class="field"><label>Berat Badan kg</label><input id="scr-bb" type="number" step="0.1"></div><div class="field"><label>Tinggi Badan cm</label><input id="scr-tb" type="number" step="0.1"></div></div><div class="field"><label>Keluhan Utama / Screening</label><textarea id="scr-keluhan">'+esc(v.keluhan||'')+'</textarea></div><div class="field"><label>Alergi</label><input id="scr-alergi" value="'+esc(p.alergi||'')+'" placeholder="Tidak diketahui / sebutkan bila ada"></div><button class="btn btn-primary btn-block" id="btn-save-screening">Simpan Screening & Kirim ke Dokter</button></div>');
+  const oldScr=v.screening||{}; openModal('<div class="modal-head"><h2>🩺 Screening Awal — '+esc(p.nama)+'</h2><button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button></div><div class="modal-body"><p class="hint">Screening dapat dikoreksi sebelum/follow-up sesuai kewenangan. Perubahan dicatat dalam riwayat.</p><div class="field-row"><div class="field"><label>Tekanan Darah</label><input id="scr-td" placeholder="120/80" value="'+esc(oldScr.td||'')+'"></div><div class="field"><label>Nadi</label><input id="scr-nadi" type="number" placeholder="80" value="'+esc(oldScr.nadi||'')+'"></div></div><div class="field-row"><div class="field"><label>Suhu °C</label><input id="scr-suhu" type="number" step="0.1" placeholder="36.7" value="'+esc(oldScr.suhu||'')+'"></div><div class="field"><label>SpO₂ %</label><input id="scr-spo2" type="number" placeholder="98" value="'+esc(oldScr.spo2||'')+'"></div></div><div class="field-row"><div class="field"><label>Berat Badan kg</label><input id="scr-bb" type="number" step="0.1" value="'+esc(oldScr.bb||'')+'"></div><div class="field"><label>Tinggi Badan cm</label><input id="scr-tb" type="number" step="0.1" value="'+esc(oldScr.tb||'')+'"></div></div><div class="field"><label>Keluhan Utama / Screening</label><textarea id="scr-keluhan">'+esc(oldScr.keluhan||v.keluhan||'')+'</textarea></div><div class="field"><label>Alergi</label><input id="scr-alergi" value="'+esc(oldScr.alergi||p.alergi||'')+'" placeholder="Tidak diketahui / sebutkan bila ada"></div><button class="btn btn-primary btn-block" id="btn-save-screening">Simpan Koreksi Screening & Kirim ke Dokter</button></div>');
   document.getElementById('btn-save-screening').addEventListener('click',function(){
-    v.screening={td:document.getElementById('scr-td').value.trim(),nadi:document.getElementById('scr-nadi').value,suhu:document.getElementById('scr-suhu').value,spo2:document.getElementById('scr-spo2').value,bb:document.getElementById('scr-bb').value,tb:document.getElementById('scr-tb').value,keluhan:document.getElementById('scr-keluhan').value.trim(),alergi:document.getElementById('scr-alergi').value.trim(),by:Session.currentUser.nama,at:nowISO()};
+    const previous=v.screening?JSON.parse(JSON.stringify(v.screening)):null;
+    const revisedAt=nowISO();
+    if(previous){if(!Array.isArray(v.screeningRevisions))v.screeningRevisions=[];v.screeningRevisions.push({previous:previous,changedAt:revisedAt,changedBy:Session.currentUser.id||Session.currentUser.nama});}
+    v.screening={td:document.getElementById('scr-td').value.trim(),nadi:document.getElementById('scr-nadi').value,suhu:document.getElementById('scr-suhu').value,spo2:document.getElementById('scr-spo2').value,bb:document.getElementById('scr-bb').value,tb:document.getElementById('scr-tb').value,keluhan:document.getElementById('scr-keluhan').value.trim(),alergi:document.getElementById('scr-alergi').value.trim(),by:Session.currentUser.nama,at:previous?(previous.at||revisedAt):revisedAt,updatedAt:revisedAt};
     v.vital=v.screening; v.workflow=v.workflow||{}; v.workflow.screeningAt=nowISO();
     v.status='menunggu_dokter';
     v.updatedAt=nowISO();
@@ -3400,6 +3403,9 @@ function renderFormPeriksa(visit){
   });
   bindResepEvents();
   document.getElementById('btn-simpan-draft-periksa').addEventListener('click', function(){ simpanDraftPeriksa(visit.id); });
+  let examDraftTimer=null;
+  document.getElementById('form-periksa').querySelectorAll('input,textarea,select').forEach(function(field){field.addEventListener('input',function(){clearTimeout(examDraftTimer);const status=document.getElementById('exam-draft-status');if(status)status.textContent='Perubahan belum tersimpan…';examDraftTimer=setTimeout(function(){simpanDraftPeriksa(visit.id);const st=document.getElementById('exam-draft-status');if(st)st.textContent='Draft tersimpan otomatis';},900);});field.addEventListener('change',function(){clearTimeout(examDraftTimer);examDraftTimer=setTimeout(function(){simpanDraftPeriksa(visit.id);const st=document.getElementById('exam-draft-status');if(st)st.textContent='Draft tersimpan otomatis';},250);});});
+  document.getElementById('form-periksa').insertAdjacentHTML('afterbegin','<div id="exam-draft-status" class="hint" aria-live="polite">Draft otomatis aktif — perubahan disimpan setelah jeda singkat.</div>');
   document.getElementById('form-periksa').addEventListener('submit', function(e){ e.preventDefault();
     openModal('<div class="modal-head"><h2>Konfirmasi Penyelesaian</h2><button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button></div><div class="modal-body"><p>Apakah pemeriksaan pasien <strong>'+esc(patient.nama)+'</strong> dengan nomor <strong>'+esc(visit.noAntrian)+'</strong> sudah selesai?</p><div class="alert alert-info">Setelah dikonfirmasi, sistem akan memperbarui status pasien dan otomatis memanggil pasien berikutnya.</div><button class="btn btn-primary btn-block" id="btn-confirm-finish-next">Ya, Selesaikan &amp; Panggil Berikutnya</button></div>');
     document.getElementById('btn-confirm-finish-next').addEventListener('click', function(){ closeModal(); selesaiPeriksa(visit.id); });
@@ -3467,17 +3473,22 @@ function historyItemHtmlFull(v){
 function simpanDraftPeriksa(visitId){
   const visit=getVisit(visitId); if(!visit)return;
   const kel=document.getElementById('px-keluhan'), td=document.getElementById('px-td'), nadi=document.getElementById('px-nadi'), suhu=document.getElementById('px-suhu'), rr=document.getElementById('px-rr'), bb=document.getElementById('px-bb'), tb=document.getElementById('px-tb'), dx=document.getElementById('px-diagnosis'), cat=document.getElementById('px-catatan'), next=document.getElementById('px-next-step');
+  const before={keluhan:visit.keluhan||'',vital:JSON.parse(JSON.stringify(visit.vital||{})),diagnosis:visit.diagnosis||'',catatan:visit.catatan||'',nextStep:visit.nextStep||'selesai'};
   visit.keluhan=kel?kel.value.trim():visit.keluhan;
   visit.vital={td:td?td.value.trim():'',nadi:nadi?nadi.value:'',suhu:suhu?suhu.value:'',rr:rr?rr.value:'',bb:bb?bb.value:'',tb:tb?tb.value:''};
   visit.diagnosis=dx?dx.value.trim():visit.diagnosis;
   visit.catatan=cat?cat.value.trim():visit.catatan;
   visit.nextStep=next?next.value:visit.nextStep;
-  if(!visit.diagnosis){ showToast('Diagnosis wajib diisi sebelum pasien dapat dilepas dari antrean dokter.','danger'); return; }
-  visit.queueReadyToAdvance=true;
+  if(JSON.stringify(before)!==JSON.stringify({keluhan:visit.keluhan,vital:visit.vital,diagnosis:visit.diagnosis,catatan:visit.catatan,nextStep:visit.nextStep})){
+    if(!Array.isArray(visit.examRevisions))visit.examRevisions=[];
+    visit.examRevisions.push({previous:before,changedAt:nowISO(),changedBy:Session.currentUser?(Session.currentUser.id||Session.currentUser.nama):null,stage:'draft'});
+  }
+  visit.examDraftSavedAt=nowISO(); visit.examDraftSavedBy=Session.currentUser?(Session.currentUser.id||Session.currentUser.nama):null;
+  visit.queueReadyToAdvance=false; // Draft tersimpan bukan berarti pemeriksaan selesai.
   visit.updatedAt=nowISO();
   Store.save();
   logAudit('simpan_draft_pemeriksaan',visit.noAntrian+' — '+getPatient(visit.patientId).nama);
-  showToast('Data pemeriksaan tersimpan. Perawat/asisten dapat melanjutkan antrean setelah dokter menyatakan pasien selesai.','success');
+  showToast(visit.diagnosis?'Draft pemeriksaan tersimpan. Gunakan Selesaikan Pemeriksaan setelah pemeriksaan benar-benar selesai.':'Draft tersimpan tanpa diagnosis final; lengkapi diagnosis sebelum menyelesaikan pemeriksaan.','success');
   refreshPoliQueue();
 }
 function advanceNextPatientInQueue(completedVisit){
@@ -3526,7 +3537,8 @@ function createCareRequest(visit, destination, kind, detail){
   return request;
 }
 function selesaiPeriksa(visitId){
-  const visit = getVisit(visitId);
+  const visit = getVisit(visitId); if(!visit)return;
+  if(visit.status!=='diperiksa'){showToast('Kunjungan tidak lagi berstatus sedang diperiksa; cegah penyelesaian ganda.','warning');return;}
   visit.keluhan = document.getElementById('px-keluhan').value.trim();
   visit.vital = {
     td: document.getElementById('px-td').value.trim(), nadi: document.getElementById('px-nadi').value,
@@ -3536,6 +3548,8 @@ function selesaiPeriksa(visitId){
   visit.diagnosis = document.getElementById('px-diagnosis').value.trim();
   visit.nextStep = document.getElementById('px-next-step') ? document.getElementById('px-next-step').value : visit.nextStep;
   visit.catatan = document.getElementById('px-catatan').value.trim();
+  if(!visit.diagnosis){showToast('Diagnosis wajib diisi sebelum pemeriksaan dapat difinalisasi. Draft tetap tersimpan.','danger');simpanDraftPeriksa(visitId);return;}
+  if(visit.examDraftSavedAt){if(!Array.isArray(visit.examRevisions))visit.examRevisions=[];visit.examRevisions.push({changedAt:nowISO(),changedBy:Session.currentUser?(Session.currentUser.id||Session.currentUser.nama):null,stage:'finalisasi',diagnosis:visit.diagnosis});}
   if(visit.reviewPending){visit.workflow=visit.workflow||{};visit.workflow.reviewAt=nowISO();visit.reviewPending=false;}
   visit.billing.konsultasi = getPoli(visit.poliId).biaya;
 
@@ -3563,10 +3577,19 @@ function selesaiPeriksa(visitId){
     visit.nextStep='Menunggu konfirmasi penerimaan IGD';
   }
   if(poliState.resepItems.length>0){
-    const resep={id:uid('RSP'),visitId:visit.id,patientId:visit.patientId,unit:'rawat-jalan',items:[...poliState.resepItems],status:'menunggu',jenisLayanan:'rawat-jalan',createdAt:nowISO(),updatedAt:nowISO(),siapAt:null,diambilAt:null};
-    Store.data.prescriptions.push(resep); visit.resepId=resep.id;
+    let resep=visit.resepId?getResep(visit.resepId):getResepByVisit(visit.id);
+    if(resep && resep.status!=='menunggu'){
+      showToast('Resep kunjungan ini sudah diproses farmasi. Gunakan prosedur revisi resep, bukan membuat resep baru otomatis.','danger');return;
+    }
+    if(resep){
+      resep.items=[...poliState.resepItems.map(function(it){return Object.assign({},it);})]; resep.updatedAt=nowISO();
+    }else{
+      resep={id:uid('RSP'),visitId:visit.id,patientId:visit.patientId,unit:'rawat-jalan',items:[...poliState.resepItems.map(function(it){return Object.assign({},it);})],status:'menunggu',jenisLayanan:'rawat-jalan',createdAt:nowISO(),updatedAt:nowISO(),siapAt:null,diambilAt:null};
+      Store.data.prescriptions.push(resep); visit.resepId=resep.id;
+      notifyCareUnit(visit.patientId,'farmasi-rawat-jalan','Resep Rawat Jalan masuk antrean','Resep dari '+getPoli(visit.poliId).nama+' · antrean '+visit.noAntrian);
+    }
+    visit.resepId=resep.id;
     visit.billing.obat=resep.items.reduce((sum,it)=>sum+it.jumlah*it.hargaSatuan,0);
-    notifyCareUnit(visit.patientId,'farmasi-rawat-jalan','Resep Rawat Jalan masuk antrean','Resep dari '+getPoli(visit.poliId).nama+' · antrean '+visit.noAntrian);
   }
   if(rujukLab){visit.status='menunggu_lab';visit.nextStep='Laboratorium Rawat Jalan — menunggu konfirmasi/pemeriksaan';visit.workflow.supportingAt=nowISO();}
   else if(rujukRad){visit.status='menunggu_penunjang';visit.nextStep='Radiologi Rawat Jalan — menunggu konfirmasi/pemeriksaan';visit.workflow.supportingAt=nowISO();}
